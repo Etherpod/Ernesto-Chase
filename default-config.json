@@ -1,0 +1,50 @@
+{
+  "$schema": "https://raw.githubusercontent.com/ow-mods/owml/master/schemas/config_schema.json",
+  "enabled": true,
+  "settings": {
+    "Movement": {
+      "type": "separator"
+    },
+
+    "movementSpeed": {
+      "title": "Ground Movement Speed",
+      "tooltip": "This changes how quickly Ernesto traces your path when you are in a gravity field, like on a planet.",
+      "type": "slider",
+      "min": 0,
+      "max": 2,
+      "value": 1
+    },
+    "spaceSpeed": {
+      "title": "Space Acceleration Speed",
+      "tooltip": "This changes how quickly Ernesto accelerates towards you in space.",
+      "type": "slider",
+      "min": 0,
+      "max": 2,
+      "value": 1
+    },
+    "brambleSpeedMultiplier": {
+      "title": "Dark Bramble Speed Multiplier",
+      "tooltip": "Larger numbers increase Ernesto's speed in Dark Bramble seeds.",
+      "type": "number",
+      "value": 3
+    },
+    "dreamWorldSpeedMultiplier": {
+      "title": "Dream World Speed Multiplier",
+      "tooltip": "Larger numbers increase Ernesto's speed in the dream world.",
+      "dlcOnly": true,
+      "type": "number",
+      "value": 0.6
+    },
+
+    "Startup": {
+      "type": "separator"
+    },
+
+    "startDelay": {
+      "title": "Start Delay",
+      "tooltip": "The time in seconds Ernesto waits before chasing you.",
+      "type": "number",
+      "value": 15
+    }
+  }
+}

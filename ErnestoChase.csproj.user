@@ -1,0 +1,7 @@
+﻿<Project>
+  <PropertyGroup>
+    <OutputPath>$(AppData)\OuterWildsModManager\OWML\Mods\Etherpod.ErnestoChase</OutputPath>
+    <UnityProjectDir>$(SolutionDir)\..\ErnestoChaseAssets</UnityProjectDir>
+    <UnityProjectModDir>$(UnityProjectDir)\Assets\Dlls</UnityProjectModDir>
+  </PropertyGroup>
+</Project>

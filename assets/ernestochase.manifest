@@ -1,0 +1,97 @@
+ManifestFileVersion: 0
+CRC: 3374024088
+Hashes:
+  AssetFileHash:
+    serializedVersion: 2
+    Hash: 391b78d212bd898c0f1d38cf9109594c
+  TypeTreeHash:
+    serializedVersion: 2
+    Hash: da6278b8e7378540721b8cc5f2050c17
+HashAppended: 0
+ClassTypes:
+- Class: 1
+  Script: {instanceID: 0}
+- Class: 4
+  Script: {instanceID: 0}
+- Class: 21
+  Script: {instanceID: 0}
+- Class: 23
+  Script: {instanceID: 0}
+- Class: 28
+  Script: {instanceID: 0}
+- Class: 33
+  Script: {instanceID: 0}
+- Class: 43
+  Script: {instanceID: 0}
+- Class: 48
+  Script: {instanceID: 0}
+- Class: 54
+  Script: {instanceID: 0}
+- Class: 64
+  Script: {instanceID: 0}
+- Class: 74
+  Script: {instanceID: 0}
+- Class: 82
+  Script: {instanceID: 0}
+- Class: 90
+  Script: {instanceID: 0}
+- Class: 91
+  Script: {instanceID: 0}
+- Class: 95
+  Script: {instanceID: 0}
+- Class: 108
+  Script: {instanceID: 0}
+- Class: 114
+  Script: {fileID: 932751266, guid: 730ba948cc1cb5041ba6afe86ca1eb46, type: 3}
+- Class: 114
+  Script: {fileID: 11500000, guid: 64039fd011e32da2cb514e5e004fb9d0, type: 3}
+- Class: 114
+  Script: {fileID: 11500000, guid: fbb2498122f7e23a2e87544333cb528f, type: 3}
+- Class: 114
+  Script: {fileID: 11500000, guid: 993262e16795cab264c740ac00d23167, type: 3}
+- Class: 114
+  Script: {fileID: 11500000, guid: 80818142ed7b755f9ecef4a391e63964, type: 3}
+- Class: 114
+  Script: {fileID: 11500000, guid: 3bfd83f28489a24bc69cb526ff54d468, type: 3}
+- Class: 114
+  Script: {fileID: 11500000, guid: a7ad6e0311c8ca7b147e5004c87f0987, type: 3}
+- Class: 114
+  Script: {fileID: 11500000, guid: d3e77ae3309b6f323de07b456da83fb0, type: 3}
+- Class: 114
+  Script: {fileID: 11500000, guid: fcd7e484b1b8e2eb22bab7a7dd771d00, type: 3}
+- Class: 114
+  Script: {fileID: 11500000, guid: 1dcb8b570234015f281c1774637aeaf1, type: 3}
+- Class: 114
+  Script: {fileID: 11500000, guid: f913c288c393f80a7e923fc1c775f4fb, type: 3}
+- Class: 114
+  Script: {fileID: 11500000, guid: 2145ed3a866d4bd5a94d98ee05d0fa4f, type: 3}
+- Class: 114
+  Script: {fileID: 11500000, guid: 7aba6c2ce49844631cfc871c69533e25, type: 3}
+- Class: 114
+  Script: {fileID: 11500000, guid: 4d37ab8d4d1e425918e8172c84cb8288, type: 3}
+- Class: 114
+  Script: {fileID: 11500000, guid: 4a48b88f467c80c6358045d3edb1268f, type: 3}
+- Class: 114
+  Script: {fileID: 11500000, guid: 8be1049f863d9d3c48975ef4f4e82059, type: 3}
+- Class: 115
+  Script: {instanceID: 0}
+- Class: 134
+  Script: {instanceID: 0}
+- Class: 135
+  Script: {instanceID: 0}
+- Class: 136
+  Script: {instanceID: 0}
+- Class: 137
+  Script: {instanceID: 0}
+SerializeReferenceClassIdentifiers: []
+Assets:
+- Assets/ErnestoChase/ErnestoBody.prefab
+- Assets/ErnestoChase/ErnestoMat.mat
+- Assets/ErnestoChase/Anglerfish_Body.prefab
+- Assets/ErnestoChase/Ernesto.prefab
+- Assets/ErnestoChase/Anglerfish_Body 1.prefab
+- Assets/ErnestoChase/BlackHole.prefab
+- Assets/ErnestoChase/SpaceTargetsParent.prefab
+- Assets/ErnestoChase/WhiteHole.prefab
+- Assets/ErnestoChase/Beast_Anglerfish.prefab
+Dependencies: []
