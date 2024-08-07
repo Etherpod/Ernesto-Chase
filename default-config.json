@@ -10,17 +10,17 @@
       "title": "Ground Movement Speed",
       "tooltip": "This changes how quickly Ernesto traces your path when you are in a gravity field, like on a planet.",
       "type": "slider",
-      "min": 0,
-      "max": 2,
-      "value": 1
+      "min": 1,
+      "max": 10,
+      "value": 5
     },
     "spaceSpeed": {
       "title": "Space Acceleration Speed",
       "tooltip": "This changes how quickly Ernesto accelerates towards you in space.",
       "type": "slider",
-      "min": 0,
-      "max": 2,
-      "value": 1
+      "min": 1,
+      "max": 10,
+      "value": 5
     },
     "brambleSpeedMultiplier": {
       "title": "Dark Bramble Speed Multiplier",

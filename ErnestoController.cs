@@ -174,7 +174,7 @@ public class ErnestoController : MonoBehaviour
         {
             spawnDelayTimer = targetSpawnDelay;
             Transform parent = teleportPlanets.Count > 0 ? teleportPlanets[teleportPlanets.Count - 1].transform : currentPlanet.transform;
-            ErnestoChase.WriteDebugMessage("Spawned on: " + parent.name);
+            //ErnestoChase.WriteDebugMessage("Spawned on: " + parent.name);
             SpawnTarget(parent, Locator.GetPlayerTransform().position, false);
         }
 
