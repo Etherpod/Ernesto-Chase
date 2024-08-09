@@ -26,7 +26,11 @@ public static class PatchnestoClass
     public static void OnWarpPlayer(OWRigidbody __instance, Vector3 worldPosition)
     {
         bool flag = __instance.CompareTag("Player") || (__instance.CompareTag("Ship") && PlayerState.IsInsideShip() && ErnestoChase.Instance.inFogWarp);
-        if (!flag || !ErnestoChase.Instance.playerDetectorReady || !TimeLoop.IsTimeFlowing()) return;
+        if (!flag || !ErnestoChase.Instance.playerDetectorReady || !TimeLoop.IsTimeFlowing())
+        {
+            //ErnestoChase.WriteDebugMessage("In fog warp: " + ErnestoChase.Instance.inFogWarp);
+            return;
+        }
         ErnestoChase.Instance.inFogWarp = false;
         if ((worldPosition - Locator.GetPlayerTransform().position).magnitude > 50f)
         {
@@ -50,6 +54,20 @@ public static class PatchnestoClass
         Locator.GetPauseCommandListener().AddPauseCommandLock();
         PlayerData.SetLastDeathType(deathType);
         GlobalMessenger<DeathType>.FireEvent("PlayerDeath", deathType);
+        return false;
+    }
+
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(DeathManager), nameof(DeathManager.FinishDeathSequence))]
+    public static bool AddErnestoEndScreen()
+    {
+        if (!ErnestoChase.Instance.caughtPlayer)
+        {
+            return true;
+        }
+
+        ErnestoChase.Instance.TriggerEndScreen();
+
         return false;
     }
 }

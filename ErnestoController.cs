@@ -3,6 +3,7 @@ using OWML.ModHelper.Events;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using XGamingRuntime;
 
 namespace ErnestoChase;
 
@@ -13,6 +14,8 @@ public class ErnestoController : MonoBehaviour
     [SerializeField]
     private OWAudioSource loopingAudio;
     [SerializeField]
+    private OWAudioSource oneShotAudio;
+    [SerializeField]
     private Animator animator;
     [SerializeField]
     private GameObject ernestoMesh;
@@ -20,8 +23,11 @@ public class ErnestoController : MonoBehaviour
     private SingularityWarpEffect blackHolePrefab;
     [SerializeField]
     private SingularityWarpEffect whiteHolePrefab;
+    [SerializeField]
+    private Light anglerLight;
 
     private float speed = 8f;
+    private float currentSpeed;
     private Vector3 lastPosition;
     private Quaternion lastRotation;
     private float lastTime;
@@ -51,10 +57,18 @@ public class ErnestoController : MonoBehaviour
     private SingularityWarpEffect blackHole;
     private SingularityWarpEffect whiteHole;
     private bool movementPaused = false;
+    private bool playerCollided = false;
+    private float baseLightRange;
+    private float baseMeshScale;
+    private Dictionary<Vector3, (bool, bool)> brambleSpeedMarkers = [];
+    private bool lastPlayerBrambleState;
+    private Dictionary<Vector3, (bool, bool)> dreamWorldSpeedMarkers = [];
+    private bool lastPlayerDreamState;
 
     private void Start()
     {
         killVolume.OnEntry += OnEntry;
+        killVolume.OnExit += OnExit;
 
         ErnestoChase.Instance.ModHelper.Console.WriteLine("In game");
         targetPrefab = ErnestoChase.LoadPrefab("Assets/ErnestoChase/ErnestoTarget.prefab");
@@ -78,15 +92,16 @@ public class ErnestoController : MonoBehaviour
         speed *= num2;
         baseSpaceSpeed = speed / 10;
         currentSpaceSpeed = baseSpaceSpeed;
-        animator.SetFloat("MoveSpeed", 0f);
-        animator.SetFloat("Jaw", 0.33f);
+        currentSpeed = speed;
         AssetBundleUtilities.ReplaceShaders(blackHolePrefab.gameObject);
         AssetBundleUtilities.ReplaceShaders(whiteHolePrefab.gameObject);
         blackHolePrefab._warpedObjectGeometry = ernestoMesh;
         whiteHolePrefab._warpedObjectGeometry = ernestoMesh;
         blackHole = Instantiate(blackHolePrefab);
         whiteHole = Instantiate(whiteHolePrefab);
+        baseMeshScale = ernestoMesh.transform.localScale.magnitude;
         ernestoMesh.transform.localScale = Vector3.zero;
+        baseLightRange = anglerLight.range;
     }
 
     private void FixedUpdate()
@@ -112,14 +127,21 @@ public class ErnestoController : MonoBehaviour
 
             ErnestoChase.WriteDebugMessage(transform.parent);
 
-            // Spawn away from player
-            Vector3 newPos = transform.parent.InverseTransformPoint(Locator.GetPlayerTransform().position/* + new Vector3(0, 10, 0)*/);
+            Vector3 newPos = transform.parent.InverseTransformPoint(Locator.GetPlayerTransform().position);
             transform.localPosition = newPos;
             lastPosition = newPos;
             lastRotation = transform.rotation;
             lastPlayerAtmosphereState = body;
+            lastPlayerBrambleState = PlayerState.InBrambleDimension();
             StartCoroutine(ErnestoReleaseDelay());
             hasCheckedDetector = true;
+        }
+
+        anglerLight.range = baseLightRange * (ernestoMesh.transform.localScale.magnitude / baseMeshScale);
+
+        if (playerCollided && !ErnestoChase.Instance.caughtPlayer && ernestoReleased)
+        {
+            ErnestoChase.Instance.caughtPlayer = true;
         }
 
         if (ErnestoChase.Instance.caughtPlayer)
@@ -129,6 +151,8 @@ public class ErnestoController : MonoBehaviour
                 startedDeathSequence = true;
                 transform.parent = null;
                 transform.position = Locator.GetPlayerTransform().position;
+                loopingAudio.FadeOut(2f);
+                animator.SetTrigger("Stop");
                 Locator.GetDeathManager().KillPlayer(DeathType.Digestion);
             }
             return;
@@ -229,13 +253,15 @@ public class ErnestoController : MonoBehaviour
             }
         }
 
+        UpdateMovementSpeed(playerOnPlanet);
+
         // Planetary travel
         if (targets.Count > 0 && reachedAtmoEnterPos)
         {
             Vector3 targetPos = targets.Peek().Item1;
             float dist = (targetPos - lastPosition).magnitude;
-            float newSpeed = speed;
-            if (transform.parent == positionParent)
+
+            /*if (transform.parent == positionParent)
             {
                 if (PlayerState.InBrambleDimension())
                 {
@@ -245,8 +271,9 @@ public class ErnestoController : MonoBehaviour
                 {
                     newSpeed *= ErnestoChase.Instance.DreamWorldSpeedMultiplier;
                 }
-            }
-            float num = Mathf.InverseLerp(lastTime, lastTime + (dist / newSpeed), Time.time);
+            }*/
+
+            float num = Mathf.InverseLerp(lastTime, lastTime + (dist / currentSpeed), Time.time);
 
             // If targets are overlapping num will stay at zero, prevent that
             if (dist < 0.01f)
@@ -260,7 +287,7 @@ public class ErnestoController : MonoBehaviour
             {
                 // Move Ernesto
                 transform.localPosition = Vector3.Lerp(lastPosition, targetPos, num);
-                Quaternion nextRotation = Quaternion.LookRotation(currentPlanet.transform.TransformPoint(targets.Peek().Item1) - transform.position, 
+                Quaternion nextRotation = Quaternion.LookRotation(currentPlanet.transform.TransformPoint(targets.Peek().Item1) - transform.position,
                     -currentGravity.CalculateForceAccelerationAtPoint(transform.position));
                 transform.rotation = Quaternion.Lerp(lastRotation, nextRotation, num);
             }
@@ -375,6 +402,90 @@ public class ErnestoController : MonoBehaviour
             //ErnestoChase.WriteDebugMessage(rigidbody.GetVelocity());
             // Increase space travel speed to outrun player
             currentSpaceSpeed += Time.deltaTime * 5f * (Mathf.InverseLerp(1, 10, ErnestoChase.Instance.SpaceSpeed) + 0.5f);
+        }
+    }
+
+    private void UpdateMovementSpeed(bool playerOnPlanet)
+    {
+        bool inBramble = PlayerState.InBrambleDimension();
+        if (inBramble != lastPlayerBrambleState)
+        {
+            lastPlayerBrambleState = inBramble;
+            (Vector3, bool)[] targetsArray = [.. (playerOnPlanet ? targets : spaceTargets)];
+            if (targetsArray.Length > 0)
+            {
+                if (inBramble)
+                {
+                    ErnestoChase.WriteDebugMessage("Added speed up marker");
+                    brambleSpeedMarkers.Add(targetsArray[targetsArray.Length - 1].Item1, (true, false));
+                }
+                else
+                {
+                    ErnestoChase.WriteDebugMessage("Added slow down marker");
+                    brambleSpeedMarkers.Add(targetsArray[targetsArray.Length - 1].Item1, (false, true));
+                }
+            }
+        }
+
+        bool inDreamWorld = PlayerState.InDreamWorld();
+        if (inDreamWorld != lastPlayerDreamState)
+        {
+            lastPlayerDreamState = inDreamWorld;
+            (Vector3, bool)[] targetsArray = [.. (playerOnPlanet ? targets : spaceTargets)];
+            if (targetsArray.Length > 0)
+            {
+                if (inDreamWorld)
+                {
+                    dreamWorldSpeedMarkers.Add(targetsArray[targetsArray.Length - 1].Item1, (true, false));
+                }
+                else
+                {
+                    dreamWorldSpeedMarkers.Add(targetsArray[targetsArray.Length - 1].Item1, (false, true));
+                }
+            }
+        }
+
+        Vector3 targetPos;
+
+        if (playerOnPlanet && targets.Count > 0)
+        {
+            targetPos = targets.Peek().Item1;
+        }
+        else if (!playerOnPlanet && spaceTargets.Count > 0)
+        {
+            targetPos = spaceTargets.Peek().Item1;
+        }
+        else
+        {
+            return;
+        }
+
+        if (brambleSpeedMarkers.ContainsKey(targetPos))
+        {
+            if (brambleSpeedMarkers[targetPos].Item1)
+            {
+                ErnestoChase.WriteDebugMessage("Reached speed up marker!!!!");
+                currentSpeed *= ErnestoChase.Instance.BrambleSpeedMultiplier;
+            }
+            else if (brambleSpeedMarkers[targetPos].Item2)
+            {
+                ErnestoChase.WriteDebugMessage("Reached slow down marker!!!!");
+                currentSpeed /= ErnestoChase.Instance.BrambleSpeedMultiplier;
+            }
+            brambleSpeedMarkers.Remove(targetPos);
+        }
+
+        if (dreamWorldSpeedMarkers.ContainsKey(targetPos))
+        {
+            if (dreamWorldSpeedMarkers[targetPos].Item1)
+            {
+                currentSpeed *= ErnestoChase.Instance.DreamWorldSpeedMultiplier;
+            }
+            else if (dreamWorldSpeedMarkers[targetPos].Item2)
+            {
+                currentSpeed /= ErnestoChase.Instance.DreamWorldSpeedMultiplier;
+            }
+            dreamWorldSpeedMarkers.Remove(targetPos);
         }
     }
 
@@ -514,6 +625,7 @@ public class ErnestoController : MonoBehaviour
         teleportPlanets.RemoveAt(0);
         ErnestoChase.WriteDebugMessage("New body: " + transform.parent);
         AdvanceTarget();
+        ErnestoChase.WriteDebugMessage("Teleport destination: " + targets.Peek().Item1);
         transform.localPosition = targets.Peek().Item1;
         AdvanceTarget();
 
@@ -603,10 +715,8 @@ public class ErnestoController : MonoBehaviour
         if (!ernestoReleased)
         {
             ErnestoChase.WriteDebugMessage("WHITE HOLE SPAWN");
-            animator.SetFloat("MoveSpeed", 1f);
             animator.SetTrigger("Impulse");
-            animator.SetFloat("Jaw", 0.66f);
-            Locator.GetPlayerAudioController()._oneShotSource.PlayOneShot(AudioType.DBAnglerfishDetectTarget);
+            oneShotAudio.PlayOneShot(AudioType.DBAnglerfishDetectTarget, 0.8f);
             loopingAudio.AssignAudioLibraryClip(AudioType.DBAnglerfishChasing_LP);
             loopingAudio.FadeIn(1f);
             ernestoReleased = true;
@@ -620,15 +730,25 @@ public class ErnestoController : MonoBehaviour
 
     private void OnEntry(GameObject hitObj)
     {
-        if (hitObj.CompareTag("PlayerDetector") && hasCheckedDetector && ernestoReleased)
+        if (hitObj.CompareTag("PlayerDetector")/* && hasCheckedDetector && ernestoReleased*/)
         {
             ErnestoChase.WriteDebugMessage("HAHA I GOT YOU");
-            ErnestoChase.Instance.caughtPlayer = true;
+            //ErnestoChase.Instance.caughtPlayer = true;
+            playerCollided = true;
+        }
+    }
+
+    private void OnExit(GameObject hitObj)
+    {
+        if (hitObj.CompareTag("PlayerDetector"))
+        {
+            playerCollided = false;
         }
     }
 
     private void OnDestroy()
     {
         killVolume.OnEntry -= OnEntry;
+        killVolume.OnExit += OnExit;
     }
 }
