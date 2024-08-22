@@ -58,15 +58,17 @@ public static class PatchnestoClass
     }
 
     [HarmonyPrefix]
-    [HarmonyPatch(typeof(DeathManager), nameof(DeathManager.FinishDeathSequence))]
-    public static bool AddErnestoEndScreen()
+    [HarmonyPatch(typeof(Flashback), nameof(Flashback.OnTriggerFlashback))]
+    public static bool ErnestoEndScreen(Flashback __instance)
     {
         if (!ErnestoChase.Instance.caughtPlayer)
         {
             return true;
         }
 
-        ErnestoChase.Instance.TriggerEndScreen();
+        GameOverController controller = __instance.GetComponent<GameOverController>();
+        controller._deathText.text = "ERNESTO BEAT YOU TO DEATH WITH A ROCK.";
+        controller.SetupGameOverScreen(5f);
 
         return false;
     }

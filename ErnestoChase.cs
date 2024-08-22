@@ -30,7 +30,7 @@ public class ErnestoChase : ModBehaviour
     private float dreamWorldSpeedMultiplier;
     private float startDelay;
 
-    public static readonly bool EnableDebugMode = true;
+    public static readonly bool EnableDebugMode = false;
 
     private void Awake()
     {
@@ -108,13 +108,6 @@ public class ErnestoChase : ModBehaviour
     private void OnPlayerFogWarp()
     {
         inFogWarp = true;
-    }
-
-    public void TriggerEndScreen()
-    {
-        GameOverController controller = FindObjectOfType<GameOverController>();
-        controller._deathText.text = "ERNESTO BEAT YOU TO DEATH WITH A ROCK.";
-        controller.SetupGameOverScreen(5f);
     }
 
     public static GameObject LoadPrefab(string path)

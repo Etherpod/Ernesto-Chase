@@ -102,6 +102,7 @@ public class ErnestoController : MonoBehaviour
         baseMeshScale = ernestoMesh.transform.localScale.magnitude;
         ernestoMesh.transform.localScale = Vector3.zero;
         baseLightRange = anglerLight.range;
+        anglerLight.range = baseLightRange * (ernestoMesh.transform.localScale.magnitude / baseMeshScale);
     }
 
     private void FixedUpdate()
