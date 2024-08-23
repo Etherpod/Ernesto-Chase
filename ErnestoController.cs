@@ -2,6 +2,7 @@
 using OWML.ModHelper.Events;
 using System.Collections;
 using System.Collections.Generic;
+using System.Xml.Serialization;
 using UnityEngine;
 using XGamingRuntime;
 
@@ -66,6 +67,7 @@ public class ErnestoController : MonoBehaviour
     private bool lastPlayerDreamState;
     private float spaceTimedStartDistance;
     private bool colliderEnabled = false;
+    private Coroutine audioTransition;
 
     private void Start()
     {
@@ -143,6 +145,7 @@ public class ErnestoController : MonoBehaviour
 
         if (playerCollided && !ErnestoChase.Instance.caughtPlayer && colliderEnabled)
         {
+            ErnestoChase.WriteDebugMessage("HAHA I GOT YOU");
             ErnestoChase.Instance.caughtPlayer = true;
         }
 
@@ -236,6 +239,10 @@ public class ErnestoController : MonoBehaviour
                 startVelocity = rigidbody._currentVelocity;
                 transform.parent = rigidbody.transform;
                 spaceTimedStartDistance = (Locator.GetPlayerTransform().position - rigidbody.transform.position).magnitude;
+                if (ErnestoChase.Instance.SpaceAccelerationType == "Timed")
+                {
+                    audioTransition = StartCoroutine(SpaceAudioTransition());
+                }
             }
             // Transition to planetary travel if player has entered atmosphere
             else if (playerOnPlanet)
@@ -253,6 +260,13 @@ public class ErnestoController : MonoBehaviour
                 {
                     ErnestoChase.WriteDebugMessage("Spawning entry target on: " + currentPlanet);
                     SpawnTarget(currentPlanet.transform, Locator.GetPlayerTransform().position, false);
+                }
+                loopingAudio.spatialBlend = 1f;
+                loopingAudio.FadeIn(0.5f);
+                if (audioTransition != null)
+                {
+                    StopCoroutine(audioTransition);
+                    audioTransition = null;
                 }
             }
         }
@@ -773,11 +787,20 @@ public class ErnestoController : MonoBehaviour
         }
     }
 
+    private IEnumerator SpaceAudioTransition()
+    {
+        loopingAudio.FadeOut(0.5f);
+        yield return new WaitForSeconds(0.5f);
+        loopingAudio.spatialBlend = 0f;
+        loopingAudio.FadeIn(ErnestoChase.Instance.SpaceTimer, true);
+        yield return new WaitForSeconds(Mathf.Min(ErnestoChase.Instance.SpaceTimer - 7f, ErnestoChase.Instance.SpaceTimer * 0.9f));
+        loopingAudio.PlayOneShot(AudioType.DBAnglerfishDetectTarget, 1f);
+    }
+
     private void OnEntry(GameObject hitObj)
     {
         if (hitObj.CompareTag("PlayerDetector")/* && hasCheckedDetector && ernestoReleased*/)
         {
-            ErnestoChase.WriteDebugMessage("HAHA I GOT YOU");
             //ErnestoChase.Instance.caughtPlayer = true;
             playerCollided = true;
         }
