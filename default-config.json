@@ -22,6 +22,23 @@
       "max": 10,
       "value": 5
     },
+    "spaceAccelerationType": {
+      "title": "Space Acceleration Type",
+      "tooltip": "Linear means Ernesto gets closer to you at a constant rate, regardless of how fast you're traveling. Cumulative means Ernesto builds up speed and eventually intercepts you, but it may have unpredictable movement. Timed means Ernesto will reach you after a fixed amount of time.",
+      "type": "selector",
+      "options": [
+        "Linear",
+        "Cumulative",
+        "Timed"
+      ],
+      "value": "Timed"
+    },
+    "spaceTimer": {
+      "title": "Interception Time",
+      "tooltip": "For use with the Timed acceleration type. This determines how long it will take for Ernesto to catch up to you in space.",
+      "type": "number",
+      "value": 30
+    },
     "brambleSpeedMultiplier": {
       "title": "Dark Bramble Speed Multiplier",
       "tooltip": "Larger numbers increase Ernesto's speed in Dark Bramble seeds.",
@@ -45,6 +62,17 @@
       "tooltip": "The time in seconds Ernesto waits before chasing you.",
       "type": "number",
       "value": 15
+    },
+
+    "Extras": {
+      "type": "separator"
+    },
+
+    "enableStealthMode": {
+      "title": "Enable Stealth Mode",
+      "tooltip": "Makes Ernesto silent and turns off his light. You won't know where he is until he's right behind you.",
+      "type": "toggle",
+      "value": false
     }
   }
 }

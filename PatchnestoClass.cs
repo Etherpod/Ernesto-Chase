@@ -25,7 +25,7 @@ public static class PatchnestoClass
     [HarmonyPatch(typeof(OWRigidbody), nameof(OWRigidbody.SetPosition))]
     public static void OnWarpPlayer(OWRigidbody __instance, Vector3 worldPosition)
     {
-        bool flag = __instance.CompareTag("Player") || (__instance.CompareTag("Ship") && PlayerState.IsInsideShip() && ErnestoChase.Instance.inFogWarp);
+        bool flag = __instance.CompareTag("Player") || (__instance.CompareTag("Ship") && PlayerState.IsInsideShip()/* && ErnestoChase.Instance.inFogWarp*/);
         if (!flag || !ErnestoChase.Instance.playerDetectorReady || !TimeLoop.IsTimeFlowing())
         {
             //ErnestoChase.WriteDebugMessage("In fog warp: " + ErnestoChase.Instance.inFogWarp);

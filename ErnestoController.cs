@@ -64,13 +64,14 @@ public class ErnestoController : MonoBehaviour
     private bool lastPlayerBrambleState;
     private Dictionary<Vector3, (bool, bool)> dreamWorldSpeedMarkers = [];
     private bool lastPlayerDreamState;
+    private float spaceTimedStartDistance;
+    private bool colliderEnabled = false;
 
     private void Start()
     {
         killVolume.OnEntry += OnEntry;
         killVolume.OnExit += OnExit;
 
-        ErnestoChase.Instance.ModHelper.Console.WriteLine("In game");
         targetPrefab = ErnestoChase.LoadPrefab("Assets/ErnestoChase/ErnestoTarget.prefab");
         rigidbody = ErnestoChase.Instance.ernestoBody;
         animator = GetComponentInChildren<Animator>();
@@ -140,7 +141,7 @@ public class ErnestoController : MonoBehaviour
 
         anglerLight.range = baseLightRange * (ernestoMesh.transform.localScale.magnitude / baseMeshScale);
 
-        if (playerCollided && !ErnestoChase.Instance.caughtPlayer && ernestoReleased)
+        if (playerCollided && !ErnestoChase.Instance.caughtPlayer && colliderEnabled)
         {
             ErnestoChase.Instance.caughtPlayer = true;
         }
@@ -198,7 +199,7 @@ public class ErnestoController : MonoBehaviour
         else if (playerOnPlanet && !waitingOnTeleport && positionParent.TransformPoint(lastPlayerPos) != Locator.GetPlayerTransform().position)
         {
             spawnDelayTimer = targetSpawnDelay;
-            Transform parent = teleportPlanets.Count > 0 ? teleportPlanets[teleportPlanets.Count - 1].transform : currentPlanet.transform;
+            Transform parent = (teleportPlanets.Count > 0 && teleportPlanets[teleportPlanets.Count - 1] != null) ? teleportPlanets[teleportPlanets.Count - 1].transform : currentPlanet.transform;
             //ErnestoChase.WriteDebugMessage("Spawned on: " + parent.name);
             SpawnTarget(parent, Locator.GetPlayerTransform().position, false);
         }
@@ -234,6 +235,7 @@ public class ErnestoController : MonoBehaviour
                 rigidbody.SetVelocity(transform.parent.GetComponent<OWRigidbody>()._currentVelocity);
                 startVelocity = rigidbody._currentVelocity;
                 transform.parent = rigidbody.transform;
+                spaceTimedStartDistance = (Locator.GetPlayerTransform().position - rigidbody.transform.position).magnitude;
             }
             // Transition to planetary travel if player has entered atmosphere
             else if (playerOnPlanet)
@@ -249,6 +251,7 @@ public class ErnestoController : MonoBehaviour
                 spawnDelayTimer = targetSpawnDelay;
                 if (!waitingOnTeleport)
                 {
+                    ErnestoChase.WriteDebugMessage("Spawning entry target on: " + currentPlanet);
                     SpawnTarget(currentPlanet.transform, Locator.GetPlayerTransform().position, false);
                 }
             }
@@ -340,11 +343,19 @@ public class ErnestoController : MonoBehaviour
             // Run if player entered an atmosphere and Ernesto is still in space
             if (playerOnPlanet && targets.Count > 0 && !reachedAtmoEnterPos && !(spaceTargets.Count > 0 && spaceTargets.Peek().Item2))
             {
+                //ErnestoChase.WriteDebugMessage(currentPlanet);
+                if (colliderEnabled)
+                {
+                    colliderEnabled = false;
+                }
+
                 // Move to player's atmosphere entry point
                 transform.localPosition = Vector3.MoveTowards(transform.localPosition, targets.Peek().Item1, currentSpaceSpeed / 50f);
                 if (Vector3.Distance(transform.localPosition, targets.Peek().Item1) < 5f)
                 {
+                    ErnestoChase.WriteDebugMessage("Reached player atmo enter pos");
                     reachedAtmoEnterPos = true;
+                    colliderEnabled = true;
                     AdvanceTarget();
                 }
             }
@@ -395,14 +406,36 @@ public class ErnestoController : MonoBehaviour
                 // Regular space travel
                 else
                 {
-                    transform.LookAt(Locator.GetPlayerTransform());
-                    rigidbody.SetVelocity(rigidbody.transform.TransformDirection(transform.forward * currentSpaceSpeed) + startVelocity);
+                    ErnestoChase.WriteDebugMessage(spaceTimedStartDistance);
+                    if (ErnestoChase.Instance.SpaceAccelerationType == "Cumulative")
+                    {
+                        transform.LookAt(Locator.GetPlayerTransform());
+                        rigidbody.AddForce(rigidbody.transform.TransformDirection(transform.forward * currentSpaceSpeed));
+                    }
+                    else
+                    {
+                        transform.LookAt(Locator.GetPlayerTransform());
+                        rigidbody.SetVelocity(rigidbody.transform.TransformDirection((transform.forward * currentSpaceSpeed) + Locator.GetPlayerBody().GetVelocity()));
+                    }
                 }
             }
 
-            //ErnestoChase.WriteDebugMessage(rigidbody.GetVelocity());
+            //ErnestoChase.WriteDebugMessage(rigidbody.GetVelocity())
             // Increase space travel speed to outrun player
-            currentSpaceSpeed += Time.deltaTime * 5f * (Mathf.InverseLerp(1, 10, ErnestoChase.Instance.SpaceSpeed) + 0.5f);
+            bool travelingToAtmoEnterPos = playerOnPlanet && targets.Count > 0 && !reachedAtmoEnterPos && !(spaceTargets.Count > 0 && spaceTargets.Peek().Item2);
+
+            if (travelingToAtmoEnterPos || ErnestoChase.Instance.SpaceAccelerationType == "Cumulative")
+            {
+                currentSpaceSpeed += Time.deltaTime * 5f * (Mathf.InverseLerp(1, 10, ErnestoChase.Instance.SpaceSpeed) + 0.5f);
+            }
+            else if (ErnestoChase.Instance.SpaceAccelerationType == "Linear")
+            {
+                currentSpaceSpeed += Time.deltaTime * 5f * Mathf.InverseLerp(1, 10, ErnestoChase.Instance.SpaceSpeed);
+            }
+            else
+            {
+                currentSpaceSpeed = spaceTimedStartDistance / ErnestoChase.Instance.SpaceTimer;
+            }
         }
     }
 
@@ -665,23 +698,33 @@ public class ErnestoController : MonoBehaviour
         blackHole.singularityController.OnCollapse -= OnPlanetToSpaceBlackHoleDestroyed;
 
         targets.Clear();
-        ErnestoChase.WriteDebugMessage("teleport planets size pre: " + teleportPlanets.Count);
+        ErnestoChase.WriteDebugMessage("Teleport planets size before removing: " + teleportPlanets.Count);
         teleportPlanets.RemoveAt(0);
         transform.position = staticTransformParent.TransformPoint(spaceTargets.Peek().Item1);
         spaceTargets.Dequeue();
-        ErnestoChase.WriteDebugMessage(spaceTargets.Count);
+        ErnestoChase.WriteDebugMessage("Space targets: " + spaceTargets.Count);
         currentSpaceSpeed = baseSpaceSpeed;
         reachedAtmoEnterPos = false;
         spawnDelayTimer = 0f;
-        rigidbody.SetPosition(transform.position);
-        rigidbody.SetVelocity(teleportVelocities.Peek());
+
         teleportVelocities.Dequeue();
-        startVelocity = rigidbody._currentVelocity;
-        transform.parent = rigidbody.transform;
+
         OWRigidbody body = GetCurrentPlanetBody();
-        if (body && teleportPlanets.Count == 0)
+        if (body)
         {
             currentPlanet = body.gameObject;
+            rigidbody.SetVelocity(Vector3.zero);
+            //currentPlanet = GetCurrentPlanetBody().gameObject;
+            transform.parent = currentPlanet.transform;
+        }
+        else
+        {
+            ErnestoChase.WriteDebugMessage("space");
+            rigidbody.SetPosition(transform.position);
+            rigidbody.SetVelocity(teleportVelocities.Peek());
+            startVelocity = rigidbody._currentVelocity;
+            transform.parent = rigidbody.transform;
+            spaceTimedStartDistance = (Locator.GetPlayerTransform().position - rigidbody.transform.position).magnitude;
         }
 
         whiteHole.transform.parent = transform.parent;
@@ -721,6 +764,7 @@ public class ErnestoController : MonoBehaviour
             loopingAudio.AssignAudioLibraryClip(AudioType.DBAnglerfishChasing_LP);
             loopingAudio.FadeIn(1f);
             ernestoReleased = true;
+            colliderEnabled = true;
         }
         else
         {

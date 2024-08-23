@@ -23,14 +23,20 @@ public class ErnestoChase : ModBehaviour
     public float BrambleSpeedMultiplier;
     public float DreamWorldSpeedMultiplier;
     public float StartDelay;
+    public bool EnableStealthMode;
+    public string SpaceAccelerationType;
+    public float SpaceTimer;
 
     private float movementSpeed;
     private float spaceSpeed;
     private float brambleSpeedMultiplier;
     private float dreamWorldSpeedMultiplier;
     private float startDelay;
+    private bool enableStealthMode;
+    private string spaceAccelerationType;
+    private float spaceTimer;
 
-    public static readonly bool EnableDebugMode = false;
+    public static readonly bool EnableDebugMode = true;
 
     private void Awake()
     {
@@ -60,10 +66,11 @@ public class ErnestoChase : ModBehaviour
             BrambleSpeedMultiplier = brambleSpeedMultiplier;
             DreamWorldSpeedMultiplier = dreamWorldSpeedMultiplier;
             StartDelay = startDelay;
+            EnableStealthMode = enableStealthMode;
+            SpaceAccelerationType = spaceAccelerationType;
+            SpaceTimer = spaceTimer;
 
             StartCoroutine(WaitForPlayer());
-
-            ModHelper.Console.WriteLine("Loaded into solar system!", MessageType.Success);
         };
     }
 
@@ -127,8 +134,12 @@ public class ErnestoChase : ModBehaviour
     {
         movementSpeed = config.GetSettingsValue<int>("movementSpeed");
         spaceSpeed = config.GetSettingsValue<int>("spaceSpeed");
+
         brambleSpeedMultiplier = config.GetSettingsValue<float>("brambleSpeedMultiplier");
         dreamWorldSpeedMultiplier = config.GetSettingsValue<float>("dreamWorldSpeedMultiplier");
         startDelay = config.GetSettingsValue<float>("startDelay");
+        enableStealthMode = config.GetSettingsValue<bool>("enableStealthMode");
+        spaceAccelerationType = config.GetSettingsValue<string>("spaceAccelerationType");
+        spaceTimer = config.GetSettingsValue<float>("spaceTimer");
     }
 }
