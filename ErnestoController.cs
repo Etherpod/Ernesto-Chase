@@ -1,10 +1,6 @@
-﻿using Mono.Cecil.Cil;
-using OWML.ModHelper.Events;
-using System.Collections;
+﻿using System.Collections;
 using System.Collections.Generic;
-using System.Xml.Serialization;
 using UnityEngine;
-using XGamingRuntime;
 
 namespace ErnestoChase;
 
@@ -68,6 +64,9 @@ public class ErnestoController : MonoBehaviour
     private float spaceTimedStartDistance;
     private bool colliderEnabled = false;
     private Coroutine audioTransition;
+    private float baseLoopingAudioVolume;
+    private bool proximityRoar = true;
+    private bool standingStill = false;
 
     private void Start()
     {
@@ -104,8 +103,14 @@ public class ErnestoController : MonoBehaviour
         whiteHole = Instantiate(whiteHolePrefab);
         baseMeshScale = ernestoMesh.transform.localScale.magnitude;
         ernestoMesh.transform.localScale = Vector3.zero;
+        if (ErnestoChase.Instance.StealthMode)
+        {
+            anglerLight.intensity = 0f;
+            //loopingAudio.SetMaxVolume(0f);
+        }
         baseLightRange = anglerLight.range;
         anglerLight.range = baseLightRange * (ernestoMesh.transform.localScale.magnitude / baseMeshScale);
+        baseLoopingAudioVolume = loopingAudio.GetMaxVolume();
     }
 
     private void FixedUpdate()
@@ -199,12 +204,21 @@ public class ErnestoController : MonoBehaviour
         }
         // Delay target spawning until player is in an atompshere
         //// TODO: Delay if targets overlap
-        else if (playerOnPlanet && !waitingOnTeleport && positionParent.TransformPoint(lastPlayerPos) != Locator.GetPlayerTransform().position)
+        else if (playerOnPlanet && !waitingOnTeleport /*&& positionParent.TransformPoint(lastPlayerPos) != Locator.GetPlayerTransform().position*/)
         {
             spawnDelayTimer = targetSpawnDelay;
             Transform parent = (teleportPlanets.Count > 0 && teleportPlanets[teleportPlanets.Count - 1] != null) ? teleportPlanets[teleportPlanets.Count - 1].transform : currentPlanet.transform;
             //ErnestoChase.WriteDebugMessage("Spawned on: " + parent.name);
-            SpawnTarget(parent, Locator.GetPlayerTransform().position, false);
+            (Vector3, bool)[] arrayTargets = [.. targets];
+            if (targets.Count == 0 || Vector3.Distance(arrayTargets[arrayTargets.Length - 1].Item1, parent.InverseTransformPoint(Locator.GetPlayerTransform().position)) > 0.5f)
+            {
+                standingStill = false;
+                SpawnTarget(parent, Locator.GetPlayerTransform().position, false);
+            }
+            else
+            {
+                standingStill = true;
+            }
         }
 
         // Update last player position
@@ -229,6 +243,7 @@ public class ErnestoController : MonoBehaviour
             {
                 ErnestoChase.WriteDebugMessage("Exited atmosphere");
                 targets.Clear();
+                standingStill = false;
                 teleportPlanets.Clear();
                 currentSpaceSpeed = baseSpaceSpeed;
                 reachedAtmoEnterPos = false;
@@ -241,7 +256,11 @@ public class ErnestoController : MonoBehaviour
                 spaceTimedStartDistance = (Locator.GetPlayerTransform().position - rigidbody.transform.position).magnitude;
                 if (ErnestoChase.Instance.SpaceAccelerationType == "Timed")
                 {
-                    audioTransition = StartCoroutine(SpaceAudioTransition());
+                    if (audioTransition != null)
+                    {
+                        StopCoroutine(audioTransition);
+                    }
+                    audioTransition = ErnestoChase.Instance.StealthMode ? null : StartCoroutine(SpaceAudioTransition());
                 }
             }
             // Transition to planetary travel if player has entered atmosphere
@@ -261,35 +280,21 @@ public class ErnestoController : MonoBehaviour
                     ErnestoChase.WriteDebugMessage("Spawning entry target on: " + currentPlanet);
                     SpawnTarget(currentPlanet.transform, Locator.GetPlayerTransform().position, false);
                 }
-                loopingAudio.spatialBlend = 1f;
-                loopingAudio.FadeIn(0.5f);
                 if (audioTransition != null)
                 {
                     StopCoroutine(audioTransition);
-                    audioTransition = null;
                 }
+                audioTransition = ErnestoChase.Instance.StealthMode ? null : StartCoroutine(AtmosphereAudioTransition());
             }
         }
 
         UpdateMovementSpeed(playerOnPlanet);
 
         // Planetary travel
-        if (targets.Count > 0 && reachedAtmoEnterPos)
+        if ((targets.Count > 0 || standingStill) && reachedAtmoEnterPos)
         {
-            Vector3 targetPos = targets.Peek().Item1;
+            Vector3 targetPos = targets.Count > 0 ? targets.Peek().Item1 : Locator.GetPlayerTransform().position;
             float dist = (targetPos - lastPosition).magnitude;
-
-            /*if (transform.parent == positionParent)
-            {
-                if (PlayerState.InBrambleDimension())
-                {
-                    newSpeed *= ErnestoChase.Instance.BrambleSpeedMultiplier;
-                }
-                if (PlayerState.InDreamWorld())
-                {
-                    newSpeed *= ErnestoChase.Instance.DreamWorldSpeedMultiplier;
-                }
-            }*/
 
             float num = Mathf.InverseLerp(lastTime, lastTime + (dist / currentSpeed), Time.time);
 
@@ -298,20 +303,37 @@ public class ErnestoController : MonoBehaviour
             {
                 num = 1f;
             }
-            //ErnestoChase.WriteDebugMessage(num);
 
             // Transitioning between targets
             if (num < 1f)
             {
                 // Move Ernesto
                 transform.localPosition = Vector3.Lerp(lastPosition, targetPos, num);
-                Quaternion nextRotation = Quaternion.LookRotation(currentPlanet.transform.TransformPoint(targets.Peek().Item1) - transform.position,
+                Quaternion nextRotation = Quaternion.LookRotation(currentPlanet.transform.TransformPoint(targetPos) - transform.position,
                     -currentGravity.CalculateForceAccelerationAtPoint(transform.position));
                 transform.rotation = Quaternion.Lerp(lastRotation, nextRotation, num);
+                float num2 = Mathf.InverseLerp(1, 10, ErnestoChase.Instance.MovementSpeed);
+                if (ErnestoChase.Instance.StealthMode)
+                {
+                    if (!proximityRoar && targets.Count < 50 
+                        && Vector3.Distance(Locator.GetPlayerTransform().position, transform.position) < Mathf.Lerp(15f, 40f, num2))
+                    {
+                        ErnestoChase.WriteDebugMessage("proximity roar");
+                        proximityRoar = true;
+                        oneShotAudio.PlayOneShot(AudioType.DBAnglerfishDetectTarget, 0.8f);
+                        loopingAudio.FadeIn(1f);
+                    }
+                    else if (proximityRoar && Vector3.Distance(Locator.GetPlayerTransform().position, transform.position) > Mathf.Lerp(30f, 80f, num2))
+                    {
+                        ErnestoChase.WriteDebugMessage("out of range");
+                        proximityRoar = false;
+                        loopingAudio.FadeOut(3f);
+                    }
+                }
             }
             // Don't run this code if player detector is updating after teleport
             // Otherwise Ernesto will teleport before it finishes
-            else if (!waitingOnTeleport)
+            else if (!waitingOnTeleport && targets.Count > 0)
             {
                 // Check if last target reached is a teleport origin
                 if (targets.Peek().Item2)
@@ -681,7 +703,10 @@ public class ErnestoController : MonoBehaviour
         whiteHole.transform.localPosition = transform.localPosition;
         whiteHole.WarpObjectIn(2f);
         whiteHole.singularityController.OnCreation += OnWhiteHoleCreated;
-        loopingAudio.FadeIn(1f);
+        if (!ErnestoChase.Instance.StealthMode)
+        {
+            loopingAudio.FadeIn(1f);
+        }
     }
 
     private void OnSpaceToPlanetBlackHoleDestroyed()
@@ -704,7 +729,10 @@ public class ErnestoController : MonoBehaviour
         whiteHole.transform.localPosition = transform.localPosition;
         whiteHole.WarpObjectIn(2f);
         whiteHole.singularityController.OnCreation += OnWhiteHoleCreated;
-        loopingAudio.FadeIn(1f);
+        if (!ErnestoChase.Instance.StealthMode)
+        {
+            loopingAudio.FadeIn(1f);
+        }
     }
 
     private void OnPlanetToSpaceBlackHoleDestroyed()
@@ -712,6 +740,7 @@ public class ErnestoController : MonoBehaviour
         blackHole.singularityController.OnCollapse -= OnPlanetToSpaceBlackHoleDestroyed;
 
         targets.Clear();
+        standingStill = false;
         ErnestoChase.WriteDebugMessage("Teleport planets size before removing: " + teleportPlanets.Count);
         teleportPlanets.RemoveAt(0);
         transform.position = staticTransformParent.TransformPoint(spaceTargets.Peek().Item1);
@@ -720,8 +749,6 @@ public class ErnestoController : MonoBehaviour
         currentSpaceSpeed = baseSpaceSpeed;
         reachedAtmoEnterPos = false;
         spawnDelayTimer = 0f;
-
-        teleportVelocities.Dequeue();
 
         OWRigidbody body = GetCurrentPlanetBody();
         if (body)
@@ -741,11 +768,16 @@ public class ErnestoController : MonoBehaviour
             spaceTimedStartDistance = (Locator.GetPlayerTransform().position - rigidbody.transform.position).magnitude;
         }
 
+        teleportVelocities.Dequeue();
+
         whiteHole.transform.parent = transform.parent;
         whiteHole.transform.localPosition = transform.localPosition;
         whiteHole.WarpObjectIn(2f);
         whiteHole.singularityController.OnCreation += OnWhiteHoleCreated;
-        loopingAudio.FadeIn(1f);
+        if (!ErnestoChase.Instance.StealthMode)
+        {
+            loopingAudio.FadeIn(1f);
+        }
     }
 
     private void OnSpaceToSpaceBlackHoleDestroyed()
@@ -764,7 +796,10 @@ public class ErnestoController : MonoBehaviour
         whiteHole.transform.localPosition = transform.localPosition;
         whiteHole.WarpObjectIn(2f);
         whiteHole.singularityController.OnCreation += OnWhiteHoleCreated;
-        loopingAudio.FadeIn(1f);
+        if (!ErnestoChase.Instance.StealthMode)
+        {
+            loopingAudio.FadeIn(1f);
+        }
     }
 
     private void OnWhiteHoleCreated()
@@ -776,7 +811,10 @@ public class ErnestoController : MonoBehaviour
             animator.SetTrigger("Impulse");
             oneShotAudio.PlayOneShot(AudioType.DBAnglerfishDetectTarget, 0.8f);
             loopingAudio.AssignAudioLibraryClip(AudioType.DBAnglerfishChasing_LP);
-            loopingAudio.FadeIn(1f);
+            if (!ErnestoChase.Instance.StealthMode)
+            {
+                loopingAudio.FadeIn(1f);
+            }
             ernestoReleased = true;
             colliderEnabled = true;
         }
@@ -791,10 +829,27 @@ public class ErnestoController : MonoBehaviour
     {
         loopingAudio.FadeOut(0.5f);
         yield return new WaitForSeconds(0.5f);
+        loopingAudio.SetMaxVolume(1f);
         loopingAudio.spatialBlend = 0f;
+        loopingAudio.SetTrack(OWAudioMixer.TrackName.Environment_Unfiltered);
         loopingAudio.FadeIn(ErnestoChase.Instance.SpaceTimer, true);
-        yield return new WaitForSeconds(Mathf.Min(ErnestoChase.Instance.SpaceTimer - 7f, ErnestoChase.Instance.SpaceTimer * 0.9f));
+        yield return new WaitForSeconds(ErnestoChase.Instance.SpaceTimer > 12f ? ErnestoChase.Instance.SpaceTimer - 7f : ErnestoChase.Instance.SpaceTimer * 0.8f);
         loopingAudio.PlayOneShot(AudioType.DBAnglerfishDetectTarget, 1f);
+        audioTransition = null;
+    }
+
+    private IEnumerator AtmosphereAudioTransition()
+    {
+        loopingAudio.FadeOut(0.5f);
+        yield return new WaitForSeconds(0.5f);
+        loopingAudio.SetMaxVolume(baseLoopingAudioVolume);
+        loopingAudio.spatialBlend = 1f;
+        loopingAudio.SetTrack(OWAudioMixer.TrackName.Environment);
+        if (!ErnestoChase.Instance.StealthMode)
+        {
+            loopingAudio.FadeIn(1f);
+        }
+        audioTransition = null;
     }
 
     private void OnEntry(GameObject hitObj)

@@ -26,6 +26,7 @@ public class ErnestoChase : ModBehaviour
     public bool EnableStealthMode;
     public string SpaceAccelerationType;
     public float SpaceTimer;
+    public bool StealthMode;
 
     private float movementSpeed;
     private float spaceSpeed;
@@ -35,6 +36,7 @@ public class ErnestoChase : ModBehaviour
     private bool enableStealthMode;
     private string spaceAccelerationType;
     private float spaceTimer;
+    private bool stealthMode;
 
     public static readonly bool EnableDebugMode = true;
 
@@ -69,6 +71,7 @@ public class ErnestoChase : ModBehaviour
             EnableStealthMode = enableStealthMode;
             SpaceAccelerationType = spaceAccelerationType;
             SpaceTimer = spaceTimer;
+            StealthMode = stealthMode;
 
             StartCoroutine(WaitForPlayer());
         };
@@ -141,5 +144,6 @@ public class ErnestoChase : ModBehaviour
         enableStealthMode = config.GetSettingsValue<bool>("enableStealthMode");
         spaceAccelerationType = config.GetSettingsValue<string>("spaceAccelerationType");
         spaceTimer = config.GetSettingsValue<float>("spaceTimer");
+        stealthMode = config.GetSettingsValue<bool>("enableStealthMode");
     }
 }
