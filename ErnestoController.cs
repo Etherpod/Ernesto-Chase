@@ -67,6 +67,7 @@ public class ErnestoController : MonoBehaviour
     private float baseLoopingAudioVolume;
     private bool proximityRoar = true;
     private bool standingStill = false;
+    private bool hasTakenShortcut = true;
 
     private void Start()
     {
@@ -312,10 +313,26 @@ public class ErnestoController : MonoBehaviour
                 Quaternion nextRotation = Quaternion.LookRotation(currentPlanet.transform.TransformPoint(targetPos) - transform.position,
                     -currentGravity.CalculateForceAccelerationAtPoint(transform.position));
                 transform.rotation = Quaternion.Lerp(lastRotation, nextRotation, num);
+
                 float num2 = Mathf.InverseLerp(1, 10, ErnestoChase.Instance.MovementSpeed);
+                Vector3 toPlayerVector = Locator.GetPlayerTransform().position - transform.position;
+
+                if (!hasTakenShortcut && targets.Count > 20 && Vector3.Distance(Locator.GetPlayerTransform().position, transform.position) 
+                    < Mathf.Lerp(15f, 25f, num2) && !Physics.Raycast(transform.position, toPlayerVector, toPlayerVector.magnitude, 
+                    LayerMask.NameToLayer("Default") | LayerMask.NameToLayer("ShipInterior") | LayerMask.NameToLayer("IgnoreSun") | LayerMask.NameToLayer("IgnoreOrbRaycast")))
+                {
+                    hasTakenShortcut = true;
+                    targets.Clear();
+                    SpawnTarget(currentPlanet.transform, Locator.GetPlayerTransform().position, false);
+                }
+                else if (hasTakenShortcut && Vector3.Distance(Locator.GetPlayerTransform().position, transform.position) > 30f)
+                {
+                    hasTakenShortcut = false;
+                }
+
                 if (ErnestoChase.Instance.StealthMode)
                 {
-                    if (!proximityRoar && targets.Count < 50 
+                    if (!proximityRoar && targets.Count < 20 
                         && Vector3.Distance(Locator.GetPlayerTransform().position, transform.position) < Mathf.Lerp(15f, 40f, num2))
                     {
                         ErnestoChase.WriteDebugMessage("proximity roar");

@@ -10,6 +10,7 @@ Some suggestions for challenges:
 - Set Ernesto's speed to max
 - Beat Permadeath Mode
 - Complete story mods
+- Beat Outer Relics
 - Enable stealth mode (jumpscare warning)
 
 Sadly, this mod does not work in multiplayer. How is Ernesto going to chase two hatchlings at once?

@@ -1,6 +1,5 @@
 ﻿using OWML.Common;
 using OWML.ModHelper;
-using Steamworks;
 using System.Collections;
 using System.IO;
 using UnityEngine;
@@ -38,7 +37,7 @@ public class ErnestoChase : ModBehaviour
     private float spaceTimer;
     private bool stealthMode;
 
-    public static readonly bool EnableDebugMode = true;
+    public static readonly bool EnableDebugMode = false;
 
     private void Awake()
     {
