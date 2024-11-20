@@ -595,7 +595,7 @@ public class ErnestoController : MonoBehaviour
                 foreach (PriorityVolume priorityVolume in detector._trackedLayers[num].volumes)
                 {
                     ForceVolume volume = priorityVolume is ForceVolume forceVolume ? forceVolume : null;
-                    if (volume && volume.GetAffectsAlignment(Locator.GetPlayerBody()))
+                    if (volume && (volume.GetAffectsAlignment(Locator.GetPlayerBody()) || volume is ZeroGVolume))
                     {
                         OWRigidbody[] parentBodies = volume.GetComponentsInParent<OWRigidbody>();
                         foreach (OWRigidbody parentBody in parentBodies)
