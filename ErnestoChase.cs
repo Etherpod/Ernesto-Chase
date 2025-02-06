@@ -22,20 +22,22 @@ public class ErnestoChase : ModBehaviour
     public float BrambleSpeedMultiplier;
     public float DreamWorldSpeedMultiplier;
     public float StartDelay;
-    public bool EnableStealthMode;
     public string SpaceAccelerationType;
     public float SpaceTimer;
     public bool StealthMode;
+    public bool QuantumMode;
+    public bool CustomEndScreen;
 
     private float movementSpeed;
     private float spaceSpeed;
     private float brambleSpeedMultiplier;
     private float dreamWorldSpeedMultiplier;
     private float startDelay;
-    private bool enableStealthMode;
     private string spaceAccelerationType;
     private float spaceTimer;
     private bool stealthMode;
+    private bool quantumMode;
+    private bool customEndScreen;
 
     public static readonly bool EnableDebugMode = false;
 
@@ -67,10 +69,11 @@ public class ErnestoChase : ModBehaviour
             BrambleSpeedMultiplier = brambleSpeedMultiplier;
             DreamWorldSpeedMultiplier = dreamWorldSpeedMultiplier;
             StartDelay = startDelay;
-            EnableStealthMode = enableStealthMode;
             SpaceAccelerationType = spaceAccelerationType;
             SpaceTimer = spaceTimer;
             StealthMode = stealthMode;
+            QuantumMode = quantumMode;
+            //CustomEndScreen = customEndScreen;
 
             StartCoroutine(WaitForPlayer());
         };
@@ -119,6 +122,20 @@ public class ErnestoChase : ModBehaviour
         inFogWarp = true;
     }
 
+    public void RespawnErnesto()
+    {
+        if (ernesto != null)
+        {
+            Destroy(ernesto.gameObject);
+            caughtPlayer = false;
+            inFogWarp = false;
+
+            GameObject ernestoObj = LoadPrefab("Assets/ErnestoChase/Ernesto.prefab");
+            AssetBundleUtilities.ReplaceShaders(ernestoObj);
+            ernesto = Instantiate(ernestoObj, Locator.GetPlayerTransform().position, Quaternion.identity).GetComponent<ErnestoController>();
+        }
+    }
+
     public static GameObject LoadPrefab(string path)
     {
         return (GameObject)Instance.assetBundle.LoadAsset(path);
@@ -140,9 +157,11 @@ public class ErnestoChase : ModBehaviour
         brambleSpeedMultiplier = config.GetSettingsValue<float>("brambleSpeedMultiplier");
         dreamWorldSpeedMultiplier = config.GetSettingsValue<float>("dreamWorldSpeedMultiplier");
         startDelay = config.GetSettingsValue<float>("startDelay");
-        enableStealthMode = config.GetSettingsValue<bool>("enableStealthMode");
         spaceAccelerationType = config.GetSettingsValue<string>("spaceAccelerationType");
         spaceTimer = config.GetSettingsValue<float>("spaceTimer");
         stealthMode = config.GetSettingsValue<bool>("enableStealthMode");
+        quantumMode = config.GetSettingsValue<bool>("enableQuantumMode");
+        customEndScreen = config.GetSettingsValue<bool>("customEndScreen");
+        CustomEndScreen = customEndScreen;
     }
 }

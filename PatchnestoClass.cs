@@ -57,11 +57,21 @@ public static class PatchnestoClass
         return false;
     }
 
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(DeathManager), nameof(DeathManager.KillPlayer))]
+    public static void CheckPlayerDied(bool __runOriginal)
+    {
+        if (!__runOriginal)
+        {
+            ErnestoChase.Instance.RespawnErnesto();
+        }
+    }
+
     [HarmonyPrefix]
     [HarmonyPatch(typeof(Flashback), nameof(Flashback.OnTriggerFlashback))]
     public static bool ErnestoEndScreen(Flashback __instance)
     {
-        if (!ErnestoChase.Instance.caughtPlayer)
+        if (!ErnestoChase.Instance.caughtPlayer || !ErnestoChase.Instance.CustomEndScreen)
         {
             return true;
         }

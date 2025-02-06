@@ -31,7 +31,7 @@
         "Cumulative",
         "Timed"
       ],
-      "value": "Timed"
+      "value": "Cumulative"
     },
     "spaceTimer": {
       "title": "Interception Time",
@@ -73,6 +73,18 @@
       "tooltip": "Makes Ernesto silent and turns off his light. You won't know where he is until he's right behind you.",
       "type": "toggle",
       "value": false
+    },
+    "enableQuantumMode": {
+      "title": "Enable Quantum Mode",
+      "tooltip": "Freezes Ernesto if you can see him, but makes him move at maximum speed when you look away.",
+      "type": "toggle",
+      "value": false
+    },
+    "customEndScreen": {
+      "title": "Custom Death Screen",
+      "tooltip": "Turn this off to reset the loop like normal if Ernesto catches you.",
+      "type": "toggle",
+      "value": true
     }
   }
 }

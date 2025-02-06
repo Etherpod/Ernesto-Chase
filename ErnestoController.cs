@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.Rendering;
 
 namespace ErnestoChase;
 
@@ -68,6 +69,8 @@ public class ErnestoController : MonoBehaviour
     private bool proximityRoar = true;
     private bool standingStill = false;
     private bool hasTakenShortcut = true;
+    private bool ernestoFrozen = false;
+    private SkinnedMeshRenderer ernestoRenderer;
 
     private void Start()
     {
@@ -78,19 +81,27 @@ public class ErnestoController : MonoBehaviour
         rigidbody = ErnestoChase.Instance.ernestoBody;
         animator = GetComponentInChildren<Animator>();
         loopingAudio = GetComponentInChildren<OWAudioSource>();
+        ernestoRenderer = GetComponentInChildren<SkinnedMeshRenderer>();
         GameObject targetsParent = ErnestoChase.LoadPrefab("Assets/ErnestoChase/SpaceTargetsParent.prefab");
         staticTransformParent = Instantiate(targetsParent).transform;
         spawnDelayTimer = targetSpawnDelay;
         ErnestoChase.WriteDebugMessage(Mathf.InverseLerp(1, 10, ErnestoChase.Instance.MovementSpeed));
         float num = Mathf.InverseLerp(1, 10, ErnestoChase.Instance.MovementSpeed);
         float num2;
-        if (num < 0.5f)
+        if (ErnestoChase.Instance.QuantumMode)
         {
-            num2 = Mathf.Lerp(0.2f, 1f, num * 2);
+            num2 = 5f;
         }
         else
         {
-            num2 = Mathf.Lerp(1f, 4f, (num - 0.5f) * 2);
+            if (num < 0.5f)
+            {
+                num2 = Mathf.Lerp(0.2f, 1f, num * 2);
+            }
+            else
+            {
+                num2 = Mathf.Lerp(1f, 4f, (num - 0.5f) * 2);
+            }
         }
         speed *= num2;
         baseSpaceSpeed = speed / 10;
@@ -162,6 +173,7 @@ public class ErnestoController : MonoBehaviour
                 startedDeathSequence = true;
                 transform.parent = null;
                 transform.position = Locator.GetPlayerTransform().position;
+                Destroy(staticTransformParent.gameObject);
                 loopingAudio.FadeOut(2f);
                 animator.SetTrigger("Stop");
                 Locator.GetDeathManager().KillPlayer(DeathType.Digestion);
@@ -193,9 +205,14 @@ public class ErnestoController : MonoBehaviour
             positionParent = staticTransformParent;
         }
 
-        if (ernestoReleased && !movementPaused)
+        if (ernestoReleased)
         {
-            UpdateMovement(playerOnPlanet, positionParent);
+            UpdateErnestoVisibility();
+
+            if (!movementPaused && !ernestoFrozen)
+            {
+                UpdateMovement(playerOnPlanet, positionParent);
+            }
         }
 
         // Update spawn delay timer
@@ -226,6 +243,92 @@ public class ErnestoController : MonoBehaviour
         //ErnestoChase.WriteDebugMessage(positionParent.name);
         lastPlayerPos = positionParent.InverseTransformPoint(Locator.GetPlayerTransform().position);
     }
+
+    private void UpdateErnestoVisibility()
+    {
+        //ernestoFrozen = ernestoRenderer.isVisible;
+
+        if (!ErnestoChase.Instance.QuantumMode && ernestoFrozen)
+        {
+            ernestoFrozen = false;
+            return;
+        }
+
+        Bounds meshBounds = GetComponentInChildren<SkinnedMeshRenderer>().bounds;
+        Plane[] camPlanes = Locator.GetPlayerCamera().GetFrustumPlanes();
+        float dot = Vector3.Dot(Locator.GetPlayerCamera().transform.forward,
+            transform.position - Locator.GetPlayerCamera().transform.position);
+        bool ernestoInView = GeometryUtility.TestPlanesAABB(camPlanes, meshBounds) && dot > 0;
+
+        ernestoFrozen = ernestoInView;
+
+        /*        OWCamera cam = Locator.GetPlayerCamera();
+                Vector3 toErnesto = transform.position - cam.transform.position;
+                Vector3 horizontal = Vector3.ProjectOnPlane(toErnesto, cam.transform.up);
+                Vector3 vertical = Vector3.ProjectOnPlane(toErnesto, cam.transform.right);
+                float hAngle = Vector3.Angle(cam.transform.forward, horizontal);
+                float vAngle = Vector3.Angle(cam.transform.forward, vertical);
+                bool ernestoInView = hAngle <= Camera.VerticalToHorizontalFieldOfView(cam.fieldOfView, cam.aspect)
+                    && vAngle <= cam.fieldOfView;
+
+                ernestoFrozen = ernestoInView;*/
+
+        /*Bounds meshBounds = GetComponentInChildren<SkinnedMeshRenderer>().bounds;
+        Plane[] camPlanes = Locator.GetPlayerCamera().GetFrustumPlanes();
+        bool ernestoInView = GeometryUtility.TestPlanesAABB(camPlanes, meshBounds);
+
+        if (!ernestoInView)
+        {
+            //ErnestoChase.WriteDebugMessage("Unfrozen");
+            ernestoFrozen = false;
+            return;
+        }
+
+        bool allHit = true;
+
+        for (int x = -3; x < 3; x += 6)
+        {
+            for (int y = -2; y < 2; y += 4)
+            {
+                if (VisibilityRaycast(new Vector3(x, y), out RaycastHit hit))
+                {
+                    if (Locator.GetSurfaceManager().GetHitMaterial(hit).renderQueue > (int)RenderQueue.GeometryLast + 100)
+                    {
+                        allHit = false;
+                        break;
+                    }
+                }
+                else
+                {
+                    allHit = false;
+                    break;
+                }
+            }
+
+            if (!allHit) break;
+        }
+
+        if (allHit)
+        {
+            ernestoFrozen = false;
+            return;
+        }
+
+        ernestoFrozen = true;*/
+    }
+
+    /*private bool VisibilityRaycast(Vector3 offset, out RaycastHit hit)
+    {
+        if (Physics.Linecast(Locator.GetPlayerCamera().transform.position, transform.position + offset,
+            out RaycastHit theHit, OWLayerMask.quantumOcclusionMask))
+        {
+            hit = theHit;
+            return true;
+        }
+
+        hit = new();
+        return false;
+    }*/
 
     private void UpdateMovement(bool playerOnPlanet, Transform positionParent)
     {
@@ -317,8 +420,8 @@ public class ErnestoController : MonoBehaviour
                 float num2 = Mathf.InverseLerp(1, 10, ErnestoChase.Instance.MovementSpeed);
                 Vector3 toPlayerVector = Locator.GetPlayerTransform().position - transform.position;
 
-                if (!hasTakenShortcut && targets.Count > 20 && Vector3.Distance(Locator.GetPlayerTransform().position, transform.position) 
-                    < Mathf.Lerp(15f, 25f, num2) && !Physics.Raycast(transform.position, toPlayerVector, toPlayerVector.magnitude, 
+                if (!hasTakenShortcut && targets.Count > 20 && Vector3.Distance(Locator.GetPlayerTransform().position, transform.position)
+                    < Mathf.Lerp(15f, 25f, num2) && !Physics.Raycast(transform.position, toPlayerVector, toPlayerVector.magnitude,
                     LayerMask.NameToLayer("Default") | LayerMask.NameToLayer("ShipInterior") | LayerMask.NameToLayer("IgnoreSun") | LayerMask.NameToLayer("IgnoreOrbRaycast")))
                 {
                     hasTakenShortcut = true;
@@ -332,7 +435,7 @@ public class ErnestoController : MonoBehaviour
 
                 if (ErnestoChase.Instance.StealthMode)
                 {
-                    if (!proximityRoar && targets.Count < 20 
+                    if (!proximityRoar && targets.Count < 20
                         && Vector3.Distance(Locator.GetPlayerTransform().position, transform.position) < Mathf.Lerp(15f, 40f, num2))
                     {
                         ErnestoChase.WriteDebugMessage("proximity roar");
@@ -584,7 +687,7 @@ public class ErnestoController : MonoBehaviour
         {
             return staticTransformParent.GetComponent<OWRigidbody>();
         }
-        
+
         AlignmentForceDetector detector = Locator.GetPlayerForceDetector();
         if (detector._trackedLayers.Count > 0)
         {
@@ -623,7 +726,7 @@ public class ErnestoController : MonoBehaviour
         lastTime = Time.time;
         targets.Dequeue();
     }
-    
+
     // Spawn target on a planet
     private void SpawnTarget(Transform parent, Vector3 worldPosition, bool teleport)
     {
