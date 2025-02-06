@@ -79,32 +79,6 @@ public class ErnestoChase : ModBehaviour
         };
     }
 
-    private void Update()
-    {
-        if (Keyboard.current.lKey.wasPressedThisFrame)
-        {
-            TeleportPlayer(FindObjectOfType<ErnestoController>().transform);
-        }
-    }
-
-    public void TeleportPlayer(Transform target)
-    {
-        var playerBody = Locator.GetPlayerBody();
-        // var playerCamera = Locator.GetPlayerCamera();
-        var destination = target;
-        //var planetBody = target.GetComponent<OWRigidbody>();
-
-        //var targetRotation = destination.rotation;
-        var targetPosition = destination.position;
-        //var targetVelocity = planetBody.GetVelocity();
-
-        playerBody.SetPosition(targetPosition);
-        //playerBody.SetRotation(targetRotation);
-        //playerBody.SetVelocity(targetVelocity);
-
-        // playerCamera.transform.rotation = targetRotation;
-    }
-
     private IEnumerator WaitForPlayer()
     {
         WriteDebugMessage("Waiting for player");

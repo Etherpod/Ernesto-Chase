@@ -29,3 +29,5 @@ Sadly, this mod does not work in multiplayer. How is Ernesto going to chase two 
 - **DW Speed Multiplier** - Requires the DLC. Multiplies Ernesto's speed by this value when he is in a certain dreamy place.
 - **Start Delay** - The number of seconds to wait before spawning and chasing you. This may need to be adjusted if you are using other mods.
 - **Enable Stealth Mode** - JUMPSCARE WARNING; Turns off Ernesto's audio and light. He will make no sound until he is about to reach you.
+- **Enable Quantum Mode** - Freezes Ernesto when you look at him, but makes him always move at maximum speed.
+- **Custom Death Screen** - Shows a special death message when Ernesto catches you. Turn this off to reset the loop like normal.
