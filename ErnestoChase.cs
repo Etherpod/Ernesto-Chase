@@ -9,11 +9,14 @@ namespace ErnestoChase;
 
 public class ErnestoChase : ModBehaviour
 {
+    public delegate void PlayerWarpEvent();
+    public event PlayerWarpEvent OnPlayerWarped;
+
     public static ErnestoChase Instance;
     public AssetBundle assetBundle;
     public OWRigidbody ernestoBody;
     public bool playerDetectorReady = false;
-    public ErnestoController ernesto;
+    public GameObject ernesto;
     public bool caughtPlayer;
     public bool inFogWarp = false;
 
@@ -39,7 +42,7 @@ public class ErnestoChase : ModBehaviour
     private bool quantumMode;
     private bool customEndScreen;
 
-    public static readonly bool EnableDebugMode = false;
+    public static readonly bool EnableDebugMode = true;
 
     private void Awake()
     {
@@ -88,7 +91,7 @@ public class ErnestoChase : ModBehaviour
         ernestoBody = Instantiate(body, Vector3.zero, Quaternion.identity).GetComponent<OWRigidbody>();
         GameObject ernestoObj = LoadPrefab("Assets/ErnestoChase/Ernesto.prefab");
         AssetBundleUtilities.ReplaceShaders(ernestoObj);
-        ernesto = Instantiate(ernestoObj, Locator.GetPlayerTransform().position, Quaternion.identity).GetComponent<ErnestoController>();
+        ernesto = Instantiate(ernestoObj, Locator.GetPlayerTransform().position, Quaternion.identity);
     }
 
     private void OnPlayerFogWarp()
@@ -96,17 +99,22 @@ public class ErnestoChase : ModBehaviour
         inFogWarp = true;
     }
 
+    public void OnPlayerWarpedEvent()
+    {
+        OnPlayerWarped?.Invoke();
+    }
+
     public void RespawnErnesto()
     {
         if (ernesto != null)
         {
-            Destroy(ernesto.gameObject);
+            Destroy(ernesto);
             caughtPlayer = false;
             inFogWarp = false;
 
             GameObject ernestoObj = LoadPrefab("Assets/ErnestoChase/Ernesto.prefab");
             AssetBundleUtilities.ReplaceShaders(ernestoObj);
-            ernesto = Instantiate(ernestoObj, Locator.GetPlayerTransform().position, Quaternion.identity).GetComponent<ErnestoController>();
+            ernesto = Instantiate(ernestoObj, Locator.GetPlayerTransform().position, Quaternion.identity);
         }
     }
 

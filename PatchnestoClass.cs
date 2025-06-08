@@ -23,7 +23,7 @@ public static class PatchnestoClass
 
     [HarmonyPrefix]
     [HarmonyPatch(typeof(OWRigidbody), nameof(OWRigidbody.SetPosition))]
-    public static void OnWarpPlayer(OWRigidbody __instance, Vector3 worldPosition)
+    public static void DetectPlayerWarp(OWRigidbody __instance, Vector3 worldPosition)
     {
         bool flag = __instance.CompareTag("Player") || (__instance.CompareTag("Ship") && PlayerState.IsInsideShip()/* && ErnestoChase.Instance.inFogWarp*/);
         if (!flag || !ErnestoChase.Instance.playerDetectorReady || !TimeLoop.IsTimeFlowing())
@@ -32,9 +32,10 @@ public static class PatchnestoClass
             return;
         }
         ErnestoChase.Instance.inFogWarp = false;
-        if ((worldPosition - Locator.GetPlayerTransform().position).magnitude > 50f)
+        if ((worldPosition - Locator.GetPlayerTransform().position).sqrMagnitude > 50f * 50f)
         {
-            ErnestoChase.Instance.ernesto.OnWarpPlayer();
+            ErnestoChase.WriteDebugMessage("Player warped");
+            ErnestoChase.Instance.OnPlayerWarpedEvent();
         }
     }
 

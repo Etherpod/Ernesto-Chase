@@ -1,4 +1,5 @@
-﻿using System.Collections;
+﻿using Mono.Cecil.Cil;
+using System.Collections;
 using UnityEngine;
 
 namespace ErnestoChase;
@@ -34,6 +35,9 @@ public class ErnestoEffects : MonoBehaviour
 
     private Coroutine audioTransition;
     private float baseLoopingAudioVolume;
+
+    private bool cachedFromSpace;
+    private bool cachedToSpace;
 
     private void Awake()
     {
@@ -117,7 +121,9 @@ public class ErnestoEffects : MonoBehaviour
         blackHole.transform.parent = transform.parent;
         blackHole.transform.localPosition = transform.localPosition;
         blackHole.WarpObjectOut(2f);
-        blackHole.singularityController.OnCollapse += () => OnBlackHoleCollapse(fromSpace, toSpace);
+        cachedFromSpace = fromSpace;
+        cachedToSpace = toSpace;
+        blackHole.singularityController.OnCollapse += HandleBlackHoleCollapse;
         loopingAudio.FadeOut(1f);
     }
 
@@ -134,10 +140,24 @@ public class ErnestoEffects : MonoBehaviour
         }
     }
 
+    private void HandleBlackHoleCollapse()
+    {
+        OnBlackHoleCollapse(cachedFromSpace, cachedToSpace);
+    }
+
     private void OnBlackHoleCollapse(bool fromSpace, bool toSpace)
     {
-        blackHole.singularityController.OnCollapse -= () => OnBlackHoleCollapse(fromSpace, toSpace);
+        blackHole.singularityController.OnCollapse -= HandleBlackHoleCollapse;
         OnEnterBlackHole?.Invoke(fromSpace, toSpace);
+
+        whiteHole.transform.parent = transform.parent;
+        whiteHole.transform.localPosition = transform.localPosition;
+        whiteHole.WarpObjectIn(2f);
+        whiteHole.singularityController.OnCreation += OnWhiteHoleCreated;
+        if (!ErnestoChase.Instance.StealthMode)
+        {
+            loopingAudio.FadeIn(1f);
+        }
     }
 
     private IEnumerator SpaceAudioTransition()

@@ -9,6 +9,9 @@ public class PlanetManager : MonoBehaviour
     public event TravelModeEvent OnUpdateTravelMode;
     public delegate void TeleportStartedEvent(bool fromSpace, bool toSpace);
     public event TeleportStartedEvent OnTeleportStarted;
+    public delegate void PlayerWarpEvent(bool isSpace);
+    public event PlayerWarpEvent OnPlayerWarpStarted;
+    public event PlayerWarpEvent OnPlayerWarpComplete;
 
     private ErnestoState state;
 
@@ -17,6 +20,7 @@ public class PlanetManager : MonoBehaviour
 
     private List<GameObject> teleportPlanets = new();
     private Queue<Vector3> teleportVelocities = new();
+    private Vector3 startVelocity;
 
     private Transform staticTransformParent;
     private OWRigidbody rigidbody;
@@ -24,7 +28,6 @@ public class PlanetManager : MonoBehaviour
     private bool waitingOnTeleport = false;
     private bool teleportedIntoSpace = false;
     private bool lastPlayerPlanetState = false;
-    private bool reachedPlanetEnterPos = true;
 
     private void Awake()
     {
@@ -63,7 +66,7 @@ public class PlanetManager : MonoBehaviour
             if (!onPlanet && !waitingOnTeleport && !teleportedIntoSpace)
             {
                 teleportPlanets.Clear();
-                reachedPlanetEnterPos = false;
+                state.FollowedPlayerToPlanet = false;
                 staticTransformParent.GetComponent<OWRigidbody>().SetVelocity(Vector3.zero);
                 rigidbody.SetPosition(transform.position);
                 rigidbody.SetVelocity(gameObject.GetAttachedOWRigidbody().GetVelocity());
@@ -72,10 +75,10 @@ public class PlanetManager : MonoBehaviour
             }
             else if (onPlanet)
             {
+                currentPlanet = GetCurrentPlanetBody().gameObject;
                 if (noSpaceTeleportTarget)
                 {
                     rigidbody.SetVelocity(Vector3.zero);
-                    currentPlanet = GetCurrentPlanetBody().gameObject;
                     transform.parent = currentPlanet.transform;
                 }
                 OnUpdateTravelMode?.Invoke(false);
@@ -87,18 +90,94 @@ public class PlanetManager : MonoBehaviour
         return false;
     }
 
-    public void OnTeleportRequired()
+    public void OnPlayerWarped()
     {
-        if (teleportPlanets[0] == null)
+        ErnestoChase.WriteDebugMessage("Receive warp event");
+        waitingOnTeleport = true;
+        OnPlayerWarpStarted.Invoke(lastPlayerPlanetState);
+
+        ErnestoChase.Instance.ModHelper.Events.Unity.FireInNUpdates(() =>
+        {
+            waitingOnTeleport = false;
+            OWRigidbody planet = GetCurrentPlanetBody();
+            if (planet == null)
+            {
+                teleportedIntoSpace = true;
+                teleportPlanets.Add(null);
+                teleportVelocities.Enqueue(Locator.GetPlayerBody().GetVelocity());
+            }
+            else
+            {
+                ErnestoChase.WriteDebugMessage("Add " + planet.gameObject);
+                teleportPlanets.Add(planet.gameObject);
+            }
+
+            OnPlayerWarpComplete.Invoke(planet == null);
+        }, 10);
+    }
+
+    public void OnTeleportRequired(bool fromSpace)
+    {
+        if (!fromSpace && teleportPlanets[0] == null)
         {
             teleportedIntoSpace = false;
-            OnTeleportStarted?.Invoke(false, true);
         }
+
+        OnTeleportStarted?.Invoke(fromSpace, teleportPlanets[0] == null);
     }
 
     public void OnEnterBlackHole(bool fromSpace, bool toSpace)
     {
-        teleportPlanets.RemoveAt(0);
+        ErnestoChase.WriteDebugMessage("Teleport logic");
+
+        if (!fromSpace && !toSpace)
+        {
+            transform.parent = teleportPlanets[0].transform;
+            currentPlanet = teleportPlanets[0];
+            teleportPlanets.RemoveAt(0);
+        }
+        else if (fromSpace && !toSpace)
+        {
+            rigidbody.SetVelocity(Vector3.zero);
+            transform.parent = teleportPlanets[0].transform;
+            currentPlanet = teleportPlanets[0];
+            teleportPlanets.RemoveAt(0);
+            state.FollowedPlayerToPlanet = true;
+        }
+        else if (!fromSpace && toSpace)
+        {
+            teleportPlanets.RemoveAt(0);
+            state.FollowedPlayerToPlanet = false;
+            staticTransformParent.GetComponent<OWRigidbody>().SetVelocity(Vector3.zero);
+            OWRigidbody planet = GetCurrentPlanetBody();
+            if (planet != null)
+            {
+                currentPlanet = planet.gameObject;
+                rigidbody.SetVelocity(Vector3.zero);
+                transform.parent = currentPlanet.transform;
+            }
+            else
+            {
+                currentPlanet = null;
+                rigidbody.SetPosition(transform.position);
+                rigidbody.SetVelocity(teleportVelocities.Peek());
+                teleportVelocities.Dequeue();
+                startVelocity = rigidbody.GetVelocity();
+                transform.parent = rigidbody.transform;
+                ErnestoChase.Instance.ModHelper.Events.Unity.FireOnNextUpdate(() =>
+                {
+                    OnUpdateTravelMode?.Invoke(true);
+                });
+            }
+        }
+        else if (fromSpace && toSpace)
+        {
+            OWRigidbody planet = GetCurrentPlanetBody();
+            if (planet != null && teleportPlanets.Count == 0)
+            {
+                currentPlanet = planet.gameObject;
+            }
+        }
     }
 
     public bool IsOnPlanet()
@@ -106,14 +185,9 @@ public class PlanetManager : MonoBehaviour
         return GetCurrentPlanetBody() != null;
     }
 
-    public bool RecentlyTeleported()
+    public bool HasRecentlyTeleported()
     {
         return waitingOnTeleport;
-    }
-
-    public bool HasEnteredPlanet()
-    {
-        return reachedPlanetEnterPos;
     }
 
     public GameObject GetCurrentPlanet()
@@ -132,10 +206,12 @@ public class PlanetManager : MonoBehaviour
         {
             return teleportPlanets[teleportPlanets.Count - 1].transform;
         }
-        else
+        else if (currentPlanet != null)
         {
             return currentPlanet.transform;
         }
+
+        return null;
     }
 
     public Transform GetPlayerParent()
@@ -150,7 +226,7 @@ public class PlanetManager : MonoBehaviour
                     return lastPlanet.transform;
                 }
             }
-            else
+            else if (currentPlanet != null)
             {
                 return currentPlanet.transform;
             }
@@ -164,7 +240,12 @@ public class PlanetManager : MonoBehaviour
         return staticTransformParent;
     }
 
-    private OWRigidbody GetCurrentPlanetBody()
+    public OWRigidbody GetErnestoBody()
+    {
+        return rigidbody;
+    }
+
+    public OWRigidbody GetCurrentPlanetBody()
     {
         OWRigidbody body = null;
 
