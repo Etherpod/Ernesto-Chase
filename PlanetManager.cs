@@ -58,10 +58,7 @@ public class PlanetManager : MonoBehaviour
         bool onPlanet = IsOnPlanet();
         if (lastPlayerPlanetState != onPlanet)
         {
-            if (!waitingOnTeleport)
-            {
-                lastPlayerPlanetState = onPlanet;
-            }
+            lastPlayerPlanetState = onPlanet;
 
             if (!onPlanet && !waitingOnTeleport && !teleportedIntoSpace)
             {
@@ -92,9 +89,9 @@ public class PlanetManager : MonoBehaviour
 
     public void OnPlayerWarped()
     {
-        ErnestoChase.WriteDebugMessage("Receive warp event");
+        ErnestoChase.WriteDebugMessage("\nReceive warp event");
         waitingOnTeleport = true;
-        OnPlayerWarpStarted.Invoke(lastPlayerPlanetState);
+        OnPlayerWarpStarted.Invoke(!lastPlayerPlanetState);
 
         ErnestoChase.Instance.ModHelper.Events.Unity.FireInNUpdates(() =>
         {
@@ -102,13 +99,14 @@ public class PlanetManager : MonoBehaviour
             OWRigidbody planet = GetCurrentPlanetBody();
             if (planet == null)
             {
+                ErnestoChase.WriteDebugMessage("Teleported to space");
                 teleportedIntoSpace = true;
                 teleportPlanets.Add(null);
                 teleportVelocities.Enqueue(Locator.GetPlayerBody().GetVelocity());
             }
             else
             {
-                ErnestoChase.WriteDebugMessage("Add " + planet.gameObject);
+                ErnestoChase.WriteDebugMessage("Teleported to planet " + planet.gameObject);
                 teleportPlanets.Add(planet.gameObject);
             }
 
@@ -118,12 +116,19 @@ public class PlanetManager : MonoBehaviour
 
     public void OnTeleportRequired(bool fromSpace)
     {
+        ErnestoChase.WriteDebugMessage("Teleport planets length: " + teleportPlanets.Count);
+        ErnestoChase.WriteDebugMessage("\nNext teleport target " + teleportPlanets[0] + "\n");
         if (!fromSpace && teleportPlanets[0] == null)
         {
             teleportedIntoSpace = false;
         }
 
         OnTeleportStarted?.Invoke(fromSpace, teleportPlanets[0] == null);
+    }
+
+    public void OnWarpShortcutRequired()
+    {
+        teleportPlanets.Add(currentPlanet);
     }
 
     public void OnEnterBlackHole(bool fromSpace, bool toSpace)
@@ -172,6 +177,7 @@ public class PlanetManager : MonoBehaviour
         }
         else if (fromSpace && toSpace)
         {
+            teleportPlanets.RemoveAt(0);
             OWRigidbody planet = GetCurrentPlanetBody();
             if (planet != null && teleportPlanets.Count == 0)
             {

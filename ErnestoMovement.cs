@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Diagnostics;
 using UnityEngine;
 
 namespace ErnestoChase;
@@ -9,6 +10,10 @@ public class ErnestoMovement : MonoBehaviour
     public event TeleportRequiredEvent OnTeleportRequired;
     public delegate void ProximityRoarEvent(bool inRange);
     public event ProximityRoarEvent OnProximityRoar;
+    public delegate void SpaceWarpEvent();
+    public event SpaceWarpEvent OnSpaceWarp;
+    public delegate void WarpShortcutRequiredEvent();
+    public event WarpShortcutRequiredEvent OnWarpShortcutRequired;
 
     ErnestoState state;
     PlanetManager planetManager;
@@ -21,7 +26,6 @@ public class ErnestoMovement : MonoBehaviour
 
     private Queue<(Vector3 pos, bool isTeleport)> targets = new();
     private Queue<(Vector3 pos, bool isTeleport)> spaceTargets = new();
-    private GameObject targetPrefab;
 
     private float targetSpawnDelay = 0.25f;
     private float spawnDelayTimer;
@@ -29,6 +33,13 @@ public class ErnestoMovement : MonoBehaviour
     private Vector3 lastPosition;
     private Quaternion lastRotation;
     private float lastTime;
+
+    private bool lerpingToTarget = false;
+    private bool lerpingToPlanet = false;
+    private float lerpTime;
+    private float lerpStartTime;
+    private Vector3 lerpStartPos;
+    private Vector3 lerpTarget;
 
     private bool canMove = true;
     private bool standingStill = false;
@@ -47,7 +58,6 @@ public class ErnestoMovement : MonoBehaviour
     {
         state = GetComponent<ErnestoState>();
         planetManager = GetComponent<PlanetManager>();
-        targetPrefab = ErnestoChase.LoadPrefab("Assets/ErnestoChase/ErnestoTarget.prefab");
 
         float speedMultiplier;
         if (ErnestoChase.Instance.QuantumMode)
@@ -92,13 +102,13 @@ public class ErnestoMovement : MonoBehaviour
         enabled = true;
     }
 
-    private void Update()
+    private void FixedUpdate()
     {
         if (planetManager.GetTargetParent() == null) return;
 
         if (spawnDelayTimer > 0f)
         {
-            spawnDelayTimer -= Time.deltaTime;
+            spawnDelayTimer -= Time.fixedDeltaTime;
         }
         else if (planetManager.IsOnPlanet() && !planetManager.HasRecentlyTeleported())
         {
@@ -142,6 +152,8 @@ public class ErnestoMovement : MonoBehaviour
             standingStill = false;
             spawnDelayTimer = targetSpawnDelay;
             currentSpaceSpeed = baseSpaceSpeed;
+            lerpingToTarget = false;
+            lerpingToPlanet = false;
             spaceTimedStartDistance = Vector3.Distance(Locator.GetPlayerTransform().position, transform.position);
         }
         else
@@ -236,29 +248,39 @@ public class ErnestoMovement : MonoBehaviour
             if (playerOnPlanet && targets.Count > 0 && !state.FollowedPlayerToPlanet && !IsNextSpaceTargetTeleport())
             {
                 FollowPlayerToPlanet();
-
-                currentSpaceSpeed += Time.deltaTime * 5f * (speedLerp + 0.5f);
                 return;
             }
 
             if (IsNextSpaceTargetTeleport() && !planetManager.HasRecentlyTeleported())
             {
+                if (!lerpingToTarget)
+                {
+                    lerpingToPlanet = false;
+
+                    lerpStartTime = Time.time;
+                    lerpStartPos = transform.position;
+                    lerpTarget = planetManager.GetStaticParent().TransformPoint(spaceTargets.Peek().pos);
+                    float distLerp = Mathf.InverseLerp(50f * 50f, 2000f * 2000f, (lerpTarget - lerpStartPos).sqrMagnitude);
+                    lerpTime = Mathf.Lerp(5f, 15f, distLerp);
+                    lerpingToTarget = true;
+                }
+
                 if (planetManager.GetErnestoBody().GetVelocity() != Vector3.zero)
                 {
                     planetManager.GetErnestoBody().SetVelocity(Vector3.zero);
                 }
 
-                Vector3 spaceTargetPos = planetManager.GetStaticParent().TransformPoint(spaceTargets.Peek().pos);
-                transform.position = Vector3.MoveTowards(transform.position, spaceTargetPos, currentSpaceSpeed / 50f);
+                float timeLerp = Mathf.InverseLerp(lerpStartTime, lerpStartTime + lerpTime, Time.time);
+                transform.position = Vector3.Slerp(lerpStartPos, lerpTarget, timeLerp);
 
-                if ((spaceTargetPos - transform.position).sqrMagnitude < 5f * 5f)
+                if (timeLerp == 1)
                 {
                     spaceTargets.Dequeue();
+                    lerpingToTarget = false;
                     OnTeleportRequired?.Invoke(true);
                     return;
                 }
 
-                currentSpaceSpeed += Time.deltaTime * 5f * (speedLerp + 0.5f);
                 return;
             }
 
@@ -267,12 +289,12 @@ public class ErnestoMovement : MonoBehaviour
             if (ErnestoChase.Instance.SpaceAccelerationType == "Cumulative")
             {
                 planetManager.GetErnestoBody().AddForce(transform.forward * currentSpaceSpeed);
-                currentSpaceSpeed += Time.deltaTime * 5f * (speedLerp + 0.5f);
+                currentSpaceSpeed += Time.fixedDeltaTime * 5f * (speedLerp + 0.5f);
             }
             else if (ErnestoChase.Instance.SpaceAccelerationType == "Linear")
             {
                 planetManager.GetErnestoBody().SetVelocity((transform.forward * currentSpaceSpeed) + Locator.GetPlayerBody().GetVelocity());
-                currentSpaceSpeed += Time.deltaTime * 5f * speedLerp;
+                currentSpaceSpeed += Time.fixedDeltaTime * 5f * speedLerp;
             }
             else
             {
@@ -331,13 +353,28 @@ public class ErnestoMovement : MonoBehaviour
             state.KillVolumeEnabled = false;
         }
 
-        transform.localPosition = Vector3.MoveTowards(transform.localPosition, targets.Peek().pos, currentSpaceSpeed / 50f);
+        if (!lerpingToPlanet)
+        {
+            lerpingToTarget = false;
 
-        if ((targets.Peek().pos - transform.localPosition).sqrMagnitude < 5f * 5f)
+            lerpStartTime = Time.time;
+            lerpStartPos = transform.localPosition;
+            lerpTarget = targets.Peek().pos;
+            float distLerp = Mathf.InverseLerp(50f * 50f, 2000f * 2000f, (lerpTarget - lerpStartPos).sqrMagnitude);
+            lerpTime = Mathf.Lerp(5f, 15f, distLerp);
+
+            lerpingToPlanet = true;
+        }
+
+        float timeLerp = Mathf.InverseLerp(lerpStartTime, lerpStartTime + lerpTime, Time.time);
+        transform.localPosition = Vector3.Slerp(lerpStartPos, targets.Peek().pos, timeLerp);
+
+        if (timeLerp == 1)
         {
             state.FollowedPlayerToPlanet = true;
             state.KillVolumeEnabled = true;
             AdvanceTarget();
+            lerpingToPlanet = false;
         }
     }
 
@@ -438,8 +475,12 @@ public class ErnestoMovement : MonoBehaviour
         }
         else if (fromSpace && toSpace)
         {
-            transform.localPosition = spaceTargets.Peek().pos;
+            transform.position = planetManager.GetStaticParent().TransformPoint(spaceTargets.Peek().pos);
             spaceTargets.Dequeue();
+            currentSpaceSpeed = baseSpaceSpeed;
+            spawnDelayTimer = targetSpawnDelay;
+            spaceTimedStartDistance = Vector3.Distance(Locator.GetPlayerTransform().position, transform.position);
+            OnSpaceWarp?.Invoke();
         }
     }
 
@@ -447,11 +488,11 @@ public class ErnestoMovement : MonoBehaviour
     {
         if (isSpace)
         {
-            SpawnTarget(planetManager.GetTargetParent(), planetManager.GetPlayerParent().TransformPoint(state.LastPlayerPos), true);
+            SpawnSpaceTarget(planetManager.GetStaticParent().InverseTransformPoint(Locator.GetPlayerTransform().position), true);
         }
         else
         {
-            SpawnSpaceTarget(planetManager.GetStaticParent().InverseTransformPoint(Locator.GetPlayerTransform().position), true);
+            SpawnTarget(planetManager.GetTargetParent(), planetManager.GetPlayerParent().TransformPoint(state.LastPlayerPos), true);
         }
     }
 
@@ -466,12 +507,12 @@ public class ErnestoMovement : MonoBehaviour
             OWRigidbody planet = planetManager.GetCurrentPlanetBody();
             if (planet != null)
             {
-                ErnestoChase.WriteDebugMessage("Add destination target from warp complete at " + planetManager.GetTargetParent().InverseTransformPoint(Locator.GetPlayerTransform().position));
                 SpawnTarget(planet.transform, Locator.GetPlayerTransform().position, false);
             }
             else
             {
                 // This might run if the player teleports to a planet and the planet is destroyed before Ernesto gets there
+                // nevermind probably not
                 ErnestoChase.WriteDebugMessage("\"Where is the planet?\"\n   - OnPlayerWarpComplete(), 2025");
             }
         }

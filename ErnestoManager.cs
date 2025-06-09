@@ -35,6 +35,8 @@ public class ErnestoManager : MonoBehaviour
 
         ernestoMovement.OnTeleportRequired += planetManager.OnTeleportRequired;
         ernestoMovement.OnProximityRoar += ernestoEffects.OnProximityRoar;
+        ernestoMovement.OnSpaceWarp += OnSpaceWarp;
+        ernestoMovement.OnWarpShortcutRequired += planetManager.OnWarpShortcutRequired;
 
         ernestoEffects.OnExitWhiteHole += OnExitWhiteHole;
         ernestoEffects.OnEnterBlackHole += OnEnterBlackHole;
@@ -104,6 +106,11 @@ public class ErnestoManager : MonoBehaviour
         ernestoMovement.OnEnterBlackHole(fromSpace, toSpace);
     }
 
+    private void OnSpaceWarp()
+    {
+        ernestoEffects.SetTravelMode(true);
+    }
+
     private IEnumerator ErnestoReleaseDelay()
     {
         yield return new WaitForSeconds(ErnestoChase.Instance.StartDelay);
@@ -155,6 +162,8 @@ public class ErnestoManager : MonoBehaviour
 
         ernestoMovement.OnTeleportRequired -= planetManager.OnTeleportRequired;
         ernestoMovement.OnProximityRoar -= ernestoEffects.OnProximityRoar;
+        ernestoMovement.OnSpaceWarp -= OnSpaceWarp;
+        ernestoMovement.OnWarpShortcutRequired -= planetManager.OnWarpShortcutRequired;
 
         ernestoEffects.OnExitWhiteHole -= OnExitWhiteHole;
         ernestoEffects.OnEnterBlackHole -= OnEnterBlackHole;
