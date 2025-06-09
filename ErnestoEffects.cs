@@ -127,6 +127,37 @@ public class ErnestoEffects : MonoBehaviour
         loopingAudio.FadeOut(1f);
     }
 
+    public void OnTakeShortcut()
+    {
+        oneShotAudio.PlayOneShot(AudioType.DBAnglerfishDetectDisturbance, 0.8f);
+    }
+
+    public void OnUpdateVisibility(bool visible)
+    {
+        if (!visible)
+        {
+            if (loopingAudio.GetLocalVolume() == 0f)
+            {
+                loopingAudio.SetLocalVolume(1f);
+            }
+            if (!animator.enabled)
+            {
+                animator.enabled = true;
+            }
+        }
+        else
+        {
+            if (loopingAudio.GetLocalVolume() > 0f)
+            {
+                loopingAudio.SetLocalVolume(0f);
+            }
+            if (animator.enabled)
+            {
+                animator.enabled = false;
+            }
+        }
+    }
+
     public void OnProximityRoar(bool inRange)
     {
         if (inRange)

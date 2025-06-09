@@ -6,6 +6,9 @@ namespace ErnestoChase;
 
 public class ErnestoManager : MonoBehaviour
 {
+    public delegate void CaughtPlayerEvent(ErnestoManager ernesto);
+    public event CaughtPlayerEvent OnCaughtPlayer;
+
     [SerializeField]
     private OWTriggerVolume killVolume;
 
@@ -14,6 +17,7 @@ public class ErnestoManager : MonoBehaviour
     private ErnestoMovement ernestoMovement;
     private ErnestoEffects ernestoEffects;
 
+    private float releaseDelay = 15f;
     private bool initialized = false;
     private bool startedDeathSequence = false;
     private bool playerCollided = false;
@@ -36,7 +40,8 @@ public class ErnestoManager : MonoBehaviour
         ernestoMovement.OnTeleportRequired += planetManager.OnTeleportRequired;
         ernestoMovement.OnProximityRoar += ernestoEffects.OnProximityRoar;
         ernestoMovement.OnSpaceWarp += OnSpaceWarp;
-        ernestoMovement.OnWarpShortcutRequired += planetManager.OnWarpShortcutRequired;
+        ernestoMovement.OnTakeShortcut += ernestoEffects.OnTakeShortcut;
+        ernestoMovement.OnUpdateVisibility += ernestoEffects.OnUpdateVisibility;
 
         ernestoEffects.OnExitWhiteHole += OnExitWhiteHole;
         ernestoEffects.OnEnterBlackHole += OnEnterBlackHole;
@@ -56,12 +61,12 @@ public class ErnestoManager : MonoBehaviour
             initialized = true;
         }
 
-        if (state.KillVolumeEnabled && playerCollided && !ErnestoChase.Instance.caughtPlayer)
+        if (state.KillVolumeEnabled && playerCollided && !state.CaughtPlayer)
         {
-            ErnestoChase.Instance.caughtPlayer = true;
+            state.CaughtPlayer = true;
         }
 
-        if (ErnestoChase.Instance.caughtPlayer)
+        if (state.CaughtPlayer)
         {
             if (!startedDeathSequence)
             {
@@ -69,6 +74,7 @@ public class ErnestoManager : MonoBehaviour
                 transform.position = Locator.GetPlayerTransform().position;
                 planetManager.OnCaughtPlayer();
                 ernestoEffects.OnCaughtPlayer();
+                OnCaughtPlayer?.Invoke(this);
                 Locator.GetDeathManager().KillPlayer(DeathType.Digestion);
                 startedDeathSequence = true;
             }
@@ -85,6 +91,12 @@ public class ErnestoManager : MonoBehaviour
         }
 
         state.LastPlayerPos = planetManager.GetPlayerParent().InverseTransformPoint(Locator.GetPlayerTransform().position);
+    }
+
+    public void SetSpeedMultiplier(float multiplier)
+    {
+        releaseDelay *= multiplier * 2f;
+        ernestoMovement.SetSpeedMultiplier(multiplier);
     }
 
     public void OnUpdateTravelMode(bool isSpace)
@@ -113,7 +125,7 @@ public class ErnestoManager : MonoBehaviour
 
     private IEnumerator ErnestoReleaseDelay()
     {
-        yield return new WaitForSeconds(ErnestoChase.Instance.StartDelay);
+        yield return new WaitForSeconds(releaseDelay + Random.Range(-5f, 5f));
         if (planetManager.IsOnPlanet())
         {
             ernestoMovement.OnErnestoRelease();
@@ -163,7 +175,7 @@ public class ErnestoManager : MonoBehaviour
         ernestoMovement.OnTeleportRequired -= planetManager.OnTeleportRequired;
         ernestoMovement.OnProximityRoar -= ernestoEffects.OnProximityRoar;
         ernestoMovement.OnSpaceWarp -= OnSpaceWarp;
-        ernestoMovement.OnWarpShortcutRequired -= planetManager.OnWarpShortcutRequired;
+        ernestoMovement.OnTakeShortcut -= ernestoEffects.OnTakeShortcut;
 
         ernestoEffects.OnExitWhiteHole -= OnExitWhiteHole;
         ernestoEffects.OnEnterBlackHole -= OnEnterBlackHole;

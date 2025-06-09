@@ -12,8 +12,10 @@ public class ErnestoMovement : MonoBehaviour
     public event ProximityRoarEvent OnProximityRoar;
     public delegate void SpaceWarpEvent();
     public event SpaceWarpEvent OnSpaceWarp;
-    public delegate void WarpShortcutRequiredEvent();
-    public event WarpShortcutRequiredEvent OnWarpShortcutRequired;
+    public delegate void TakeShortcutEvent();
+    public event TakeShortcutEvent OnTakeShortcut;
+    public delegate void UpdateVisibilityEvent(bool visible);
+    public event UpdateVisibilityEvent OnUpdateVisibility;
 
     ErnestoState state;
     PlanetManager planetManager;
@@ -78,9 +80,10 @@ public class ErnestoMovement : MonoBehaviour
         }
 
         baseSpeed *= speedMultiplier;
+        baseSpeed = Mathf.Max(1f, baseSpeed + Random.Range(0f, 4f));
         currentSpeed = baseSpeed;
 
-        baseSpaceSpeed = baseSpeed / 10f;
+        baseSpaceSpeed = baseSpeed / 10f + Random.Range(0f, 2f);
         currentSpaceSpeed = baseSpaceSpeed;
 
         spawnDelayTimer = targetSpawnDelay;
@@ -100,6 +103,11 @@ public class ErnestoMovement : MonoBehaviour
         lastPlayerDreamState = PlayerState.InDreamWorld();
 
         enabled = true;
+    }
+
+    public void SetSpeedMultiplier(float multiplier)
+    {
+        baseSpeed *= multiplier;
     }
 
     private void FixedUpdate()
@@ -198,53 +206,21 @@ public class ErnestoMovement : MonoBehaviour
             transform.position - Locator.GetPlayerCamera().transform.position);
         bool ernestoInView = GeometryUtility.TestPlanesAABB(camPlanes, meshBounds) && dot > 0;
 
-        ernestoFrozen = ernestoInView;
+        if (ernestoInView != ernestoFrozen)
+        {
+            ernestoFrozen = ernestoInView;
+            OnUpdateVisibility?.Invoke(ernestoInView);
+        }
     }
 
     private void Move(bool playerOnPlanet)
     {
         if ((targets.Count > 0 || standingStill) && state.FollowedPlayerToPlanet)
         {
-            Vector3 targetPos = targets.Count > 0 ? targets.Peek().pos : Locator.GetPlayerTransform().position;
-            float dist = (targetPos - lastPosition).magnitude;
-
-            float positionLerp = Mathf.InverseLerp(lastTime, lastTime + (dist / currentSpeed), Time.time);
-
-            if (dist < 0.01f)
-            {
-                positionLerp = 1f;
-            }
-
-            if (positionLerp < 1f)
-            {
-                transform.localPosition = Vector3.Lerp(lastPosition, targetPos, positionLerp);
-
-                Quaternion nextRotation = Quaternion.LookRotation(gameObject.GetAttachedOWRigidbody().transform.TransformPoint(targetPos) - transform.position,
-                    -planetManager.GetCurrentGravity().CalculateForceAccelerationAtPoint(transform.position));
-                transform.rotation = Quaternion.Lerp(lastRotation, nextRotation, positionLerp);
-
-                TryShortcut();
-                if (ErnestoChase.Instance.StealthMode)
-                {
-                    TryProximityRoar();
-                }
-            }
-            else if (targets.Count > 0 && !planetManager.HasRecentlyTeleported())
-            {
-                if (targets.Peek().isTeleport)
-                {
-                    OnTeleportRequired?.Invoke(false);
-                }
-                else
-                {
-                    AdvanceTarget();
-                }
-            }
+            GroundMovement();
         }
         else
         {
-            float speedLerp = Mathf.InverseLerp(1, 10, ErnestoChase.Instance.SpaceSpeed);
-
             if (playerOnPlanet && targets.Count > 0 && !state.FollowedPlayerToPlanet && !IsNextSpaceTargetTeleport())
             {
                 FollowPlayerToPlanet();
@@ -283,23 +259,44 @@ public class ErnestoMovement : MonoBehaviour
 
                 return;
             }
+        }
+    }
 
-            transform.LookAt(Locator.GetPlayerTransform(), Locator.GetPlayerTransform().up);
+    private void GroundMovement()
+    {
+        Vector3 targetPos = targets.Count > 0 ? targets.Peek().pos : Locator.GetPlayerTransform().position;
+        float dist = (targetPos - lastPosition).magnitude;
 
-            if (ErnestoChase.Instance.SpaceAccelerationType == "Cumulative")
+        float positionLerp = Mathf.InverseLerp(lastTime, lastTime + (dist / currentSpeed), Time.time);
+
+        if (dist < 0.01f)
+        {
+            positionLerp = 1f;
+        }
+
+        if (positionLerp < 1f)
+        {
+            transform.localPosition = Vector3.Lerp(lastPosition, targetPos, positionLerp);
+
+            Quaternion nextRotation = Quaternion.LookRotation(gameObject.GetAttachedOWRigidbody().transform.TransformPoint(targetPos) - transform.position,
+                -planetManager.GetCurrentGravity().CalculateForceAccelerationAtPoint(transform.position));
+            transform.rotation = Quaternion.Slerp(lastRotation, nextRotation, positionLerp);
+
+            TryShortcut();
+            if (ErnestoChase.Instance.StealthMode)
             {
-                planetManager.GetErnestoBody().AddForce(transform.forward * currentSpaceSpeed);
-                currentSpaceSpeed += Time.fixedDeltaTime * 5f * (speedLerp + 0.5f);
+                TryProximityRoar();
             }
-            else if (ErnestoChase.Instance.SpaceAccelerationType == "Linear")
+        }
+        else if (targets.Count > 0 && !planetManager.HasRecentlyTeleported())
+        {
+            if (targets.Peek().isTeleport)
             {
-                planetManager.GetErnestoBody().SetVelocity((transform.forward * currentSpaceSpeed) + Locator.GetPlayerBody().GetVelocity());
-                currentSpaceSpeed += Time.fixedDeltaTime * 5f * speedLerp;
+                OnTeleportRequired?.Invoke(false);
             }
             else
             {
-                planetManager.GetErnestoBody().SetVelocity((transform.forward * currentSpaceSpeed) + Locator.GetPlayerBody().GetVelocity());
-                currentSpaceSpeed = spaceTimedStartDistance / ErnestoChase.Instance.SpaceTimer;
+                AdvanceTarget();
             }
         }
     }
@@ -317,11 +314,35 @@ public class ErnestoMovement : MonoBehaviour
         {
             targets.Clear();
             SpawnTarget(planetManager.GetCurrentPlanet().transform, Locator.GetPlayerTransform().position);
+            OnTakeShortcut?.Invoke();
             hasTakenShortcut = true;
         }
         else if (hasTakenShortcut && (Locator.GetPlayerTransform().position - transform.position).sqrMagnitude > 30f * 30f)
         {
             hasTakenShortcut = false;
+        }
+    }
+
+    private void SpaceMovement()
+    {
+        transform.LookAt(Locator.GetPlayerTransform(), Locator.GetPlayerTransform().up);
+
+        float speedLerp = Mathf.InverseLerp(1, 10, ErnestoChase.Instance.SpaceSpeed);
+
+        if (ErnestoChase.Instance.SpaceAccelerationType == "Cumulative")
+        {
+            planetManager.GetErnestoBody().AddForce(transform.forward * currentSpaceSpeed);
+            currentSpaceSpeed += Time.fixedDeltaTime * 5f * (speedLerp + 0.5f);
+        }
+        else if (ErnestoChase.Instance.SpaceAccelerationType == "Linear")
+        {
+            planetManager.GetErnestoBody().SetVelocity((transform.forward * currentSpaceSpeed) + Locator.GetPlayerBody().GetVelocity());
+            currentSpaceSpeed += Time.fixedDeltaTime * 5f * speedLerp;
+        }
+        else
+        {
+            planetManager.GetErnestoBody().SetVelocity((transform.forward * currentSpaceSpeed) + Locator.GetPlayerBody().GetVelocity());
+            currentSpaceSpeed = spaceTimedStartDistance / ErnestoChase.Instance.SpaceTimer;
         }
     }
 

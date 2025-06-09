@@ -1,9 +1,20 @@
-﻿using OWML.Common;
+﻿using Newtonsoft.Json.Linq;
+using OWML.Common;
 using OWML.ModHelper;
 using System.Collections;
 using System.IO;
 using UnityEngine;
 using UnityEngine.InputSystem;
+using System;
+using System.Collections.Generic;
+using OWML.Utils;
+using System.Reflection;
+using System.Linq;
+using UnityEngine.Events;
+using OWML.ModHelper.Menus.NewMenuSystem;
+using System.Globalization;
+using UnityEngine.UI;
+using Newtonsoft.Json;
 
 namespace ErnestoChase;
 
@@ -16,87 +27,121 @@ public class ErnestoChase : ModBehaviour
     public AssetBundle assetBundle;
     public OWRigidbody ernestoBody;
     public bool playerDetectorReady = false;
-    public GameObject ernesto;
-    public bool caughtPlayer;
-    public bool inFogWarp = false;
+    public List<GameObject> ernestos = [];
 
-    public float MovementSpeed;
-    public float SpaceSpeed;
-    public float BrambleSpeedMultiplier;
-    public float DreamWorldSpeedMultiplier;
-    public float StartDelay;
-    public string SpaceAccelerationType;
-    public float SpaceTimer;
-    public bool StealthMode;
-    public bool QuantumMode;
-    public bool CustomEndScreen;
+    public float MovementSpeed => (float)settings["movementSpeed"].property;
+    public float SpaceSpeed => (float)settings["spaceSpeed"].property;
+    public float BrambleSpeedMultiplier => (float)settings["brambleSpeedMultiplier"].property;
+    public float DreamWorldSpeedMultiplier => (float)settings["dreamWorldSpeedMultiplier"].property;
+    public float StartDelay => (float)settings["startDelay"].property;
+    public string SpaceAccelerationType => (string)settings["spaceAccelerationType"].property;
+    public float SpaceTimer => (float)settings["spaceTimer"].property;
+    public bool StealthMode => (bool)settings["enableStealthMode"].property;
+    public bool QuantumMode => (bool)settings["enableQuantumMode"].property;
+    public bool CustomEndScreen => (bool)settings["customEndScreen"].property;
 
-    private float movementSpeed;
-    private float spaceSpeed;
-    private float brambleSpeedMultiplier;
-    private float dreamWorldSpeedMultiplier;
-    private float startDelay;
-    private string spaceAccelerationType;
-    private float spaceTimer;
-    private bool stealthMode;
-    private bool quantumMode;
-    private bool customEndScreen;
+    private Dictionary<string, (object value, object property)> settings = new()
+    {
+        { "randomMode", (false, false) },
+        { "movementSpeed", (1f, 1f) },
+        { "spaceSpeed", (1f, 1f) },
+        { "brambleSpeedMultiplier", (1f, 1f) },
+        { "dreamWorldSpeedMultiplier", (1f, 1f) },
+        { "startDelay", (1f, 1f) },
+        { "spaceAccelerationType", ("", "") },
+        { "spaceTimer", (1f, 1f) },
+        { "enableStealthMode", (false, false) },
+        { "enableQuantumMode", (false, false) },
+        { "customEndScreen", (false, false) },
+    };
+
+    private Dictionary<string, object> randomSettings = new()
+    {
+        { "movementSpeed", new object[] { 3f, 10f } },
+        { "spaceSpeed", new object[] { 3f, 10f } },
+        { "brambleSpeedMultiplier", new object[] { 1f, 5f } },
+        { "dreamWorldSpeedMultiplier", new object[] { 0.2f, 1.2f } },
+        { "startDelay", new object[] { 10f, 60f } },
+        { "spaceAccelerationType", new object[] { "Cumulative", "Linear", "Linear", "Timed", "Timed" } },
+        { "spaceTimer", new object[] { 30f, 120f } },
+        { "enableStealthMode", new object[] { false, true } },
+        { "enableQuantumMode", new object[] { false, true } },
+        { "customEndScreen", new object[] { false, true } },
+    };
 
     public static readonly bool EnableDebugMode = true;
 
     private void Awake()
     {
         Instance = this;
-        HarmonyLib.Harmony.CreateAndPatchAll(System.Reflection.Assembly.GetExecutingAssembly());
+        HarmonyLib.Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly());
     }
 
     private void Start()
     {
         assetBundle = AssetBundle.LoadFromFile(Path.Combine(ModHelper.Manifest.ModFolderPath, "assets/ernestochase"));
 
-        GlobalMessenger.AddListener("PlayerFogWarp", OnPlayerFogWarp);
-
-        // Example of accessing game code.
         LoadManager.OnCompleteSceneLoad += (scene, loadScene) =>
         {
             if (loadScene != OWScene.SolarSystem) return;
 
             playerDetectorReady = false;
-            caughtPlayer = false;
-            ernesto = null;
+            ernestos.Clear();
             ernestoBody = null;
-            inFogWarp = false;
+            PatchnestoClass.Initialize();
 
-            MovementSpeed = movementSpeed;
-            SpaceSpeed = spaceSpeed;
-            BrambleSpeedMultiplier = brambleSpeedMultiplier;
-            DreamWorldSpeedMultiplier = dreamWorldSpeedMultiplier;
-            StartDelay = startDelay;
-            SpaceAccelerationType = spaceAccelerationType;
-            SpaceTimer = spaceTimer;
-            StealthMode = stealthMode;
-            QuantumMode = quantumMode;
-            //CustomEndScreen = customEndScreen;
+            UpdateProperties();
 
             StartCoroutine(WaitForPlayer());
         };
     }
 
-    private IEnumerator WaitForPlayer()
+    private void UpdateProperties()
     {
-        WriteDebugMessage("Waiting for player");
-        yield return new WaitUntil(() => Locator.GetPlayerBody() != null);
-        WriteDebugMessage("Player found");
-        GameObject body = LoadPrefab("Assets/ErnestoChase/ErnestoBody.prefab");
-        ernestoBody = Instantiate(body, Vector3.zero, Quaternion.identity).GetComponent<OWRigidbody>();
-        GameObject ernestoObj = LoadPrefab("Assets/ErnestoChase/Ernesto.prefab");
-        AssetBundleUtilities.ReplaceShaders(ernestoObj);
-        ernesto = Instantiate(ernestoObj, Locator.GetPlayerTransform().position, Quaternion.identity);
+        var keys = settings.Keys.ToArray();
+        bool randomMode = (bool)settings["randomMode"].value;
+        for (int i = 0; i < keys.Length; i++)
+        {
+            if (randomMode && randomSettings.ContainsKey(keys[i]) && randomSettings[keys[i]] is object[] list)
+            {
+                if (list[0] is float)
+                {
+                    settings[keys[i]] = (settings[keys[i]].value, UnityEngine.Random.Range((float)list[0], (float)list[1]));
+                }
+                else if (list[0] is bool)
+                {
+                    settings[keys[i]] = (settings[keys[i]].value, UnityEngine.Random.value > 0.5f);
+                }
+                else if (list[0] is string)
+                {
+                    int randIndex = UnityEngine.Random.Range(0, list.Length);
+                    settings[keys[i]] = (settings[keys[i]].value, list[randIndex]);
+                }
+            }
+            else
+            {
+                settings[keys[i]] = (settings[keys[i]].value, settings[keys[i]].value);
+            }
+        }
+        WriteDebugMessage(MovementSpeed);
     }
 
-    private void OnPlayerFogWarp()
+    private IEnumerator WaitForPlayer()
     {
-        inFogWarp = true;
+        yield return new WaitUntil(() => Locator.GetPlayerBody() != null);
+        for (int i = 0; i < 50; i++)
+        {
+            SpawnErnesto(i);
+        }
+    }
+
+    private void SpawnErnesto(int index)
+    {
+        GameObject ernestoObj = LoadPrefab("Assets/ErnestoChase/Ernesto.prefab");
+        AssetBundleUtilities.ReplaceShaders(ernestoObj);
+        ErnestoManager ernesto = Instantiate(ernestoObj, Locator.GetPlayerTransform().position, Quaternion.identity).GetComponent<ErnestoManager>();
+        ernesto.SetSpeedMultiplier(index / 10f + 1f);
+        ernestos.Add(ernesto.gameObject);
     }
 
     public void OnPlayerWarpedEvent()
@@ -106,15 +151,10 @@ public class ErnestoChase : ModBehaviour
 
     public void RespawnErnesto()
     {
-        if (ernesto != null)
+        foreach (GameObject ernesto in ernestos)
         {
             Destroy(ernesto);
-            caughtPlayer = false;
-            inFogWarp = false;
-
-            GameObject ernestoObj = LoadPrefab("Assets/ErnestoChase/Ernesto.prefab");
-            AssetBundleUtilities.ReplaceShaders(ernestoObj);
-            ernesto = Instantiate(ernestoObj, Locator.GetPlayerTransform().position, Quaternion.identity);
+            WaitForPlayer();
         }
     }
 
@@ -133,17 +173,396 @@ public class ErnestoChase : ModBehaviour
 
     public override void Configure(IModConfig config)
     {
-        movementSpeed = config.GetSettingsValue<int>("movementSpeed");
-        spaceSpeed = config.GetSettingsValue<int>("spaceSpeed");
+        var keys = settings.Keys.ToArray();
+        bool anyChanged = false;
+        for (int i = 0; i < keys.Length; i++)
+        {
+            object configValue = ConvertJValue(config.GetSettingsValue<object>(keys[i]));
+            if (!anyChanged && !settings[keys[i]].value.Equals(configValue)
+                && keys[i] == "spaceAccelerationType")
+            {
+                WriteDebugMessage(keys[i] + " was changed");
+                anyChanged = true;
+            }
+            settings[keys[i]] = (ConvertJValue(config.GetSettingsValue<object>(keys[i])), settings[keys[i]].property);
+        }
 
-        brambleSpeedMultiplier = config.GetSettingsValue<float>("brambleSpeedMultiplier");
-        dreamWorldSpeedMultiplier = config.GetSettingsValue<float>("dreamWorldSpeedMultiplier");
-        startDelay = config.GetSettingsValue<float>("startDelay");
-        spaceAccelerationType = config.GetSettingsValue<string>("spaceAccelerationType");
-        spaceTimer = config.GetSettingsValue<float>("spaceTimer");
-        stealthMode = config.GetSettingsValue<bool>("enableStealthMode");
-        quantumMode = config.GetSettingsValue<bool>("enableQuantumMode");
-        customEndScreen = config.GetSettingsValue<bool>("customEndScreen");
-        CustomEndScreen = customEndScreen;
+        if (anyChanged)
+        {
+            RedrawSettingsMenu();
+        }
+    }
+
+    public void RedrawSettingsMenu()
+    {
+        MenuManager menuManager = StartupPopupPatches.menuManager;
+        IOptionsMenuManager OptionsMenuManager = menuManager.OptionsMenuManager;
+
+        var menus = typeof(MenuManager).GetField("ModSettingsMenus", BindingFlags.Public
+            | BindingFlags.NonPublic | BindingFlags.Static).GetValue(menuManager)
+            as List<(IModBehaviour behaviour, Menu modMenu)>;
+
+        Menu newModTab = null;
+
+        for (int i = 0; i < menus.Count; i++)
+        {
+            if ((object)menus[i].behaviour == this)
+            {
+                newModTab = menus[i].modMenu;
+            }
+        }
+
+        if (newModTab == null) return;
+
+        newModTab._menuOptions = [];
+
+        Scrollbar scrollbar = newModTab.transform.Find("Scroll View/Scrollbar Vertical").GetComponent<Scrollbar>();
+        float lastScrollValue = scrollbar.value;
+
+        Transform settingsParent = newModTab.transform.Find("Scroll View/Viewport/Content");
+
+        if (!DestroyExistingSettings(newModTab, settingsParent))
+        {
+            return;
+        }
+
+        OptionsMenuManager.AddSeparator(newModTab, true);
+        OptionsMenuManager.CreateLabel(newModTab, "Any changes to Ernesto are applied on the next loop!");
+
+        int startIndex = 0;
+        int endIndex = ModHelper.Config.Settings.Count;
+
+        for (int i = startIndex; i < endIndex; i++)
+        {
+            string name = ModHelper.Config.Settings.ElementAt(i).Key;
+
+            if (ShouldHideSetting(i, name))
+            {
+                continue;
+            }
+
+            object setting = ModHelper.Config.Settings.ElementAt(i).Value;
+            var settingType = GetSettingType(setting);
+            var label = ModHelper.MenuTranslations.GetLocalizedString(name);
+            var tooltip = "";
+
+            var settingObject = setting as JObject;
+
+            if (settingObject != default(JObject))
+            {
+                if (settingObject["dlcOnly"]?.ToObject<bool>() ?? false)
+                {
+                    if (EntitlementsManager.IsDlcOwned() == EntitlementsManager.AsyncOwnershipStatus.NotOwned)
+                    {
+                        continue;
+                    }
+                }
+
+                if (settingObject["title"] != null)
+                {
+                    if (!SetCustomSettingName(ref label, name))
+                    {
+                        label = ModHelper.MenuTranslations.GetLocalizedString(settingObject["title"].ToString());
+                    }
+                }
+
+                if (settingObject["tooltip"] != null)
+                {
+                    if (!SetCustomTooltip(ref tooltip, name))
+                    {
+                        tooltip = ModHelper.MenuTranslations.GetLocalizedString(settingObject["tooltip"].ToString());
+                    }
+                }
+            }
+
+            switch (settingType)
+            {
+                case SettingType.CHECKBOX:
+                    var currentCheckboxValue = ModHelper.Config.GetSettingsValue<bool>(name);
+                    var settingCheckbox = OptionsMenuManager.AddCheckboxInput(newModTab, label, tooltip, currentCheckboxValue);
+                    settingCheckbox.ModSettingKey = name;
+                    settingCheckbox.OnValueChanged += (bool newValue) =>
+                    {
+                        ModHelper.Config.SetSettingsValue(name, newValue);
+                        ModHelper.Storage.Save(ModHelper.Config, Constants.ModConfigFileName);
+                        Configure(ModHelper.Config);
+                    };
+                    break;
+                case SettingType.TOGGLE:
+                    var currentToggleValue = ModHelper.Config.GetSettingsValue<bool>(name);
+                    var yes = settingObject["yes"].ToString();
+                    var no = settingObject["no"].ToString();
+                    var settingToggle = OptionsMenuManager.AddToggleInput(newModTab, label, yes, no, tooltip, currentToggleValue);
+                    settingToggle.ModSettingKey = name;
+                    settingToggle.OnValueChanged += (bool newValue) =>
+                    {
+                        ModHelper.Config.SetSettingsValue(name, newValue);
+                        ModHelper.Storage.Save(ModHelper.Config, Constants.ModConfigFileName);
+                        Configure(ModHelper.Config);
+                    };
+                    break;
+                case SettingType.SELECTOR:
+                    var currentSelectorValue = ModHelper.Config.GetSettingsValue<string>(name);
+                    var options = settingObject["options"].ToArray().Select(x => x.ToString()).ToArray();
+                    var currentSelectedIndex = Array.IndexOf(options, currentSelectorValue);
+                    var settingSelector = OptionsMenuManager.AddSelectorInput(newModTab, label, options, tooltip, true, currentSelectedIndex);
+                    settingSelector.ModSettingKey = name;
+                    settingSelector.OnValueChanged += (int newIndex, string newSelection) =>
+                    {
+                        ModHelper.Config.SetSettingsValue(name, newSelection);
+                        ModHelper.Storage.Save(ModHelper.Config, Constants.ModConfigFileName);
+                        Configure(ModHelper.Config);
+                    };
+                    break;
+                case SettingType.SEPARATOR:
+                    OptionsMenuManager.AddSeparator(newModTab, true);
+                    OptionsMenuManager.CreateLabel(newModTab, name);
+                    OptionsMenuManager.AddSeparator(newModTab, false);
+                    break;
+                case SettingType.SLIDER:
+                    var currentSliderValue = ModHelper.Config.GetSettingsValue<float>(name);
+                    var lower = settingObject["min"].ToObject<float>();
+                    var upper = settingObject["max"].ToObject<float>();
+                    var settingSlider = OptionsMenuManager.AddSliderInput(newModTab, label, lower, upper, tooltip, currentSliderValue);
+                    settingSlider.ModSettingKey = name;
+                    settingSlider.OnValueChanged += (float newValue) =>
+                    {
+                        ModHelper.Config.SetSettingsValue(name, newValue);
+                        ModHelper.Storage.Save(ModHelper.Config, Constants.ModConfigFileName);
+                        Configure(ModHelper.Config);
+                    };
+                    break;
+                case SettingType.TEXT:
+                    var currentTextValue = ModHelper.Config.GetSettingsValue<string>(name);
+                    var textInput = OptionsMenuManager.AddTextEntryInput(newModTab, label, currentTextValue, tooltip, false);
+                    textInput.ModSettingKey = name;
+                    textInput.OnConfirmEntry += () =>
+                    {
+                        var newValue = textInput.GetInputText();
+                        ModHelper.Config.SetSettingsValue(name, newValue);
+                        ModHelper.Storage.Save(ModHelper.Config, Constants.ModConfigFileName);
+                        Configure(ModHelper.Config);
+                        textInput.SetText(newValue);
+                    };
+                    break;
+                case SettingType.NUMBER:
+                    var currentValue = ModHelper.Config.GetSettingsValue<double>(name);
+                    var numberInput = OptionsMenuManager.AddTextEntryInput(newModTab, label, currentValue.ToString(CultureInfo.CurrentCulture), tooltip, true);
+                    numberInput.ModSettingKey = name;
+                    numberInput.OnConfirmEntry += () =>
+                    {
+                        if (!string.IsNullOrEmpty(numberInput.GetInputText()))
+                        {
+                            var newValue = double.Parse(numberInput.GetInputText());
+                            ModHelper.Config.SetSettingsValue(name, newValue);
+                            ModHelper.Storage.Save(ModHelper.Config, Constants.ModConfigFileName);
+                            Configure(ModHelper.Config);
+                            numberInput.SetText(newValue.ToString());
+                        }
+                    };
+                    break;
+                default:
+                    WriteDebugMessage($"Couldn't generate input for unkown input type {settingType}");
+                    OptionsMenuManager.CreateLabel(newModTab, $"Unknown {settingType} : {name}");
+                    break;
+            }
+        }
+
+
+        if (newModTab._tooltipDisplay != null)
+        {
+            foreach (MenuOption option in newModTab.GetComponentsInChildren<MenuOption>(true))
+            {
+                option.SetTooltipDisplay(newModTab._tooltipDisplay);
+            }
+        }
+
+        bool foundSelectable = false;
+        newModTab._listSelectables = newModTab.GetComponentsInChildren<Selectable>(true);
+        foreach (Selectable selectable in newModTab._listSelectables)
+        {
+            selectable.gameObject.GetAddComponent<Menu.MenuSelectHandler>().OnSelectableSelected += newModTab.OnMenuItemSelected;
+
+            // this line keeps throwing an NRE, surely this will fix it
+            if (selectable?.gameObject?.name == newModTab?._lastSelected?.gameObject?.name)
+            {
+                SelectableAudioPlayer component = newModTab._selectOnActivate.GetComponent<SelectableAudioPlayer>();
+                if (component != null)
+                {
+                    component.SilenceNextSelectEvent();
+                }
+                Locator.GetMenuInputModule().SelectOnNextUpdate(selectable);
+                foundSelectable = true;
+            }
+        }
+
+        if (!foundSelectable && newModTab._selectOnActivate != null)
+        {
+            SelectableAudioPlayer component = newModTab._selectOnActivate.GetComponent<SelectableAudioPlayer>();
+            if (component != null)
+            {
+                component.SilenceNextSelectEvent();
+            }
+            Locator.GetMenuInputModule().SelectOnNextUpdate(newModTab._selectOnActivate);
+            newModTab._lastSelected = newModTab._selectOnActivate;
+        }
+
+        if (newModTab._setMenuNavigationOnActivate)
+        {
+            Menu.SetVerticalNavigation(newModTab, newModTab._menuOptions);
+        }
+
+        ModHelper.Events.Unity.FireInNUpdates(() =>
+        {
+            scrollbar.value = lastScrollValue;
+        }, 2);
+    }
+
+    private bool DestroyExistingSettings(Menu menu, Transform parent)
+    {
+        for (int i = 0; i < parent.childCount; i++)
+        {
+            if (i < 2)
+            {
+                MenuOption option = parent.GetChild(i).GetComponentInChildren<MenuOption>();
+                if (option != null)
+                {
+                    menu._menuOptions = menu._menuOptions.Add(option);
+                }
+            }
+            else
+            {
+                Destroy(parent.GetChild(i).gameObject);
+            }
+        }
+
+        return true;
+    }
+
+    private bool ShouldHideSetting(int currIndex, string name)
+    {
+        if (name == "spaceTimer" && (string)settings["spaceAccelerationType"].value != "Timed")
+        {
+            return true;
+        }
+        if (name == "spaceSpeed" && (string)settings["spaceAccelerationType"].value == "Timed")
+        {
+            return true;
+        }
+        return false;
+    }
+
+    private bool SetCustomSettingName(ref string label, string settingName)
+    {
+        return false;
+    }
+
+    private bool SetCustomTooltip(ref string tooltip, string settingName)
+    {
+        if (settingName == "spaceAccelerationType")
+        {
+            string value = (string)settings["spaceAccelerationType"].value;
+            if (value == "Cumulative")
+            {
+                tooltip = "Cumulative means Ernesto will accelerate towards you faster and faster as time goes on. You can sometimes outrun him, and he may frequently miss his target.";
+            }
+            else if (value == "Linear")
+            {
+                tooltip = "Linear means Ernesto will move at a constant speed towards you, except it's impossible to outrun him. He will always be getting closer.";
+            }
+            else if (value == "Timed")
+            {
+                tooltip = "Timed means Ernesto will reach you in a set amount of time, no matter how far away you are. This is the most balanced type.";
+            }
+            return true;
+        }
+        if (settingName == "spaceSpeed")
+        {
+            string value = (string)settings["spaceAccelerationType"].value;
+            if (value == "Cumulative")
+            {
+                tooltip = "This changes how quickly Ernesto accelerates towards you in space.";
+            }
+            else
+            {
+                tooltip = "This changes how quickly Ernesto moves towards you in space.";
+            }
+            return true;
+        }
+
+        return false;
+    }
+
+    private SettingType GetSettingType(object setting)
+    {
+        var settingObject = setting as JObject;
+
+        if (setting is bool || (settingObject != null && settingObject["type"].ToString() == "toggle" && (settingObject["yes"] == null || settingObject["no"] == null)))
+        {
+            return SettingType.CHECKBOX;
+        }
+        else if (setting is string || (settingObject != null && settingObject["type"].ToString() == "text"))
+        {
+            return SettingType.TEXT;
+        }
+        else if (setting is int || setting is long || setting is float || setting is double || setting is decimal || (settingObject != null && settingObject["type"].ToString() == "number"))
+        {
+            return SettingType.NUMBER;
+        }
+        else if (settingObject != null && settingObject["type"].ToString() == "toggle")
+        {
+            return SettingType.TOGGLE;
+        }
+        else if (settingObject != null && settingObject["type"].ToString() == "selector")
+        {
+            return SettingType.SELECTOR;
+        }
+        else if (settingObject != null && settingObject["type"].ToString() == "slider")
+        {
+            return SettingType.SLIDER;
+        }
+        else if (settingObject != null && settingObject["type"].ToString() == "separator")
+        {
+            return SettingType.SEPARATOR;
+        }
+
+        WriteDebugMessage($"Couldn't work out setting type. Type:{setting.GetType().Name} SettingObjectType:{settingObject?["type"].ToString()}");
+        return SettingType.NONE;
+    }
+
+    public static object ConvertJValue(object obj)
+    {
+        if (obj is not JValue) return null;
+
+        JValue value = (JValue)obj;
+        if (value.Type == JTokenType.Boolean)
+        {
+            return Convert.ToBoolean(value);
+        }
+        else if (value.Type == JTokenType.Float)
+        {
+            return float.Parse(value.ToString());
+        }
+        else if (value.Type == JTokenType.Integer)
+        {
+            return (float)int.Parse(value.ToString());
+        }
+        else if (value.Type == JTokenType.String)
+        {
+            return value.ToString();
+        }
+        return value;
+    }
+
+    enum SettingType
+    {
+        NONE,
+        CHECKBOX,
+        TOGGLE,
+        TEXT,
+        NUMBER,
+        SELECTOR,
+        SLIDER,
+        SEPARATOR
     }
 }

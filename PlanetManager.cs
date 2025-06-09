@@ -32,7 +32,8 @@ public class PlanetManager : MonoBehaviour
     private void Awake()
     {
         state = GetComponent<ErnestoState>();
-        rigidbody = ErnestoChase.Instance.ernestoBody;
+        var body = ErnestoChase.LoadPrefab("Assets/ErnestoChase/ErnestoBody.prefab");
+        rigidbody = Instantiate(body, Vector3.zero, Quaternion.identity).GetComponent<OWRigidbody>();
         GameObject targetsParent = ErnestoChase.LoadPrefab("Assets/ErnestoChase/SpaceTargetsParent.prefab");
         staticTransformParent = Instantiate(targetsParent).transform;
     }
@@ -124,11 +125,6 @@ public class PlanetManager : MonoBehaviour
         }
 
         OnTeleportStarted?.Invoke(fromSpace, teleportPlanets[0] == null);
-    }
-
-    public void OnWarpShortcutRequired()
-    {
-        teleportPlanets.Add(currentPlanet);
     }
 
     public void OnEnterBlackHole(bool fromSpace, bool toSpace)

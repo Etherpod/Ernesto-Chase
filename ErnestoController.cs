@@ -160,7 +160,7 @@ public class ErnestoController : MonoBehaviour
 
         anglerLight.range = baseLightRange * (ernestoMesh.transform.localScale.magnitude / baseMeshScale);
 
-        if (playerCollided && !ErnestoChase.Instance.caughtPlayer && colliderEnabled)
+        /*if (playerCollided && !ErnestoChase.Instance.caughtPlayer && colliderEnabled)
         {
             ErnestoChase.WriteDebugMessage("HAHA I GOT YOU");
             ErnestoChase.Instance.caughtPlayer = true;
@@ -179,7 +179,7 @@ public class ErnestoController : MonoBehaviour
                 Locator.GetDeathManager().KillPlayer(DeathType.Digestion);
             }
             return;
-        }
+        }*/
 
         // Check if player is on a planet
         bool playerOnPlanet = GetCurrentPlanetBody();

@@ -14,17 +14,9 @@
       "max": 10,
       "value": 5
     },
-    "spaceSpeed": {
-      "title": "Space Acceleration Speed",
-      "tooltip": "This changes how quickly Ernesto accelerates towards you in space.",
-      "type": "slider",
-      "min": 1,
-      "max": 10,
-      "value": 5
-    },
     "spaceAccelerationType": {
       "title": "Space Acceleration Type",
-      "tooltip": "Linear means Ernesto gets closer to you at a constant rate, regardless of how fast you're traveling. Cumulative means Ernesto builds up speed and eventually intercepts you, but it may have unpredictable movement. Timed means Ernesto will reach you after a fixed amount of time.",
+      "tooltip": "Changes Ernesto's mode of transportation in space.",
       "type": "selector",
       "options": [
         "Linear",
@@ -33,9 +25,17 @@
       ],
       "value": "Cumulative"
     },
+    "spaceSpeed": {
+      "title": "Space Acceleration Speed",
+      "tooltip": "This changes how quickly Ernesto accelerates towards you in space.",
+      "type": "slider",
+      "min": 1,
+      "max": 10,
+      "value": 5
+    },
     "spaceTimer": {
       "title": "Interception Time",
-      "tooltip": "For use with the Timed acceleration type. This determines how long it will take for Ernesto to catch up to you in space.",
+      "tooltip": "This determines how many seconds it will take for Ernesto to catch up to you in space.",
       "type": "number",
       "value": 30
     },
@@ -85,6 +85,12 @@
       "tooltip": "Turn this off to reset the loop like normal if Ernesto catches you.",
       "type": "toggle",
       "value": true
+    },
+    "randomMode": {
+      "title": "Enable Randomizer",
+      "tooltip": "Randomizes all of the settings each loop.",
+      "type": "toggle",
+      "value": false
     }
   }
 }
