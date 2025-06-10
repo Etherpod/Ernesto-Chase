@@ -125,7 +125,7 @@ public class ErnestoManager : MonoBehaviour
 
     private IEnumerator ErnestoReleaseDelay()
     {
-        yield return new WaitForSeconds(releaseDelay + Random.Range(-5f, 5f));
+        yield return new WaitForSeconds(3f);
         if (planetManager.IsOnPlanet())
         {
             ernestoMovement.OnErnestoRelease();

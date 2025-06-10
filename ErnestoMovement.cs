@@ -62,28 +62,25 @@ public class ErnestoMovement : MonoBehaviour
         planetManager = GetComponent<PlanetManager>();
 
         float speedMultiplier;
-        if (ErnestoChase.Instance.QuantumMode)
+        float speedLerp = Mathf.InverseLerp(1, 10, ErnestoChase.Instance.MovementSpeed);
+        if (speedLerp < 0.5f)
         {
-            speedMultiplier = 5f;
+            speedMultiplier = Mathf.Lerp(0.2f, 1f, speedLerp * 2);
         }
         else
         {
-            float speedLerp = Mathf.InverseLerp(1, 10, ErnestoChase.Instance.MovementSpeed);
-            if (speedLerp < 0.5f)
-            {
-                speedMultiplier = Mathf.Lerp(0.2f, 1f, speedLerp * 2);
-            }
-            else
-            {
-                speedMultiplier = Mathf.Lerp(1f, 4f, (speedLerp - 0.5f) * 2);
-            }
+            speedMultiplier = Mathf.Lerp(1f, 4f, (speedLerp - 0.5f) * 2);
+        }
+
+        if (ErnestoChase.Instance.QuantumMode)
+        {
+            speedMultiplier *= 5f;
         }
 
         baseSpeed *= speedMultiplier;
-        baseSpeed = Mathf.Max(1f, baseSpeed + Random.Range(0f, 4f));
         currentSpeed = baseSpeed;
 
-        baseSpaceSpeed = baseSpeed / 10f + Random.Range(0f, 2f);
+        baseSpaceSpeed = baseSpeed / 10f;
         currentSpaceSpeed = baseSpaceSpeed;
 
         spawnDelayTimer = targetSpawnDelay;
@@ -259,6 +256,8 @@ public class ErnestoMovement : MonoBehaviour
 
                 return;
             }
+
+            SpaceMovement();
         }
     }
 

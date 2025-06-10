@@ -23,7 +23,7 @@
         "Cumulative",
         "Timed"
       ],
-      "value": "Cumulative"
+      "value": "Linear"
     },
     "spaceSpeed": {
       "title": "Space Acceleration Speed",
@@ -77,6 +77,12 @@
     "enableQuantumMode": {
       "title": "Enable Quantum Mode",
       "tooltip": "Freezes Ernesto if you can see him, but makes him move at maximum speed when you look away.",
+      "type": "toggle",
+      "value": false
+    },
+    "ernestoCam": {
+      "title": "Enable ErnestoCam",
+      "tooltip": "Let's you see Ernesto's POV by taking a reverse snapshot with your probe launcher while in photo mode.",
       "type": "toggle",
       "value": false
     },

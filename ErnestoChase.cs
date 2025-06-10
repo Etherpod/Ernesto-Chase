@@ -15,6 +15,7 @@ using OWML.ModHelper.Menus.NewMenuSystem;
 using System.Globalization;
 using UnityEngine.UI;
 using Newtonsoft.Json;
+using UnityEngine.PostProcessing;
 
 namespace ErnestoChase;
 
@@ -39,6 +40,7 @@ public class ErnestoChase : ModBehaviour
     public bool StealthMode => (bool)settings["enableStealthMode"].property;
     public bool QuantumMode => (bool)settings["enableQuantumMode"].property;
     public bool CustomEndScreen => (bool)settings["customEndScreen"].property;
+    public bool ErnestoCam => (bool)settings["ernestoCam"].property;
 
     private Dictionary<string, (object value, object property)> settings = new()
     {
@@ -53,6 +55,7 @@ public class ErnestoChase : ModBehaviour
         { "enableStealthMode", (false, false) },
         { "enableQuantumMode", (false, false) },
         { "customEndScreen", (false, false) },
+        { "ernestoCam", (false, false) },
     };
 
     private Dictionary<string, object> randomSettings = new()
@@ -67,6 +70,7 @@ public class ErnestoChase : ModBehaviour
         { "enableStealthMode", new object[] { false, true } },
         { "enableQuantumMode", new object[] { false, true } },
         { "customEndScreen", new object[] { false, true } },
+        { "ernestoCam", new object[] { false, true } },
     };
 
     public static readonly bool EnableDebugMode = true;
@@ -129,7 +133,7 @@ public class ErnestoChase : ModBehaviour
     private IEnumerator WaitForPlayer()
     {
         yield return new WaitUntil(() => Locator.GetPlayerBody() != null);
-        for (int i = 0; i < 50; i++)
+        for (int i = 0; i < 1; i++)
         {
             SpawnErnesto(i);
         }
@@ -139,6 +143,10 @@ public class ErnestoChase : ModBehaviour
     {
         GameObject ernestoObj = LoadPrefab("Assets/ErnestoChase/Ernesto.prefab");
         AssetBundleUtilities.ReplaceShaders(ernestoObj);
+        if (!ErnestoCam)
+        {
+            ernestoObj.GetComponentInChildren<ErnestoCamera>().gameObject.SetActive(false);
+        }
         ErnestoManager ernesto = Instantiate(ernestoObj, Locator.GetPlayerTransform().position, Quaternion.identity).GetComponent<ErnestoManager>();
         ernesto.SetSpeedMultiplier(index / 10f + 1f);
         ernestos.Add(ernesto.gameObject);

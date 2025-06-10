@@ -25,7 +25,7 @@ public class PlanetManager : MonoBehaviour
     private Transform staticTransformParent;
     private OWRigidbody rigidbody;
 
-    private bool waitingOnTeleport = false;
+    private bool playerRecentlyWarped = false;
     private bool teleportedIntoSpace = false;
     private bool lastPlayerPlanetState = false;
 
@@ -59,9 +59,12 @@ public class PlanetManager : MonoBehaviour
         bool onPlanet = IsOnPlanet();
         if (lastPlayerPlanetState != onPlanet)
         {
-            lastPlayerPlanetState = onPlanet;
+            if (!playerRecentlyWarped)
+            {
+                lastPlayerPlanetState = onPlanet;
+            }
 
-            if (!onPlanet && !waitingOnTeleport && !teleportedIntoSpace)
+            if (!onPlanet && !playerRecentlyWarped && !teleportedIntoSpace)
             {
                 teleportPlanets.Clear();
                 state.FollowedPlayerToPlanet = false;
@@ -76,6 +79,7 @@ public class PlanetManager : MonoBehaviour
                 currentPlanet = GetCurrentPlanetBody().gameObject;
                 if (noSpaceTeleportTarget)
                 {
+                    ErnestoChase.WriteDebugMessage("enter atmo");
                     rigidbody.SetVelocity(Vector3.zero);
                     transform.parent = currentPlanet.transform;
                 }
@@ -91,12 +95,12 @@ public class PlanetManager : MonoBehaviour
     public void OnPlayerWarped()
     {
         ErnestoChase.WriteDebugMessage("\nReceive warp event");
-        waitingOnTeleport = true;
+        playerRecentlyWarped = true;
         OnPlayerWarpStarted.Invoke(!lastPlayerPlanetState);
 
         ErnestoChase.Instance.ModHelper.Events.Unity.FireInNUpdates(() =>
         {
-            waitingOnTeleport = false;
+            playerRecentlyWarped = false;
             OWRigidbody planet = GetCurrentPlanetBody();
             if (planet == null)
             {
@@ -189,7 +193,7 @@ public class PlanetManager : MonoBehaviour
 
     public bool HasRecentlyTeleported()
     {
-        return waitingOnTeleport;
+        return playerRecentlyWarped;
     }
 
     public GameObject GetCurrentPlanet()
