@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
-using System.Diagnostics;
 using UnityEngine;
+using static TargetDataQueue;
 
 namespace ErnestoChase;
 
@@ -28,6 +28,12 @@ public class ErnestoMovement : MonoBehaviour
 
     private Queue<(Vector3 pos, bool isTeleport)> targets = new();
     private Queue<(Vector3 pos, bool isTeleport)> spaceTargets = new();
+
+    private TargetDataQueue storedTargets;
+    private bool usingStoredTargets = false;
+    private bool failedPlanetCheck = false;
+    private readonly int storedTargetsFrameDelay = 5;
+    private int frameDelay;
 
     private float targetSpawnDelay = 0.25f;
     private float spawnDelayTimer;
@@ -84,10 +90,10 @@ public class ErnestoMovement : MonoBehaviour
         currentSpaceSpeed = baseSpaceSpeed;
 
         spawnDelayTimer = targetSpawnDelay;
+        frameDelay = 0;
 
         enabled = false;
     }
-
 
     public void Initialize()
     {
@@ -99,7 +105,23 @@ public class ErnestoMovement : MonoBehaviour
         lastPlayerBrambleState = PlayerState.InBrambleDimension();
         lastPlayerDreamState = PlayerState.InDreamWorld();
 
+        if (storedTargets == null)
+        {
+            storedTargets = new();
+        }
+
         enabled = true;
+    }
+
+    public void SetStoredTargets(TargetDataQueue queue)
+    {
+        storedTargets = queue;
+        usingStoredTargets = true;
+    }
+
+    public TargetDataQueue GetStoredTargets()
+    {
+        return storedTargets;
     }
 
     public void SetSpeedMultiplier(float multiplier)
@@ -109,7 +131,7 @@ public class ErnestoMovement : MonoBehaviour
 
     private void FixedUpdate()
     {
-        if (planetManager.GetTargetParent() == null) return;
+        if (planetManager.GetTargetParent() == null || usingStoredTargets) return;
 
         if (spawnDelayTimer > 0f)
         {
@@ -140,6 +162,24 @@ public class ErnestoMovement : MonoBehaviour
 
     public void UpdateMovement(bool playerOnPlanet)
     {
+        if (usingStoredTargets)
+        {
+            FollowStoredTargets();
+            return;
+        }
+        else
+        {
+            if (frameDelay > 0)
+            {
+                frameDelay--;
+            }
+            else
+            {
+                frameDelay = storedTargetsFrameDelay;
+                storedTargets.AddTarget(GenerateTargetData());
+            }
+        }
+
         UpdateErnestoVisibility();
         UpdateMovementSpeed(playerOnPlanet);
 
@@ -188,6 +228,23 @@ public class ErnestoMovement : MonoBehaviour
     private void SpawnSpaceTarget(Vector3 localPosition, bool isTeleport = false)
     {
         spaceTargets.Enqueue((localPosition, isTeleport));
+    }
+
+    private TargetData GenerateTargetData()
+    {
+        Transform parent;
+        if (transform.parent == planetManager.GetErnestoBody().transform)
+        {
+            parent = planetManager.GetStaticParent();
+        }
+        else
+        {
+            parent = transform.parent;
+        }
+
+        return new TargetData(parent.name, parent.InverseTransformPoint(transform.position), 
+            planetManager.GetStaticParent().InverseTransformPoint(transform.position), 
+            Time.fixedTime);
     }
 
     private void UpdateErnestoVisibility()
@@ -343,6 +400,52 @@ public class ErnestoMovement : MonoBehaviour
             planetManager.GetErnestoBody().SetVelocity((transform.forward * currentSpaceSpeed) + Locator.GetPlayerBody().GetVelocity());
             currentSpaceSpeed = spaceTimedStartDistance / ErnestoChase.Instance.SpaceTimer;
         }
+    }
+
+    private void FollowStoredTargets()
+    {
+        TargetData targetData;
+
+        if (frameDelay <= 0)
+        {
+            frameDelay = storedTargetsFrameDelay;
+
+            storedTargets.PopNextTarget(out var data);
+            targetData = data;
+
+            if (transform.parent.name != targetData.parent)
+            {
+                var parent = GameObject.Find(targetData.parent);
+                if (parent != null)
+                {
+                    transform.parent = parent.transform;
+                    transform.localPosition = targetData.localPosition;
+                    failedPlanetCheck = false;
+                }
+                else if (!failedPlanetCheck)
+                {
+                    failedPlanetCheck = true;
+                    transform.parent = planetManager.GetStaticParent();
+                }
+            }
+
+            lastPosition = transform.localPosition;
+            lastRotation = transform.rotation;
+            lastTime = Time.fixedTime;
+        }
+        else
+        {
+            targetData = storedTargets.PeekNextTarget();
+            frameDelay--;
+        }
+
+        Vector3 targetPos = failedPlanetCheck ? targetData.worldPosition : targetData.localPosition;
+        Quaternion targetRotation = Quaternion.LookRotation(gameObject.GetAttachedOWRigidbody().transform.TransformPoint(targetPos) - transform.position,
+                -planetManager.GetCurrentGravity().CalculateForceAccelerationAtPoint(transform.position));
+
+        float timeLerp = Mathf.InverseLerp(lastTime, lastTime + (Time.fixedDeltaTime * storedTargetsFrameDelay), Time.fixedTime);
+        transform.localPosition = Vector3.Lerp(lastPosition, targetPos, timeLerp);
+        transform.rotation = Quaternion.Slerp(lastRotation, targetRotation, timeLerp);
     }
 
     private void TryProximityRoar()

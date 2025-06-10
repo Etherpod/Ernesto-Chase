@@ -29,6 +29,8 @@ public class ErnestoChase : ModBehaviour
     public OWRigidbody ernestoBody;
     public bool playerDetectorReady = false;
     public List<GameObject> ernestos = [];
+    public List<GameObject> oldErnestos = [];
+    public List<TargetDataQueue> storedErnestoTargets = [];
 
     public float MovementSpeed => (float)settings["movementSpeed"].property;
     public float SpaceSpeed => (float)settings["spaceSpeed"].property;
@@ -41,6 +43,8 @@ public class ErnestoChase : ModBehaviour
     public bool QuantumMode => (bool)settings["enableQuantumMode"].property;
     public bool CustomEndScreen => (bool)settings["customEndScreen"].property;
     public bool ErnestoCam => (bool)settings["ernestoCam"].property;
+    public float ErnestoNumber => (float)settings["ernestoNumber"].property;
+    public bool ErnestoStacking => (bool)settings["ernestoStacking"].property;
 
     private Dictionary<string, (object value, object property)> settings = new()
     {
@@ -56,6 +60,8 @@ public class ErnestoChase : ModBehaviour
         { "enableQuantumMode", (false, false) },
         { "customEndScreen", (false, false) },
         { "ernestoCam", (false, false) },
+        { "ernestoNumber", (1f, 1f) },
+        { "ernestoStacking", (false, false) },
     };
 
     private Dictionary<string, object> randomSettings = new()
@@ -67,10 +73,12 @@ public class ErnestoChase : ModBehaviour
         { "startDelay", new object[] { 10f, 60f } },
         { "spaceAccelerationType", new object[] { "Cumulative", "Linear", "Linear", "Timed", "Timed" } },
         { "spaceTimer", new object[] { 30f, 120f } },
-        { "enableStealthMode", new object[] { false, true } },
-        { "enableQuantumMode", new object[] { false, true } },
+        { "enableStealthMode", new object[] { false, false, true } },
+        { "enableQuantumMode", new object[] { false, false, true } },
         { "customEndScreen", new object[] { false, true } },
         { "ernestoCam", new object[] { false, true } },
+        { "ernestoNumber", new object[] { 1f, 3f } },
+        { "ernestoStacking", new object[] { false, true } },
     };
 
     public static readonly bool EnableDebugMode = true;
@@ -91,12 +99,40 @@ public class ErnestoChase : ModBehaviour
 
             playerDetectorReady = false;
             ernestos.Clear();
+            oldErnestos.Clear();
             ernestoBody = null;
             PatchnestoClass.Initialize();
 
             UpdateProperties();
 
             StartCoroutine(WaitForPlayer());
+        };
+
+        LoadManager.OnStartSceneLoad += (scene, loadScene) =>
+        {
+            if (scene != OWScene.SolarSystem || loadScene != OWScene.SolarSystem) return;
+
+            if (!ErnestoStacking)
+            {
+                storedErnestoTargets.Clear();
+                return;
+            }
+
+            foreach (var list in storedErnestoTargets)
+            {
+                list.Reset();
+            }
+
+            foreach (var ernesto in ernestos)
+            {
+                if (oldErnestos.Contains(ernesto))
+                {
+                    oldErnestos.Remove(ernesto);
+                    continue;
+                }
+
+                storedErnestoTargets.Add(ernesto.GetComponent<ErnestoManager>().GetStoredTargets());
+            }
         };
     }
 
@@ -133,23 +169,29 @@ public class ErnestoChase : ModBehaviour
     private IEnumerator WaitForPlayer()
     {
         yield return new WaitUntil(() => Locator.GetPlayerBody() != null);
-        for (int i = 0; i < 1; i++)
-        {
-            SpawnErnesto(i);
-        }
+        SpawnErnestos();
     }
 
-    private void SpawnErnesto(int index)
+    private void SpawnErnestos()
     {
-        GameObject ernestoObj = LoadPrefab("Assets/ErnestoChase/Ernesto.prefab");
-        AssetBundleUtilities.ReplaceShaders(ernestoObj);
-        if (!ErnestoCam)
+        for (int i = 0; i < (int)ErnestoNumber + storedErnestoTargets.Count; i++)
         {
-            ernestoObj.GetComponentInChildren<ErnestoCamera>().gameObject.SetActive(false);
+            GameObject ernestoObj = LoadPrefab("Assets/ErnestoChase/Ernesto.prefab");
+            AssetBundleUtilities.ReplaceShaders(ernestoObj);
+            if (!ErnestoCam)
+            {
+                ernestoObj.GetComponentInChildren<ErnestoCamera>().gameObject.SetActive(false);
+            }
+            ErnestoManager ernesto = Instantiate(ernestoObj, Locator.GetPlayerTransform().position, Quaternion.identity).GetComponent<ErnestoManager>();
+            ernesto.IncrementSpawnDelay(i);
+            ernestos.Add(ernesto.gameObject);
+
+            if (ErnestoStacking && storedErnestoTargets.Count > i)
+            {
+                ernesto.SetStoredTargets(storedErnestoTargets[i]);
+                oldErnestos.Add(ernesto.gameObject);
+            }
         }
-        ErnestoManager ernesto = Instantiate(ernestoObj, Locator.GetPlayerTransform().position, Quaternion.identity).GetComponent<ErnestoManager>();
-        ernesto.SetSpeedMultiplier(index / 10f + 1f);
-        ernestos.Add(ernesto.gameObject);
     }
 
     public void OnPlayerWarpedEvent()

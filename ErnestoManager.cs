@@ -47,6 +47,8 @@ public class ErnestoManager : MonoBehaviour
         ernestoEffects.OnEnterBlackHole += OnEnterBlackHole;
 
         ErnestoChase.Instance.OnPlayerWarped += planetManager.OnPlayerWarped;
+
+        releaseDelay = ErnestoChase.Instance.StartDelay;
     }
 
     private void FixedUpdate()
@@ -93,10 +95,20 @@ public class ErnestoManager : MonoBehaviour
         state.LastPlayerPos = planetManager.GetPlayerParent().InverseTransformPoint(Locator.GetPlayerTransform().position);
     }
 
-    public void SetSpeedMultiplier(float multiplier)
+    public void IncrementSpawnDelay(float index)
     {
-        releaseDelay *= multiplier * 2f;
-        ernestoMovement.SetSpeedMultiplier(multiplier);
+        releaseDelay += 2f * index;
+        //ernestoMovement.SetSpeedMultiplier(multiplier / 10f + 1f);
+    }
+
+    public void SetStoredTargets(TargetDataQueue queue)
+    {
+        ernestoMovement.SetStoredTargets(queue);
+    }
+
+    public TargetDataQueue GetStoredTargets()
+    {
+        return ernestoMovement.GetStoredTargets();
     }
 
     public void OnUpdateTravelMode(bool isSpace)
@@ -125,7 +137,7 @@ public class ErnestoManager : MonoBehaviour
 
     private IEnumerator ErnestoReleaseDelay()
     {
-        yield return new WaitForSeconds(3f);
+        yield return new WaitForSeconds(releaseDelay);
         if (planetManager.IsOnPlanet())
         {
             ernestoMovement.OnErnestoRelease();

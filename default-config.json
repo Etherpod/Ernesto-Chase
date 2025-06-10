@@ -63,6 +63,18 @@
       "type": "number",
       "value": 15
     },
+    "ernestoNumber": {
+      "title": "Number of Ernestos",
+      "tooltip": "The number of Ernestos to spawn each loop.",
+      "type": "number",
+      "value": 1
+    },
+    "ernestoStacking": {
+      "title": "Enable Ernesto Stacking",
+      "tooltip": "Lets Ernestos from previous loops join the hunt.",
+      "type": "toggle",
+      "value": false
+    },
 
     "Extras": {
       "type": "separator"
@@ -82,7 +94,7 @@
     },
     "ernestoCam": {
       "title": "Enable ErnestoCam",
-      "tooltip": "Let's you see Ernesto's POV by taking a reverse snapshot with your probe launcher while in photo mode.",
+      "tooltip": "Lets you see Ernesto's POV by taking a reverse snapshot with your probe launcher while in photo mode.",
       "type": "toggle",
       "value": false
     },
@@ -90,7 +102,7 @@
       "title": "Custom Death Screen",
       "tooltip": "Turn this off to reset the loop like normal if Ernesto catches you.",
       "type": "toggle",
-      "value": true
+      "value": false
     },
     "randomMode": {
       "title": "Enable Randomizer",

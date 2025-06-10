@@ -18,6 +18,7 @@ public static class PatchnestoClass
     public static void Initialize()
     {
         caughtErnestos.Clear();
+        ernestoCamIndex = 0;
     }
 
     [HarmonyPostfix]
@@ -101,9 +102,11 @@ public static class PatchnestoClass
         caughtErnestos.Add(ernesto);
     }
 
+    private static int ernestoCamIndex = 0;
+
     [HarmonyPostfix]
     [HarmonyPatch(typeof(ProbeLauncher), nameof(ProbeLauncher.UpdatePreLaunch))]
-    private static void ErnestoCam(ProbeLauncher __instance)
+    public static void ErnestoCam(ProbeLauncher __instance)
     {
         if (!ErnestoChase.Instance.ErnestoCam || (__instance.GetName() != ProbeLauncher.Name.Player
             && __instance.GetName() != ProbeLauncher.Name.Ship))
@@ -111,39 +114,69 @@ public static class PatchnestoClass
             return;
         }
 
-        if (__instance.InPhotoMode() && OWInput.IsNewlyPressed(InputLibrary.toolActionSecondary))
+        if (__instance.InPhotoMode())
         {
-            RenderTexture renderTexture = ErnestoChase.Instance.ernestos[0].GetComponentInChildren<ErnestoCamera>().TakeSnapshot();
-            __instance._lastSnapshot = renderTexture;
-            __instance._effects.PlaySnapshotClip(true);
-
-            ProbeLauncherUI ui = GameObject.Find("PlayerHUD").GetComponentInChildren<ProbeLauncherUI>();
-            if (ui._probeLauncher.GetName() == ProbeLauncher.Name.Player)
+            if (OWInput.IsNewlyPressed(InputLibrary.toolActionSecondary))
             {
-                if (ui._nonSuitUI)
+                DrawErnestoCam(__instance);
+            }
+
+            if (ErnestoChase.Instance.ernestos.Count > 1)
+            {
+                if (OWInput.IsNewlyPressed(InputLibrary.toolOptionUp))
                 {
-                    if (Locator.GetPlayerSuit().IsWearingSuit(true))
+                    ernestoCamIndex++;
+                    if (ernestoCamIndex >= ErnestoChase.Instance.ernestos.Count)
                     {
-                        return;
+                        ernestoCamIndex = 0;
                     }
-                    ProbeLauncherUI.s_removeSnapshopPrompt.SetVisibility(true);
-                    ui.ActivateUI();
+                    DrawErnestoCam(__instance);
                 }
-                else if (!Locator.GetPlayerSuit().IsWearingSuit(true))
+                else if (OWInput.IsNewlyPressed(InputLibrary.toolOptionDown))
+                {
+                    ernestoCamIndex--;
+                    if (ernestoCamIndex < 0)
+                    {
+                        ernestoCamIndex = ErnestoChase.Instance.ernestos.Count - 1;
+                    }
+                    DrawErnestoCam(__instance);
+                }
+            }
+        }
+    }
+
+    public static void DrawErnestoCam(ProbeLauncher __instance)
+    {
+        RenderTexture renderTexture = ErnestoChase.Instance.ernestos[ernestoCamIndex].GetComponentInChildren<ErnestoCamera>().TakeSnapshot();
+        __instance._lastSnapshot = renderTexture;
+        __instance._effects.PlaySnapshotClip(true);
+
+        ProbeLauncherUI ui = GameObject.Find("PlayerHUD").GetComponentInChildren<ProbeLauncherUI>();
+        if (ui._probeLauncher.GetName() == ProbeLauncher.Name.Player)
+        {
+            if (ui._nonSuitUI)
+            {
+                if (Locator.GetPlayerSuit().IsWearingSuit(true))
                 {
                     return;
                 }
+                ProbeLauncherUI.s_removeSnapshopPrompt.SetVisibility(true);
+                ui.ActivateUI();
             }
-            ui._snapshotTime = Time.time;
-            if (ui._canvas != null)
+            else if (!Locator.GetPlayerSuit().IsWearingSuit(true))
             {
-                ui._canvas.enabled = true;
+                return;
             }
-            ui._image.enabled = true;
-            ui._image.material.SetTexture("_MainTex", ui._rearSnapshotOverlay);
-            ui._image.material.SetTexture("_MainTex", renderTexture);
-            ui._image.SetMaterialDirty();
         }
+        ui._snapshotTime = Time.time;
+        if (ui._canvas != null)
+        {
+            ui._canvas.enabled = true;
+        }
+        ui._image.enabled = true;
+        ui._image.material.SetTexture("_MainTex", ui._rearSnapshotOverlay);
+        ui._image.material.SetTexture("_MainTex", renderTexture);
+        ui._image.SetMaterialDirty();
     }
 
     public static bool ignoreNextMenuActivation = false;
