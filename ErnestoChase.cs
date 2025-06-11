@@ -96,7 +96,6 @@ public class ErnestoChase : ModBehaviour
             if (!ErnestoStacking)
             {
                 storedErnestoTargets.Clear();
-                return;
             }
 
             StartCoroutine(WaitForPlayer());

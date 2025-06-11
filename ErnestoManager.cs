@@ -113,8 +113,6 @@ public class ErnestoManager : MonoBehaviour
 
     public TargetDataQueue GetStoredTargets()
     {
-        ErnestoChase.WriteDebugMessage("movement: " + ernestoMovement);
-        ErnestoChase.WriteDebugMessage(ernestoMovement.GetStoredTargets());
         return ernestoMovement.GetStoredTargets();
     }
 
