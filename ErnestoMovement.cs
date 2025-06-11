@@ -68,7 +68,7 @@ public class ErnestoMovement : MonoBehaviour
         planetManager = GetComponent<PlanetManager>();
 
         float speedMultiplier;
-        float speedLerp = Mathf.InverseLerp(1, 10, ErnestoChase.Instance.MovementSpeed);
+        float speedLerp = state.MovementSpeed;
         if (speedLerp < 0.5f)
         {
             speedMultiplier = Mathf.Lerp(0.2f, 1f, speedLerp * 2);
@@ -78,9 +78,10 @@ public class ErnestoMovement : MonoBehaviour
             speedMultiplier = Mathf.Lerp(1f, 4f, (speedLerp - 0.5f) * 2);
         }
 
-        if (ErnestoChase.Instance.QuantumMode)
+        if (state.QuantumMode)
         {
             speedMultiplier *= 5f;
+            ernestoFrozen = false;
         }
 
         baseSpeed *= speedMultiplier;
@@ -249,7 +250,7 @@ public class ErnestoMovement : MonoBehaviour
 
     private void UpdateErnestoVisibility()
     {
-        if (!ErnestoChase.Instance.QuantumMode)
+        if (!state.QuantumMode)
         {
             return;
         }
@@ -339,7 +340,7 @@ public class ErnestoMovement : MonoBehaviour
             transform.rotation = Quaternion.Slerp(lastRotation, nextRotation, positionLerp);
 
             TryShortcut();
-            if (ErnestoChase.Instance.StealthMode)
+            if (state.StealthMode)
             {
                 TryProximityRoar();
             }
@@ -359,7 +360,7 @@ public class ErnestoMovement : MonoBehaviour
 
     private void TryShortcut()
     {
-        float speedLerp = Mathf.InverseLerp(1f, 10f, ErnestoChase.Instance.MovementSpeed);
+        float speedLerp = state.MovementSpeed;
         Vector3 toPlayer = Locator.GetPlayerTransform().position - transform.position;
 
         if (!hasTakenShortcut && targets.Count > 20
@@ -383,14 +384,14 @@ public class ErnestoMovement : MonoBehaviour
     {
         transform.LookAt(Locator.GetPlayerTransform(), Locator.GetPlayerTransform().up);
 
-        float speedLerp = Mathf.InverseLerp(1, 10, ErnestoChase.Instance.SpaceSpeed);
+        float speedLerp = state.SpaceSpeed;
 
-        if (ErnestoChase.Instance.SpaceAccelerationType == "Cumulative")
+        if (state.SpaceAccelerationType == "Cumulative")
         {
             planetManager.GetErnestoBody().AddForce(transform.forward * currentSpaceSpeed);
             currentSpaceSpeed += Time.fixedDeltaTime * 5f * (speedLerp + 0.5f);
         }
-        else if (ErnestoChase.Instance.SpaceAccelerationType == "Linear")
+        else if (state.SpaceAccelerationType == "Linear")
         {
             planetManager.GetErnestoBody().SetVelocity((transform.forward * currentSpaceSpeed) + Locator.GetPlayerBody().GetVelocity());
             currentSpaceSpeed += Time.fixedDeltaTime * 5f * speedLerp;
@@ -398,7 +399,7 @@ public class ErnestoMovement : MonoBehaviour
         else
         {
             planetManager.GetErnestoBody().SetVelocity((transform.forward * currentSpaceSpeed) + Locator.GetPlayerBody().GetVelocity());
-            currentSpaceSpeed = spaceTimedStartDistance / ErnestoChase.Instance.SpaceTimer;
+            currentSpaceSpeed = spaceTimedStartDistance / state.SpaceTimer;
         }
     }
 
@@ -450,7 +451,7 @@ public class ErnestoMovement : MonoBehaviour
 
     private void TryProximityRoar()
     {
-        float speedLerp = Mathf.InverseLerp(1f, 10f, ErnestoChase.Instance.MovementSpeed);
+        float speedLerp = state.MovementSpeed;
         float proximityCutoff = Mathf.Lerp(15f * 15f, 40f * 40f, speedLerp);
 
         if (!proximityRoar && targets.Count < 20
@@ -550,11 +551,11 @@ public class ErnestoMovement : MonoBehaviour
         {
             if (brambleSpeedMarkers[targetPos])
             {
-                currentSpeed *= ErnestoChase.Instance.BrambleSpeedMultiplier;
+                currentSpeed *= state.BrambleSpeedMultiplier;
             }
             else
             {
-                currentSpeed /= ErnestoChase.Instance.BrambleSpeedMultiplier;
+                currentSpeed /= state.BrambleSpeedMultiplier;
             }
             brambleSpeedMarkers.Remove(targetPos);
         }
@@ -563,11 +564,11 @@ public class ErnestoMovement : MonoBehaviour
         {
             if (dreamWorldSpeedMarkers[targetPos])
             {
-                currentSpeed *= ErnestoChase.Instance.DreamWorldSpeedMultiplier;
+                currentSpeed *= state.DreamWorldSpeedMultiplier;
             }
             else
             {
-                currentSpeed /= ErnestoChase.Instance.DreamWorldSpeedMultiplier;
+                currentSpeed /= state.DreamWorldSpeedMultiplier;
             }
             dreamWorldSpeedMarkers.Remove(targetPos);
         }

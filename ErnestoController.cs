@@ -78,7 +78,7 @@ public class ErnestoController : MonoBehaviour
         killVolume.OnExit += OnExit;
 
         targetPrefab = ErnestoChase.LoadPrefab("Assets/ErnestoChase/ErnestoTarget.prefab");
-        rigidbody = ErnestoChase.Instance.ernestoBody;
+        //rigidbody = ErnestoChase.Instance.ernestoBody;
         animator = GetComponentInChildren<Animator>();
         loopingAudio = GetComponentInChildren<OWAudioSource>();
         ernestoRenderer = GetComponentInChildren<SkinnedMeshRenderer>();

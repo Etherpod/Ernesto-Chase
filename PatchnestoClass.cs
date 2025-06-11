@@ -39,12 +39,14 @@ public static class PatchnestoClass
     [HarmonyPatch(typeof(OWRigidbody), nameof(OWRigidbody.SetPosition))]
     public static void DetectPlayerWarp(OWRigidbody __instance, Vector3 worldPosition)
     {
-        bool flag = (__instance.CompareTag("Player") && !PlayerState.IsInsideShip()) || (__instance.CompareTag("Ship") && PlayerState.IsInsideShip()/* && ErnestoChase.Instance.inFogWarp*/);
+        bool flag = (__instance.CompareTag("Player") && !PlayerState.IsInsideShip()) || (__instance.CompareTag("Ship") && PlayerState.IsInsideShip())
+            || (__instance.CompareTag("ShipCockpit") && PlayerState.AtFlightConsole() && PlayerState.IsAttached());
+
         if (!flag || !ErnestoChase.Instance.playerDetectorReady || !TimeLoop.IsTimeFlowing())
         {
-            //ErnestoChase.WriteDebugMessage("In fog warp: " + ErnestoChase.Instance.inFogWarp);
             return;
         }
+
         if ((worldPosition - Locator.GetPlayerTransform().position).sqrMagnitude > 50f * 50f)
         {
             ErnestoChase.WriteDebugMessage("Player warped");
@@ -108,7 +110,7 @@ public static class PatchnestoClass
     [HarmonyPatch(typeof(ProbeLauncher), nameof(ProbeLauncher.UpdatePreLaunch))]
     public static void ErnestoCam(ProbeLauncher __instance)
     {
-        if (!ErnestoChase.Instance.ErnestoCam || (__instance.GetName() != ProbeLauncher.Name.Player
+        if (ErnestoChase.Instance.camErnestos.Count == 0 || (__instance.GetName() != ProbeLauncher.Name.Player
             && __instance.GetName() != ProbeLauncher.Name.Ship))
         {
             return;
@@ -121,12 +123,12 @@ public static class PatchnestoClass
                 DrawErnestoCam(__instance);
             }
 
-            if (ErnestoChase.Instance.ernestos.Count > 1)
+            if (ErnestoChase.Instance.camErnestos.Count > 1)
             {
                 if (OWInput.IsNewlyPressed(InputLibrary.toolOptionUp))
                 {
                     ernestoCamIndex++;
-                    if (ernestoCamIndex >= ErnestoChase.Instance.ernestos.Count)
+                    if (ernestoCamIndex >= ErnestoChase.Instance.camErnestos.Count)
                     {
                         ernestoCamIndex = 0;
                     }
@@ -137,7 +139,7 @@ public static class PatchnestoClass
                     ernestoCamIndex--;
                     if (ernestoCamIndex < 0)
                     {
-                        ernestoCamIndex = ErnestoChase.Instance.ernestos.Count - 1;
+                        ernestoCamIndex = ErnestoChase.Instance.camErnestos.Count - 1;
                     }
                     DrawErnestoCam(__instance);
                 }
@@ -147,7 +149,7 @@ public static class PatchnestoClass
 
     public static void DrawErnestoCam(ProbeLauncher __instance)
     {
-        RenderTexture renderTexture = ErnestoChase.Instance.ernestos[ernestoCamIndex].GetComponentInChildren<ErnestoCamera>().TakeSnapshot();
+        RenderTexture renderTexture = ErnestoChase.Instance.camErnestos[ernestoCamIndex].GetComponentInChildren<ErnestoCamera>().TakeSnapshot();
         __instance._lastSnapshot = renderTexture;
         __instance._effects.PlaySnapshotClip(true);
 

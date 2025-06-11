@@ -58,7 +58,7 @@ public class ErnestoEffects : MonoBehaviour
 
         ernestoMesh.transform.localScale = Vector3.zero;
         anglerLight.range = baseLightRange * (ernestoMesh.transform.localScale.magnitude / baseMeshScale);
-        if (ErnestoChase.Instance.StealthMode)
+        if (state.StealthMode)
         {
             anglerLight.intensity = 0f;
         }
@@ -85,7 +85,7 @@ public class ErnestoEffects : MonoBehaviour
             animator.SetTrigger("Impulse");
             oneShotAudio.PlayOneShot(AudioType.DBAnglerfishDetectTarget, 0.8f);
             loopingAudio.AssignAudioLibraryClip(AudioType.DBAnglerfishChasing_LP);
-            if (!ErnestoChase.Instance.StealthMode)
+            if (!state.StealthMode)
             {
                 loopingAudio.FadeIn(1f);
             }
@@ -97,13 +97,13 @@ public class ErnestoEffects : MonoBehaviour
     {
         if (isSpace)
         {
-            if (ErnestoChase.Instance.SpaceAccelerationType == "Timed")
+            if (state.SpaceAccelerationType == "Timed")
             {
                 if (audioTransition != null)
                 {
                     StopCoroutine(audioTransition);
                 }
-                audioTransition = ErnestoChase.Instance.StealthMode ? null : StartCoroutine(SpaceAudioTransition());
+                audioTransition = state.StealthMode ? null : StartCoroutine(SpaceAudioTransition());
             }
         }
         else
@@ -112,7 +112,7 @@ public class ErnestoEffects : MonoBehaviour
             {
                 StopCoroutine(audioTransition);
             }
-            audioTransition = ErnestoChase.Instance.StealthMode ? null : StartCoroutine(AtmosphereAudioTransition());
+            audioTransition = state.StealthMode ? null : StartCoroutine(AtmosphereAudioTransition());
         }
     }
 
@@ -185,7 +185,7 @@ public class ErnestoEffects : MonoBehaviour
         whiteHole.transform.localPosition = transform.localPosition;
         whiteHole.WarpObjectIn(2f);
         whiteHole.singularityController.OnCreation += OnWhiteHoleCreated;
-        if (!ErnestoChase.Instance.StealthMode)
+        if (!state.StealthMode)
         {
             loopingAudio.FadeIn(1f);
         }
@@ -198,9 +198,9 @@ public class ErnestoEffects : MonoBehaviour
         loopingAudio.SetMaxVolume(1f);
         loopingAudio.spatialBlend = 0f;
         loopingAudio.SetTrack(OWAudioMixer.TrackName.Environment_Unfiltered);
-        loopingAudio.FadeIn(ErnestoChase.Instance.SpaceTimer, true);
-        yield return new WaitForSeconds(ErnestoChase.Instance.SpaceTimer > 12f 
-            ? ErnestoChase.Instance.SpaceTimer - 7f : ErnestoChase.Instance.SpaceTimer * 0.8f);
+        loopingAudio.FadeIn(state.SpaceTimer, true);
+        yield return new WaitForSeconds(state.SpaceTimer > 12f 
+            ? state.SpaceTimer - 7f : state.SpaceTimer * 0.8f);
         loopingAudio.PlayOneShot(AudioType.DBAnglerfishDetectTarget, 1f);
         audioTransition = null;
     }

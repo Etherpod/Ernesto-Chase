@@ -49,6 +49,11 @@ public class ErnestoManager : MonoBehaviour
         ErnestoChase.Instance.OnPlayerWarped += planetManager.OnPlayerWarped;
 
         releaseDelay = ErnestoChase.Instance.StartDelay;
+
+        if (!state.ErnestoCam)
+        {
+            GetComponentInChildren<ErnestoCamera>().gameObject.SetActive(false);
+        }
     }
 
     private void FixedUpdate()
@@ -108,6 +113,8 @@ public class ErnestoManager : MonoBehaviour
 
     public TargetDataQueue GetStoredTargets()
     {
+        ErnestoChase.WriteDebugMessage("movement: " + ernestoMovement);
+        ErnestoChase.WriteDebugMessage(ernestoMovement.GetStoredTargets());
         return ernestoMovement.GetStoredTargets();
     }
 

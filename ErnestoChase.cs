@@ -26,10 +26,11 @@ public class ErnestoChase : ModBehaviour
 
     public static ErnestoChase Instance;
     public AssetBundle assetBundle;
-    public OWRigidbody ernestoBody;
+    public GameObject ernesto;
     public bool playerDetectorReady = false;
     public List<GameObject> ernestos = [];
     public List<GameObject> oldErnestos = [];
+    public List<GameObject> camErnestos = [];
     public List<TargetDataQueue> storedErnestoTargets = [];
 
     public float MovementSpeed => (float)settings["movementSpeed"].property;
@@ -45,6 +46,7 @@ public class ErnestoChase : ModBehaviour
     public bool ErnestoCam => (bool)settings["ernestoCam"].property;
     public float ErnestoNumber => (float)settings["ernestoNumber"].property;
     public bool ErnestoStacking => (bool)settings["ernestoStacking"].property;
+    public bool RandomMode => (bool)settings["randomMode"].property;
 
     private Dictionary<string, (object value, object property)> settings = new()
     {
@@ -64,23 +66,6 @@ public class ErnestoChase : ModBehaviour
         { "ernestoStacking", (false, false) },
     };
 
-    private Dictionary<string, object> randomSettings = new()
-    {
-        { "movementSpeed", new object[] { 3f, 10f } },
-        { "spaceSpeed", new object[] { 3f, 10f } },
-        { "brambleSpeedMultiplier", new object[] { 1f, 5f } },
-        { "dreamWorldSpeedMultiplier", new object[] { 0.2f, 1.2f } },
-        { "startDelay", new object[] { 10f, 60f } },
-        { "spaceAccelerationType", new object[] { "Cumulative", "Linear", "Linear", "Timed", "Timed" } },
-        { "spaceTimer", new object[] { 30f, 120f } },
-        { "enableStealthMode", new object[] { false, false, true } },
-        { "enableQuantumMode", new object[] { false, false, true } },
-        { "customEndScreen", new object[] { false, true } },
-        { "ernestoCam", new object[] { false, true } },
-        { "ernestoNumber", new object[] { 1f, 3f } },
-        { "ernestoStacking", new object[] { false, true } },
-    };
-
     public static readonly bool EnableDebugMode = true;
 
     private void Awake()
@@ -92,6 +77,9 @@ public class ErnestoChase : ModBehaviour
     private void Start()
     {
         assetBundle = AssetBundle.LoadFromFile(Path.Combine(ModHelper.Manifest.ModFolderPath, "assets/ernestochase"));
+        ernesto = LoadPrefab("Assets/ErnestoChase/Ernesto.prefab");
+        AssetBundleUtilities.ReplaceShaders(ernesto);
+        ernesto.SetActive(false);
 
         LoadManager.OnCompleteSceneLoad += (scene, loadScene) =>
         {
@@ -99,11 +87,17 @@ public class ErnestoChase : ModBehaviour
 
             playerDetectorReady = false;
             ernestos.Clear();
+            camErnestos.Clear();
             oldErnestos.Clear();
-            ernestoBody = null;
             PatchnestoClass.Initialize();
 
             UpdateProperties();
+
+            if (!ErnestoStacking)
+            {
+                storedErnestoTargets.Clear();
+                return;
+            }
 
             StartCoroutine(WaitForPlayer());
         };
@@ -111,12 +105,6 @@ public class ErnestoChase : ModBehaviour
         LoadManager.OnStartSceneLoad += (scene, loadScene) =>
         {
             if (scene != OWScene.SolarSystem || loadScene != OWScene.SolarSystem) return;
-
-            if (!ErnestoStacking)
-            {
-                storedErnestoTargets.Clear();
-                return;
-            }
 
             foreach (var list in storedErnestoTargets)
             {
@@ -140,30 +128,77 @@ public class ErnestoChase : ModBehaviour
     {
         var keys = settings.Keys.ToArray();
         bool randomMode = (bool)settings["randomMode"].value;
-        for (int i = 0; i < keys.Length; i++)
+
+        if (randomMode)
         {
-            if (randomMode && randomSettings.ContainsKey(keys[i]) && randomSettings[keys[i]] is object[] list)
-            {
-                if (list[0] is float)
-                {
-                    settings[keys[i]] = (settings[keys[i]].value, UnityEngine.Random.Range((float)list[0], (float)list[1]));
-                }
-                else if (list[0] is bool)
-                {
-                    settings[keys[i]] = (settings[keys[i]].value, UnityEngine.Random.value > 0.5f);
-                }
-                else if (list[0] is string)
-                {
-                    int randIndex = UnityEngine.Random.Range(0, list.Length);
-                    settings[keys[i]] = (settings[keys[i]].value, list[randIndex]);
-                }
-            }
-            else
+            settings = GenerateRandomSettings();
+        }
+        else
+        {
+            for (int i = 0; i < keys.Length; i++)
             {
                 settings[keys[i]] = (settings[keys[i]].value, settings[keys[i]].value);
             }
         }
-        WriteDebugMessage(MovementSpeed);
+    }
+
+    private Dictionary<string, (object value, object property)> GenerateRandomSettings()
+    {
+        var keys = settings.Keys.ToArray();
+        Dictionary<string, (object value, object property)> output = new();
+
+        foreach (var pair in settings)
+        {
+            output.Add(pair.Key, pair.Value);
+        }
+
+        var data = JsonConvert.DeserializeObject<Dictionary<string, object>>(
+            File.ReadAllText(Path.Combine(ModHelper.Manifest.ModFolderPath, "RandomizerSettings.json"))
+        );
+
+        for (int i = 0; i < keys.Length; i++)
+        {
+            string setting = keys[i];
+            output[setting] = (output[setting].value, output[setting].value);
+
+            if (data.ContainsKey(setting))
+            {
+                try
+                {
+                    var optionData = JsonConvert.DeserializeObject<RandomOption>(data[setting].ToString());
+
+                    if (UnityEngine.Random.value < optionData.Chance)
+                    {
+                        int randIndex = UnityEngine.Random.Range(0, optionData.Options.Length);
+                        output[setting] = (output[setting].value, optionData.Options[randIndex]);
+                    }
+                    continue;
+                }
+                catch (JsonSerializationException) { }
+
+                try
+                {
+                    var floatData = JsonConvert.DeserializeObject<RandomFloat>(data[setting].ToString());
+                    if (UnityEngine.Random.value < floatData.Chance)
+                    {
+                        output[setting] = (output[setting].value, UnityEngine.Random.Range(floatData.Min, floatData.Max));
+                    }
+                    continue;
+                }
+                catch (JsonSerializationException) { }
+
+                try
+                {
+                    var boolData = JsonConvert.DeserializeObject<RandomBool>(data[setting].ToString());
+
+                    output[setting] = (output[setting].value, UnityEngine.Random.value < boolData.Chance);
+                    continue;
+                }
+                catch (JsonSerializationException) { }
+            }
+        }
+
+        return output;
     }
 
     private IEnumerator WaitForPlayer()
@@ -176,20 +211,32 @@ public class ErnestoChase : ModBehaviour
     {
         for (int i = 0; i < (int)ErnestoNumber + storedErnestoTargets.Count; i++)
         {
-            GameObject ernestoObj = LoadPrefab("Assets/ErnestoChase/Ernesto.prefab");
-            AssetBundleUtilities.ReplaceShaders(ernestoObj);
-            if (!ErnestoCam)
+            GameObject ernestoObj = Instantiate(ernesto, Locator.GetPlayerTransform().position, Quaternion.identity);
+            ErnestoManager manager = ernestoObj.GetComponent<ErnestoManager>();
+            ErnestoState state = ernestoObj.GetComponent<ErnestoState>();
+
+            if (RandomMode)
             {
-                ernestoObj.GetComponentInChildren<ErnestoCamera>().gameObject.SetActive(false);
+                state.InitializeStats(GenerateRandomSettings());
             }
-            ErnestoManager ernesto = Instantiate(ernestoObj, Locator.GetPlayerTransform().position, Quaternion.identity).GetComponent<ErnestoManager>();
-            ernesto.IncrementSpawnDelay(i);
-            ernestos.Add(ernesto.gameObject);
+            else
+            {
+                state.InitializeStats(settings);
+            }
+
+            ernestoObj.SetActive(true);
+            manager.IncrementSpawnDelay(i);
+            ernestos.Add(ernestoObj);
+
+            if (state.ErnestoCam)
+            {
+                camErnestos.Add(ernestoObj);
+            }
 
             if (ErnestoStacking && storedErnestoTargets.Count > i)
             {
-                ernesto.SetStoredTargets(storedErnestoTargets[i]);
-                oldErnestos.Add(ernesto.gameObject);
+                manager.SetStoredTargets(storedErnestoTargets[i]);
+                oldErnestos.Add(ernestoObj);
             }
         }
     }

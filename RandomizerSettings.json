@@ -1,0 +1,63 @@
+{
+  // Controls how the Ernesto Chase settings will be randomized each loop when the randomizer is enabled
+
+  // Min and max will pick a random value between the two numbers
+  // Chance is the probability of that setting being changed, where 0.0 is 0% and 1.0 is 100%
+
+  "movementSpeed": {
+    "min": 0.2,
+    "max": 1.0,
+    "chance": 1.0
+  },
+  // Duplicated so they are more likely to be chosen
+  "spaceAccelerationType": {
+    "options": [
+      "Cumulative",
+      "Linear",
+      "Timed"
+    ],
+    "chance": 0.5
+  },
+  "spaceSpeed": {
+    "min": 0.2,
+    "max": 1.0,
+    "chance": 1.0
+  },
+  "spaceTimer": {
+    "min": 20.0,
+    "max": 120.0,
+    "chance": 0.75
+  },
+  "brambleSpeedMultiplier": {
+    "min": 1.5,
+    "max": 5.0,
+    "chance": 1.0
+  },
+  "dreamWorldSpeedMultiplier": {
+    "min": 0.1,
+    "max": 1.5,
+    "chance": 1.0
+  },
+  "startDelay": {
+    "min": 10.0,
+    "max": 60.0,
+    "chance": 1.0
+  },
+  "ernestoNumber": {
+    "min": 1.0,
+    "max": 15.0,
+    "chance": 0.1
+  },
+  "ernestoStacking": {
+    "chance": 0.5
+  },
+  "enableStealthMode": {
+    "chance": 0.4
+  },
+  "enableQuantumMode": {
+    "chance": 0.2
+  },
+  "ernestoCam": {
+    "chance": 0.5
+  }
+}

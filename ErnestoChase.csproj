@@ -34,6 +34,9 @@
     <None Include="manifest.json">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
+    <None Include="RandomizerSettings.json">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </None>
     <None Include="assets/**/*.*">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </None>
@@ -42,4 +45,10 @@
   <ItemGroup>
     <Content Include="ErnestoChase.csproj.user" />
   </ItemGroup>
+
+  <ProjectExtensions>
+    <VisualStudio>
+      <UserProperties default-config_1json__JsonSchema="" />
+    </VisualStudio>
+  </ProjectExtensions>
 </Project>

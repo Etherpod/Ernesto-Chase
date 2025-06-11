@@ -10,9 +10,9 @@
       "title": "Ground Movement Speed",
       "tooltip": "This changes how quickly Ernesto traces your path when you are in a gravity field, like on a planet.",
       "type": "slider",
-      "min": 1,
-      "max": 10,
-      "value": 5
+      "min": 0.0,
+      "max": 1.0,
+      "value": 0.5
     },
     "spaceAccelerationType": {
       "title": "Space Acceleration Type",
@@ -29,9 +29,9 @@
       "title": "Space Acceleration Speed",
       "tooltip": "This changes how quickly Ernesto accelerates towards you in space.",
       "type": "slider",
-      "min": 1,
-      "max": 10,
-      "value": 5
+      "min": 0.0,
+      "max": 1.0,
+      "value": 0.5
     },
     "spaceTimer": {
       "title": "Interception Time",
@@ -106,7 +106,7 @@
     },
     "randomMode": {
       "title": "Enable Randomizer",
-      "tooltip": "Randomizes all of the settings each loop.",
+      "tooltip": "Randomizes all of the settings each loop. You can customize the randomizer using the RandomizerSettings.json file in the mod folder.",
       "type": "toggle",
       "value": false
     }
