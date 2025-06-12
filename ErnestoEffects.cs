@@ -1,6 +1,9 @@
 ﻿using Mono.Cecil.Cil;
 using System.Collections;
+using System.Collections.Generic;
+using System.IO;
 using UnityEngine;
+using UnityEngine.Networking;
 
 namespace ErnestoChase;
 
@@ -15,6 +18,8 @@ public class ErnestoEffects : MonoBehaviour
     private OWAudioSource loopingAudio;
     [SerializeField]
     private OWAudioSource oneShotAudio;
+    [SerializeField]
+    private OWAudioSource musicAudio;
     [SerializeField]
     private Animator animator;
     [SerializeField]
@@ -35,6 +40,7 @@ public class ErnestoEffects : MonoBehaviour
 
     private Coroutine audioTransition;
     private float baseLoopingAudioVolume;
+    private float baseMusicVolume;
 
     private bool cachedFromSpace;
     private bool cachedToSpace;
@@ -48,6 +54,7 @@ public class ErnestoEffects : MonoBehaviour
         baseMeshScale = ernestoMesh.transform.localScale.magnitude;
         baseLightRange = anglerLight.range;
         baseLoopingAudioVolume = loopingAudio.GetMaxVolume();
+        baseMusicVolume = musicAudio.GetMaxVolume();
 
         AssetBundleUtilities.ReplaceShaders(blackHolePrefab.gameObject);
         AssetBundleUtilities.ReplaceShaders(whiteHolePrefab.gameObject);
@@ -62,11 +69,45 @@ public class ErnestoEffects : MonoBehaviour
         {
             anglerLight.intensity = 0f;
         }
+
+        StartCoroutine(ReadAudioFiles());
     }
 
     private void Update()
     {
         anglerLight.range = baseLightRange * (ernestoMesh.transform.localScale.magnitude / baseMeshScale);
+    }
+
+    private IEnumerator ReadAudioFiles()
+    {
+        AudioClip clip = null;
+
+        List<string> files = [];
+        files.AddRange(Directory.GetFiles(Path.Combine(ErnestoChase.Instance.ModHelper.Manifest.ModFolderPath, "ErnestoMusic"),
+            "*.mp3", SearchOption.AllDirectories));
+        files.AddRange(Directory.GetFiles(Path.Combine(ErnestoChase.Instance.ModHelper.Manifest.ModFolderPath, "ErnestoMusic"),
+            "*.ogg", SearchOption.AllDirectories));
+        files.AddRange(Directory.GetFiles(Path.Combine(ErnestoChase.Instance.ModHelper.Manifest.ModFolderPath, "ErnestoMusic"),
+            "*.wav", SearchOption.AllDirectories));
+
+        if (files.Count > 0)
+        {
+            int index = Random.Range(0, files.Count);
+
+            var request = UnityWebRequestMultimedia.GetAudioClip("file:///" + files[index], UnityEngine.AudioType.UNKNOWN);
+            yield return request.SendWebRequest();
+
+            if (request.isDone && !request.isNetworkError)
+            {
+                clip = DownloadHandlerAudioClip.GetContent(request);
+                ErnestoChase.WriteDebugMessage(clip);
+            }
+        }
+
+        if (clip != null)
+        {
+            musicAudio.clip = clip;
+        }
     }
 
     public void CreateWhiteHole()
@@ -88,6 +129,7 @@ public class ErnestoEffects : MonoBehaviour
             if (!state.StealthMode)
             {
                 loopingAudio.FadeIn(1f);
+                musicAudio.Play();
             }
         }
         OnExitWhiteHole?.Invoke();
@@ -125,6 +167,7 @@ public class ErnestoEffects : MonoBehaviour
         cachedToSpace = toSpace;
         blackHole.singularityController.OnCollapse += HandleBlackHoleCollapse;
         loopingAudio.FadeOut(1f);
+        musicAudio.FadeOut(1f, OWAudioSource.FadeOutCompleteAction.PAUSE);
     }
 
     public void OnTakeShortcut()
@@ -139,6 +182,7 @@ public class ErnestoEffects : MonoBehaviour
             if (loopingAudio.GetLocalVolume() == 0f)
             {
                 loopingAudio.SetLocalVolume(1f);
+                musicAudio.SetLocalVolume(1f);
             }
             if (!animator.enabled)
             {
@@ -150,6 +194,7 @@ public class ErnestoEffects : MonoBehaviour
             if (loopingAudio.GetLocalVolume() > 0f)
             {
                 loopingAudio.SetLocalVolume(0f);
+                musicAudio.SetLocalVolume(0f);
             }
             if (animator.enabled)
             {
@@ -164,10 +209,12 @@ public class ErnestoEffects : MonoBehaviour
         {
             oneShotAudio.PlayOneShot(AudioType.DBAnglerfishDetectTarget, 0.8f);
             loopingAudio.FadeIn(1f);
+            musicAudio.FadeIn(0.1f);
         }
         else
         {
             loopingAudio.FadeOut(3f);
+            musicAudio.FadeOut(3f, OWAudioSource.FadeOutCompleteAction.PAUSE);
         }
     }
 
@@ -188,19 +235,30 @@ public class ErnestoEffects : MonoBehaviour
         if (!state.StealthMode)
         {
             loopingAudio.FadeIn(1f);
+            musicAudio.FadeIn(1f);
         }
     }
 
     private IEnumerator SpaceAudioTransition()
     {
         loopingAudio.FadeOut(0.5f);
+        musicAudio.FadeOut(0.5f, OWAudioSource.FadeOutCompleteAction.PAUSE);
+
         yield return new WaitForSeconds(0.5f);
+
         loopingAudio.SetMaxVolume(1f);
         loopingAudio.spatialBlend = 0f;
         loopingAudio.SetTrack(OWAudioMixer.TrackName.Environment_Unfiltered);
         loopingAudio.FadeIn(state.SpaceTimer, true);
+
+        musicAudio.SetMaxVolume(1f);
+        musicAudio.spatialBlend = 0f;
+        musicAudio.SetTrack(OWAudioMixer.TrackName.Environment_Unfiltered);
+        musicAudio.FadeIn(state.SpaceTimer, true);
+
         yield return new WaitForSeconds(state.SpaceTimer > 12f 
             ? state.SpaceTimer - 7f : state.SpaceTimer * 0.8f);
+
         loopingAudio.PlayOneShot(AudioType.DBAnglerfishDetectTarget, 1f);
         audioTransition = null;
     }
@@ -208,11 +266,20 @@ public class ErnestoEffects : MonoBehaviour
     private IEnumerator AtmosphereAudioTransition()
     {
         loopingAudio.FadeOut(0.5f);
+        musicAudio.FadeOut(0.5f, OWAudioSource.FadeOutCompleteAction.PAUSE);
+
         yield return new WaitForSeconds(0.5f);
+
         loopingAudio.SetMaxVolume(baseLoopingAudioVolume);
         loopingAudio.spatialBlend = 1f;
         loopingAudio.SetTrack(OWAudioMixer.TrackName.Environment);
         loopingAudio.FadeIn(1f);
+
+        musicAudio.SetMaxVolume(baseMusicVolume);
+        musicAudio.spatialBlend = 1f;
+        musicAudio.SetTrack(OWAudioMixer.TrackName.Environment);
+        musicAudio.FadeIn(1f);
+
         audioTransition = null;
     }
 

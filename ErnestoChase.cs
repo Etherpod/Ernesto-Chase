@@ -32,6 +32,9 @@ public class ErnestoChase : ModBehaviour
     public List<GameObject> oldErnestos = [];
     public List<GameObject> camErnestos = [];
     public List<TargetDataQueue> storedErnestoTargets = [];
+    public static IQSBAPI QSBAPI;
+
+    public static bool InMultiplayer => QSBAPI != null && QSBAPI.GetIsInMultiplayer();
 
     public float MovementSpeed => (float)settings["movementSpeed"].property;
     public float SpaceSpeed => (float)settings["spaceSpeed"].property;
@@ -80,6 +83,11 @@ public class ErnestoChase : ModBehaviour
         ernesto = LoadPrefab("Assets/ErnestoChase/Ernesto.prefab");
         AssetBundleUtilities.ReplaceShaders(ernesto);
         ernesto.SetActive(false);
+
+        if (ModHelper.Interaction.ModExists("Raicuparta.QuantumSpaceBuddies"))
+        {
+            QSBAPI = ModHelper.Interaction.TryGetModApi<IQSBAPI>("Raicuparta.QuantumSpaceBuddies");
+        }
 
         LoadManager.OnCompleteSceneLoad += (scene, loadScene) =>
         {
@@ -479,8 +487,8 @@ public class ErnestoChase : ModBehaviour
         {
             selectable.gameObject.GetAddComponent<Menu.MenuSelectHandler>().OnSelectableSelected += newModTab.OnMenuItemSelected;
 
-            // this line keeps throwing an NRE, surely this will fix it
-            if (selectable?.gameObject?.name == newModTab?._lastSelected?.gameObject?.name)
+            if (newModTab._lastSelected != null
+                && selectable.gameObject.name == newModTab._lastSelected.gameObject.name)
             {
                 SelectableAudioPlayer component = newModTab._selectOnActivate.GetComponent<SelectableAudioPlayer>();
                 if (component != null)

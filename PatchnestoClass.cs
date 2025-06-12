@@ -153,7 +153,16 @@ public static class PatchnestoClass
         __instance._lastSnapshot = renderTexture;
         __instance._effects.PlaySnapshotClip(true);
 
-        ProbeLauncherUI ui = GameObject.Find("PlayerHUD").GetComponentInChildren<ProbeLauncherUI>();
+        ProbeLauncherUI ui;
+        if (PlayerState.AtFlightConsole())
+        {
+            ui = Locator.GetShipBody().GetComponentInChildren<ShipCockpitUI>().GetComponentInChildren<ProbeLauncherUI>();
+        }
+        else
+        {
+            ui = GameObject.Find("PlayerHUD").GetComponentInChildren<ProbeLauncherUI>();
+        }
+
         if (ui._probeLauncher.GetName() == ProbeLauncher.Name.Player)
         {
             if (ui._nonSuitUI)

@@ -1,0 +1,5 @@
+If the Enable Ernesto Music setting is turned on, a random .mp3/.ogg/.wav file from this folder will be selected to be played in the game.
+
+You can change the files in this folder at any time, but Ernesto will only check for them when he spawns. 
+
+Leave this folder empty or turn off the setting to not play anything.

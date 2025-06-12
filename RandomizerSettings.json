@@ -9,7 +9,6 @@
     "max": 1.0,
     "chance": 1.0
   },
-  // Duplicated so they are more likely to be chosen
   "spaceAccelerationType": {
     "options": [
       "Cumulative",
