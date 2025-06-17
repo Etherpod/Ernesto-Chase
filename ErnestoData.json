@@ -1,0 +1,13 @@
+{
+	"MovementSpeed": 1.0,
+	"SpaceAccelerationType": "Linear",
+	"SpaceSpeed": 1.0,
+	"SpaceTimer": 1.0,
+	"BrambleSpeedMultiplier": 1.0,
+	"DreamWorldSpeedMultiplier": 1.0,
+	"StartDelay": 1.0,
+	"StealthMode": false,
+	"QuantumMode": false,
+	"ErnestoCam": false,
+	"ErnestoMusic": false
+}

@@ -6,7 +6,7 @@
       "type": "separator"
     },
 
-    "movementSpeed": {
+    "groundMovementSpeed": {
       "title": "Ground Movement Speed",
       "tooltip": "This changes how quickly Ernesto traces your path when you are in a gravity field, like on a planet.",
       "type": "slider",
@@ -25,7 +25,7 @@
       ],
       "value": "Linear"
     },
-    "spaceSpeed": {
+    "spaceMovementSpeed": {
       "title": "Space Acceleration Speed",
       "tooltip": "This changes how quickly Ernesto accelerates towards you in space.",
       "type": "slider",
@@ -95,6 +95,12 @@
     "ernestoCam": {
       "title": "Enable ErnestoCam",
       "tooltip": "Lets you see Ernesto's POV by taking a reverse snapshot with your probe launcher while in photo mode.",
+      "type": "toggle",
+      "value": false
+    },
+    "ernestoMusic": {
+      "title": "Enable Ernesto Music",
+      "tooltip": "Makes Ernesto play music while he chases you. You can change the music he plays in the ErnestoMusic folder in the mod folder.",
       "type": "toggle",
       "value": false
     },

@@ -70,7 +70,10 @@ public class ErnestoEffects : MonoBehaviour
             anglerLight.intensity = 0f;
         }
 
-        StartCoroutine(ReadAudioFiles());
+        if (state.ErnestoMusic)
+        {
+            StartCoroutine(ReadAudioFiles());
+        }
     }
 
     private void Update()

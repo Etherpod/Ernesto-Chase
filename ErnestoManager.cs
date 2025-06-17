@@ -48,7 +48,7 @@ public class ErnestoManager : MonoBehaviour
 
         ErnestoChase.Instance.OnPlayerWarped += planetManager.OnPlayerWarped;
 
-        releaseDelay = ErnestoChase.Instance.StartDelay;
+        releaseDelay = state.StartDelay;
 
         if (!state.ErnestoCam)
         {
@@ -82,6 +82,7 @@ public class ErnestoManager : MonoBehaviour
                 planetManager.OnCaughtPlayer();
                 ernestoEffects.OnCaughtPlayer();
                 OnCaughtPlayer?.Invoke(this);
+                PatchnestoClass.OnCaughtPlayer(this);
                 Locator.GetDeathManager().KillPlayer(DeathType.Digestion);
                 startedDeathSequence = true;
             }
@@ -109,6 +110,11 @@ public class ErnestoManager : MonoBehaviour
     public void SetStoredTargets(TargetDataQueue queue)
     {
         ernestoMovement.SetStoredTargets(queue);
+    }
+
+    public void AddTargetData(TargetDataQueue.TargetData data)
+    {
+        ernestoMovement.AddTargetData(data);
     }
 
     public TargetDataQueue GetStoredTargets()

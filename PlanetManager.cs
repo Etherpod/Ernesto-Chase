@@ -254,6 +254,8 @@ public class PlanetManager : MonoBehaviour
     public OWRigidbody GetCurrentPlanetBody()
     {
         OWRigidbody body = null;
+        ForceVolume gravVol = null;
+        ForceVolume zeroGVol = null;
 
         if (PlayerState.InBrambleDimension())
         {
@@ -269,18 +271,30 @@ public class PlanetManager : MonoBehaviour
 
                 foreach (PriorityVolume priorityVolume in detector._trackedLayers[num].volumes)
                 {
-                    ForceVolume volume = priorityVolume is ForceVolume forceVolume ? forceVolume : null;
-                    if (volume && (volume.GetAffectsAlignment(Locator.GetPlayerBody()) || volume is ZeroGVolume))
+                    if (priorityVolume is ForceVolume volume)
                     {
-                        OWRigidbody[] parentBodies = volume.GetComponentsInParent<OWRigidbody>();
-                        foreach (OWRigidbody parentBody in parentBodies)
+                        if (gravVol == null && volume.GetAffectsAlignment(Locator.GetPlayerBody()))
                         {
-                            if (parentBody.IsKinematic())
-                            {
-                                body = parentBody;
-                                currentGravity = volume;
-                                break;
-                            }
+                            gravVol = volume;
+                        }
+                        else if (zeroGVol == null && volume is ZeroGVolume)
+                        {
+                            zeroGVol = volume;
+                        }
+                    }
+                }
+
+                ForceVolume theVolume = gravVol ?? zeroGVol;
+                if (theVolume != null)
+                {
+                    OWRigidbody[] parentBodies = theVolume.GetComponentsInParent<OWRigidbody>();
+                    foreach (OWRigidbody parentBody in parentBodies)
+                    {
+                        if (parentBody.IsKinematic())
+                        {
+                            body = parentBody;
+                            currentGravity = theVolume;
+                            return body;
                         }
                     }
                 }

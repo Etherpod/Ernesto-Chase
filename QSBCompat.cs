@@ -1,0 +1,87 @@
+﻿using Newtonsoft.Json;
+using System;
+using UnityEngine;
+using static TargetDataQueue;
+
+namespace ErnestoChase;
+
+public static class QSBCompat
+{
+    private static IQSBAPI api;
+
+    [Serializable]
+    private struct SerializedVector3(Vector3 vector)
+    {
+        public float x = vector.x;
+        public float y = vector.y;
+        public float z = vector.z;
+
+        public readonly Vector3 Vector => new(x, y, z);
+    }
+
+    [Serializable]
+    private struct SerializedTargetData(TargetData targetData)
+    {
+        public string parent = targetData.parent;
+        public SerializedVector3 localPosition = new(targetData.localPosition);
+        public SerializedVector3 worldPosition = new(targetData.worldPosition);
+        public float time = targetData.time;
+
+        public readonly TargetData TargetData => new(parent, localPosition.Vector, worldPosition.Vector, time);
+    }
+
+    public static void Init(IQSBAPI qsbapi)
+    {
+        api = qsbapi;
+
+        api.OnPlayerJoin().AddListener(OnPlayerJoin);
+
+        api.RegisterHandler<string>("ernesto-data", ReceiveErnestoData);
+        api.RegisterHandler<(uint, SerializedTargetData)>("target-data", ReceiveTargetData);
+        api.RegisterHandler<(uint, bool)>("visibility-state", ReceiveVisibilityState);
+    }
+
+    private static void OnPlayerJoin(uint id)
+    {
+        // initialize existing ernestos
+    }
+
+    public static void SendErnestoData(uint to, ErnestoData data)
+    {
+        string json = JsonConvert.SerializeObject(data);
+        api.SendMessage("ernesto-data", json, to, false);
+    }
+
+    private static void ReceiveErnestoData(uint from, string json)
+    {
+        ErnestoData data = JsonConvert.DeserializeObject<ErnestoData>(json);
+        if (data != null)
+        {
+            ErnestoChase.WriteDebugMessage("Receive Ernesto on " + api.GetLocalPlayerID() + " - " + data.id);
+            ErnestoChase.Instance.StartCoroutine(ErnestoChase.Instance.SpawnErnestoRemote(data));
+        }
+    }
+
+    public static void SendTargetData(uint to, uint localID, TargetData targetData)
+    {
+        api.SendMessage("target-data", (localID, new SerializedTargetData(targetData)), to, false);
+    }
+
+    private static void ReceiveTargetData(uint from, (uint localID, SerializedTargetData targetData) data)
+    {
+        ErnestoChase.Instance.AddTargetDataRemote(from, data.localID, data.targetData.TargetData);
+    }
+
+    public static void SendVisibilityState(uint to, uint localID, bool visible)
+    {
+        api.SendMessage("visibility-state", (localID, visible), to, false);
+    }
+
+    private static void ReceiveVisibilityState(uint from, (uint localID, bool visible) data)
+    {
+        if (ErnestoChase.Instance.remoteErnestos.ContainsKey(0) && ErnestoChase.Instance.remoteErnestos[0].ContainsKey(data.localID))
+        {
+            ErnestoChase.Instance.remoteErnestos[0][data.localID].GetComponent<ErnestoMovement>().UpdateVisibilityRemote(from, data.visible);
+        }
+    }
+}

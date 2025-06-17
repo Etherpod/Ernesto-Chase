@@ -1,21 +1,15 @@
-﻿using UnityEngine;
+﻿using System;
+using UnityEngine;
 
 public class TargetDataQueue
 {
-    public struct TargetData
+    [Serializable]
+    public struct TargetData(string parent, Vector3 localPosition, Vector3 worldPosition, float time)
     {
-        public TargetData(string parent, Vector3 localPosition, Vector3 worldPosition, float time)
-        {
-            this.parent = parent;
-            this.localPosition = localPosition;
-            this.worldPosition = worldPosition;
-            this.time = time;
-        }
-
-        public string parent;
-        public Vector3 localPosition;
-        public Vector3 worldPosition;
-        public float time;
+        public string parent = parent;
+        public Vector3 localPosition = localPosition;
+        public Vector3 worldPosition = worldPosition;
+        public float time = time;
     }
 
     private TargetData[] targetDataHistory = new TargetData[150000];

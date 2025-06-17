@@ -62,6 +62,8 @@ public class ErnestoMovement : MonoBehaviour
     private bool proximityRoar = true;
     private bool ernestoFrozen = false;
 
+    private List<uint> observers = [];
+
     private void Awake()
     {
         state = GetComponent<ErnestoState>();
@@ -120,6 +122,11 @@ public class ErnestoMovement : MonoBehaviour
         usingStoredTargets = true;
     }
 
+    public void AddTargetData(TargetData data)
+    {
+        storedTargets.AddTarget(data);
+    }
+
     public TargetDataQueue GetStoredTargets()
     {
         return storedTargets;
@@ -166,6 +173,12 @@ public class ErnestoMovement : MonoBehaviour
         if (usingStoredTargets)
         {
             FollowStoredTargets();
+
+            if (state.RemoteID > 0)
+            {
+                UpdateErnestoVisibility();
+            }
+
             return;
         }
         else
@@ -177,7 +190,16 @@ public class ErnestoMovement : MonoBehaviour
             else
             {
                 frameDelay = storedTargetsFrameDelay;
-                storedTargets.AddTarget(GenerateTargetData());
+                TargetData data = GenerateTargetData();
+                storedTargets.AddTarget(data);
+
+                if (ErnestoChase.InMultiplayer)
+                {
+                    foreach (var id in ErnestoChase.Players)
+                    {
+                        QSBCompat.SendTargetData(id, state.LocalID, data);
+                    }
+                }
             }
         }
 
@@ -250,6 +272,8 @@ public class ErnestoMovement : MonoBehaviour
 
     private void UpdateErnestoVisibility()
     {
+        // Add event to ErnestoEffects that toggles audio/animation for everyone when visibility changes
+
         if (!state.QuantumMode)
         {
             return;
@@ -259,13 +283,46 @@ public class ErnestoMovement : MonoBehaviour
         Plane[] camPlanes = Locator.GetPlayerCamera().GetFrustumPlanes();
         float dot = Vector3.Dot(Locator.GetPlayerCamera().transform.forward,
             transform.position - Locator.GetPlayerCamera().transform.position);
-        bool ernestoInView = GeometryUtility.TestPlanesAABB(camPlanes, meshBounds) && dot > 0;
+        bool ernestoInView = dot > 0 && GeometryUtility.TestPlanesAABB(camPlanes, meshBounds);
 
-        if (ernestoInView != ernestoFrozen)
+        if (ernestoInView && !observers.Contains(0))
         {
-            ernestoFrozen = ernestoInView;
-            OnUpdateVisibility?.Invoke(ernestoInView);
+            observers.Add(0);
         }
+        else if (!ernestoInView && observers.Contains(0))
+        {
+            observers.Remove(0);
+        }
+
+        if ((observers.Count != 0) != ernestoFrozen)
+        {
+            ernestoFrozen = observers.Count != 0;
+
+            if (state.RemoteID > 0)
+            {
+                QSBCompat.SendVisibilityState(state.RemoteID, state.LocalID, ernestoFrozen);
+            }
+            else
+            {
+                OnUpdateVisibility?.Invoke(ernestoFrozen);
+            }
+        }
+    }
+
+    public void UpdateVisibilityRemote(uint from, bool visible)
+    {
+        if (visible && !observers.Contains(from))
+        {
+            ErnestoChase.WriteDebugMessage("See remote!!!!!!!!!!!!!!!");
+            observers.Add(from);
+        }
+        else if (!visible && observers.Contains(from))
+        {
+            ErnestoChase.WriteDebugMessage("Not see remote........");
+            observers.Remove(from);
+        }
+
+        UpdateErnestoVisibility();
     }
 
     private void Move(bool playerOnPlanet)
@@ -446,7 +503,14 @@ public class ErnestoMovement : MonoBehaviour
 
         float timeLerp = Mathf.InverseLerp(lastTime, lastTime + (Time.fixedDeltaTime * storedTargetsFrameDelay), Time.fixedTime);
         transform.localPosition = Vector3.Lerp(lastPosition, targetPos, timeLerp);
-        transform.rotation = Quaternion.Slerp(lastRotation, targetRotation, timeLerp);
+        if ((targetPos - lastPosition).sqrMagnitude < 0.01f)
+        {
+            transform.rotation = lastRotation;
+        }
+        else
+        {
+            transform.rotation = Quaternion.Slerp(lastRotation, targetRotation, timeLerp);
+        }
     }
 
     private void TryProximityRoar()

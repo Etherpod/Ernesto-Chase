@@ -32,12 +32,14 @@ public class ErnestoChase : ModBehaviour
     public List<GameObject> oldErnestos = [];
     public List<GameObject> camErnestos = [];
     public List<TargetDataQueue> storedErnestoTargets = [];
+    public Dictionary<uint, Dictionary<uint, GameObject>> remoteErnestos = [];
     public static IQSBAPI QSBAPI;
+    public static uint[] Players => QSBAPI?.GetPlayerIDs().Where(id => id != QSBAPI.GetLocalPlayerID()).ToArray();
 
     public static bool InMultiplayer => QSBAPI != null && QSBAPI.GetIsInMultiplayer();
 
-    public float MovementSpeed => (float)settings["movementSpeed"].property;
-    public float SpaceSpeed => (float)settings["spaceSpeed"].property;
+    public float MovementSpeed => (float)settings["groundMovementSpeed"].property;
+    public float SpaceSpeed => (float)settings["spaceMovementSpeed"].property;
     public float BrambleSpeedMultiplier => (float)settings["brambleSpeedMultiplier"].property;
     public float DreamWorldSpeedMultiplier => (float)settings["dreamWorldSpeedMultiplier"].property;
     public float StartDelay => (float)settings["startDelay"].property;
@@ -50,12 +52,13 @@ public class ErnestoChase : ModBehaviour
     public float ErnestoNumber => (float)settings["ernestoNumber"].property;
     public bool ErnestoStacking => (bool)settings["ernestoStacking"].property;
     public bool RandomMode => (bool)settings["randomMode"].property;
+    public bool ErnestoMusic => (bool)settings["ernestoMusic"].property;
 
     private Dictionary<string, (object value, object property)> settings = new()
     {
         { "randomMode", (false, false) },
-        { "movementSpeed", (1f, 1f) },
-        { "spaceSpeed", (1f, 1f) },
+        { "groundMovementSpeed", (1f, 1f) },
+        { "spaceMovementSpeed", (1f, 1f) },
         { "brambleSpeedMultiplier", (1f, 1f) },
         { "dreamWorldSpeedMultiplier", (1f, 1f) },
         { "startDelay", (1f, 1f) },
@@ -67,6 +70,7 @@ public class ErnestoChase : ModBehaviour
         { "ernestoCam", (false, false) },
         { "ernestoNumber", (1f, 1f) },
         { "ernestoStacking", (false, false) },
+        { "ernestoMusic", (false, false) },
     };
 
     public static readonly bool EnableDebugMode = true;
@@ -87,6 +91,7 @@ public class ErnestoChase : ModBehaviour
         if (ModHelper.Interaction.ModExists("Raicuparta.QuantumSpaceBuddies"))
         {
             QSBAPI = ModHelper.Interaction.TryGetModApi<IQSBAPI>("Raicuparta.QuantumSpaceBuddies");
+            QSBCompat.Init(QSBAPI);
         }
 
         LoadManager.OnCompleteSceneLoad += (scene, loadScene) =>
@@ -97,6 +102,7 @@ public class ErnestoChase : ModBehaviour
             ernestos.Clear();
             camErnestos.Clear();
             oldErnestos.Clear();
+            remoteErnestos.Clear();
             PatchnestoClass.Initialize();
 
             UpdateProperties();
@@ -245,6 +251,66 @@ public class ErnestoChase : ModBehaviour
                 manager.SetStoredTargets(storedErnestoTargets[i]);
                 oldErnestos.Add(ernestoObj);
             }
+
+            if (InMultiplayer)
+            {
+                if (!remoteErnestos.ContainsKey(0))
+                {
+                    remoteErnestos.Add(0, []);
+                }
+
+                uint localID = Convert.ToUInt32(remoteErnestos[0].Count);
+                state.LocalID = localID;
+                remoteErnestos[0].Add(localID, ernestoObj);
+
+                foreach (var id in Players)
+                {
+                    QSBCompat.SendErnestoData(id, state.GetData());
+                }
+            }
+        }
+    }
+
+    public IEnumerator SpawnErnestoRemote(ErnestoData data)
+    {
+        yield return new WaitUntil(() => QSBAPI.GetPlayerReady(QSBAPI.GetLocalPlayerID()));
+
+        ErnestoChase.WriteDebugMessage("Spawn Ernesto with data");
+
+        GameObject ernestoObj = Instantiate(ernesto, Locator.GetPlayerTransform().position, Quaternion.identity);
+        ErnestoManager manager = ernestoObj.GetComponent<ErnestoManager>();
+        ErnestoState state = ernestoObj.GetComponent<ErnestoState>();
+
+        state.SetData(data);
+
+        ernestoObj.SetActive(true);
+        ernestos.Add(ernestoObj);
+
+        if (state.ErnestoCam)
+        {
+            camErnestos.Add(ernestoObj);
+        }
+
+        if (!remoteErnestos.ContainsKey(data.id))
+        {
+            remoteErnestos.Add(data.id, []);
+        }
+
+        remoteErnestos[data.id].Add(data.localid, ernestoObj);
+        manager.SetStoredTargets(new());
+
+        /*if (ErnestoStacking && storedErnestoTargets.Count > i)
+        {
+            manager.SetStoredTargets(storedErnestoTargets[i]);
+            oldErnestos.Add(ernestoObj);
+        }*/
+    }
+
+    public void AddTargetDataRemote(uint from, uint localID, TargetDataQueue.TargetData targetData)
+    {
+        if (remoteErnestos.ContainsKey(from) && remoteErnestos[from].ContainsKey(localID))
+        {
+            remoteErnestos[from][localID].GetComponent<ErnestoManager>().AddTargetData(targetData);
         }
     }
 
