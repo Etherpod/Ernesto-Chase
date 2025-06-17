@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using UnityEngine;
 using HarmonyLib;
 using OWML.ModHelper.Menus.NewMenuSystem;
@@ -7,6 +7,7 @@ using System.Reflection;
 using System.Collections.Generic;
 using System.Linq;
 using System.Globalization;
+using ErnestoChase.Debug;
 
 namespace ErnestoChase;
 
@@ -274,27 +275,12 @@ public static class PatchnestoClass
 
         //SettingExtensions.ResetCustomSettings();
     }
-
-    private static GameObject _pauseMenuObject;
     
     [HarmonyPostfix]
     [HarmonyPatch(typeof(OWML.ModHelper.Menus.NewMenuSystem.PauseMenuManager), "OnSceneLoadCompleted")]
-    public static void AddDebugPauseMenu()
-    {
-        if (_pauseMenuObject) return;
-        
-        var pauseMenuManager = StartupPopupPatches.menuManager.PauseMenuManager;
-        var debugMenu = pauseMenuManager.MakePauseListMenu("ERNESTO CHASE // DEBUG MENU");
-        _pauseMenuObject = debugMenu.gameObject;
-        pauseMenuManager.MakeMenuOpenButton("ERNESTO CHASE // DEBUG MENU", debugMenu, 0, false);
-
-        debugMenu.AddButton("test debug action", () => ErnestoChase.WriteDebugMessage(":3"));
-    }
-
-    public static void AddButton(this Menu menu, string title, SubmitAction.SubmitActionEvent submitAction) =>
-        StartupPopupPatches
-            .menuManager
-            .PauseMenuManager
-            .MakeSimpleButton(title, 0, false, menu)
-            .OnSubmitAction += submitAction;
+    public static void AddDebugPauseMenu() => DebugMenu.Initialize();
+    
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(OWML.ModHelper.Menus.NewMenuSystem.PauseMenuManager), "OnSceneLoadCompleted")]
+    public static void AddPauseMenuSettings() => SettingsMenu.InitializePauseMenu();
 }
