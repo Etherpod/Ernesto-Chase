@@ -52,7 +52,6 @@ public class ErnestoChase : ModBehaviour
     public float ErnestoNumber => (float)settings["ernestoNumber"].property;
     public bool ErnestoStacking => (bool)settings["ernestoStacking"].property;
     public bool RandomMode => (bool)settings["randomMode"].property;
-    public bool ErnestoMusic => (bool)settings["ernestoMusic"].property;
 
     private Dictionary<string, (object value, object property)> settings = new()
     {
@@ -71,6 +70,8 @@ public class ErnestoChase : ModBehaviour
         { "ernestoNumber", (1f, 1f) },
         { "ernestoStacking", (false, false) },
         { "ernestoMusic", (false, false) },
+        { "disableLight", (false, false) },
+        { "advancedSettings", (false, false) },
     };
 
     public static readonly bool EnableDebugMode = true;
@@ -135,6 +136,26 @@ public class ErnestoChase : ModBehaviour
                 storedErnestoTargets.Add(ernesto.GetComponent<ErnestoManager>().GetStoredTargets());
             }
         };
+    }
+
+    private void Update()
+    {
+        if ((QSBAPI?.GetIsHost() ?? false) && Keyboard.current.numpadDivideKey.wasPressedThisFrame)
+        {
+            GameObject prefab = LoadPrefab("Assets/ErnestoChase/ControllableErnesto_Body.prefab");
+            ControllableErnesto ernesto = Instantiate(prefab, Locator.GetPlayerTransform().position, Locator.GetPlayerTransform().rotation)
+                .GetComponent<ControllableErnesto>();
+            ModHelper.Events.Unity.FireOnNextUpdate(() => ernesto.AttachPlayer());
+
+            if (InMultiplayer)
+            {
+                ErnestoData fakeData = new(QSBAPI.GetLocalPlayerID(), 0, Time.fixedTime, 1f, "Linear", 1f, 1f, 1f, 1f, 5f, StealthMode, QuantumMode, ErnestoCam, false);
+                foreach (var id in Players)
+                {
+                    QSBCompat.SendErnestoData(id, fakeData);
+                }
+            }
+        }
     }
 
     private void UpdateProperties()
@@ -349,7 +370,7 @@ public class ErnestoChase : ModBehaviour
         {
             object configValue = ConvertJValue(config.GetSettingsValue<object>(keys[i]));
             if (!anyChanged && !settings[keys[i]].value.Equals(configValue)
-                && keys[i] == "spaceAccelerationType")
+                && (keys[i] == "spaceAccelerationType" || keys[i] == "advancedSettings"))
             {
                 WriteDebugMessage(keys[i] + " was changed");
                 anyChanged = true;
@@ -616,6 +637,11 @@ public class ErnestoChase : ModBehaviour
             return true;
         }
         if (name == "spaceSpeed" && (string)settings["spaceAccelerationType"].value == "Timed")
+        {
+            return true;
+        }
+        if (name != "advancedSettings" && (bool)settings["advancedSettings"].value 
+            && currIndex >= ModHelper.Config.Settings.Keys.ToList().IndexOf("groundMovementSpeed"))
         {
             return true;
         }

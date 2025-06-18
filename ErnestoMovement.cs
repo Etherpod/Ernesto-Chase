@@ -468,8 +468,20 @@ public class ErnestoMovement : MonoBehaviour
         {
             frameDelay = storedTargetsFrameDelay;
 
+            int num = 0;
+            while (storedTargets.PopNextTarget(out var nextData)
+                && nextData.time < Time.fixedTime + state.TimeOffset)
+            {
+                num++;
+                ErnestoChase.WriteDebugMessage("Skip");
+            }
+
+            ErnestoChase.WriteDebugMessage("\nSkipped " + num + " targets\n");
+
             storedTargets.PopNextTarget(out var data);
             targetData = data;
+            ErnestoChase.WriteDebugMessage("   Host: " + targetData.time);
+            ErnestoChase.WriteDebugMessage("   Client: " + Time.fixedTime);
 
             if (transform.parent.name != targetData.parent)
             {
@@ -516,7 +528,7 @@ public class ErnestoMovement : MonoBehaviour
     private void TryProximityRoar()
     {
         float speedLerp = state.MovementSpeed;
-        float proximityCutoff = Mathf.Lerp(15f * 15f, 40f * 40f, speedLerp);
+        float proximityCutoff = Mathf.Lerp(20f * 20f, 40f * 40f, speedLerp);
 
         if (!proximityRoar && targets.Count < 20
             && (Locator.GetPlayerTransform().position - transform.position).sqrMagnitude 
@@ -527,7 +539,7 @@ public class ErnestoMovement : MonoBehaviour
         }
         else if (proximityRoar 
             && (Locator.GetPlayerTransform().position - transform.position).sqrMagnitude
-            > proximityCutoff * 2f)
+            > proximityCutoff * 3.5f)
         {
             OnProximityRoar?.Invoke(false);
             proximityRoar = false;

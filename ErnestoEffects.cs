@@ -27,6 +27,8 @@ public class ErnestoEffects : MonoBehaviour
     [SerializeField]
     private Light anglerLight;
     [SerializeField]
+    private Texture2D noBulbTex;
+    [SerializeField]
     private SingularityWarpEffect blackHolePrefab;
     [SerializeField]
     private SingularityWarpEffect whiteHolePrefab;
@@ -65,11 +67,13 @@ public class ErnestoEffects : MonoBehaviour
 
         ernestoMesh.transform.localScale = Vector3.zero;
         anglerLight.range = baseLightRange * (ernestoMesh.transform.localScale.magnitude / baseMeshScale);
-        if (state.StealthMode)
+
+        if (state.DisableLight)
         {
             anglerLight.intensity = 0f;
+            ernestoRenderer.material.SetTexture("_EmissionMap", noBulbTex);
+            enabled = false;
         }
-
         if (state.ErnestoMusic)
         {
             StartCoroutine(ReadAudioFiles());

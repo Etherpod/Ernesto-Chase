@@ -43,6 +43,7 @@ public class ErnestoCamera : MonoBehaviour
 
     public float GetInterferenceLevel()
     {
+        return 0;
         return Mathf.InverseLerp(500f * 500f, 3000f * 3000f, (Locator.GetPlayerTransform().position - transform.position).sqrMagnitude);
     }
 

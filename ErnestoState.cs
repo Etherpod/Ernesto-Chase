@@ -7,6 +7,7 @@ public class ErnestoState : MonoBehaviour
 {
     public uint RemoteID { get; set; } = 0;
     public uint LocalID { get; set; }
+    public float TimeOffset { get; private set; }
 
     // Stats
     public float MovementSpeed { get; set; }
@@ -20,6 +21,7 @@ public class ErnestoState : MonoBehaviour
     public bool QuantumMode { get; set; }
     public bool ErnestoCam { get; set; }
     public bool ErnestoMusic { get; set; }
+    public bool DisableLight { get; set; }
 
     // Data
     public bool ErnestoReleased { get; set; } = false;
@@ -41,12 +43,13 @@ public class ErnestoState : MonoBehaviour
         QuantumMode = (bool)settings["enableQuantumMode"].property;
         ErnestoCam = (bool)settings["ernestoCam"].property;
         ErnestoMusic = (bool)settings["ernestoMusic"].property;
+        DisableLight = (bool)settings["disableLight"].property;
     }
 
     public ErnestoData GetData()
     {
         uint id = ErnestoChase.QSBAPI != null ? ErnestoChase.QSBAPI.GetLocalPlayerID() : 0;
-        return new ErnestoData(id, LocalID, MovementSpeed, SpaceAccelerationType, SpaceSpeed, SpaceTimer, BrambleSpeedMultiplier, 
+        return new ErnestoData(id, LocalID, Time.fixedTime, MovementSpeed, SpaceAccelerationType, SpaceSpeed, SpaceTimer, BrambleSpeedMultiplier, 
             DreamWorldSpeedMultiplier, StartDelay, StealthMode, QuantumMode, ErnestoCam, ErnestoMusic);
     }
 
@@ -66,5 +69,6 @@ public class ErnestoState : MonoBehaviour
 
         RemoteID = data.id;
         LocalID = data.localid;
+        TimeOffset = data.time - Time.fixedTime;
     }
 }

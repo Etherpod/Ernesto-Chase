@@ -2,7 +2,42 @@
   "$schema": "https://raw.githubusercontent.com/ow-mods/owml/master/schemas/config_schema.json",
   "enabled": true,
   "settings": {
-    "Movement": {
+    "General Settings": {
+      "type": "separator"
+    },
+
+    "startDelay": {
+      "title": "Start Delay",
+      "tooltip": "The time in seconds Ernesto waits before chasing you.",
+      "type": "number",
+      "value": 30
+    },
+    "ernestoNumber": {
+      "title": "Number of Ernestos",
+      "tooltip": "The number of Ernestos to spawn each loop.",
+      "type": "number",
+      "value": 1
+    },
+    "ernestoStacking": {
+      "title": "Enable Ernesto Stacking",
+      "tooltip": "Lets Ernestos from previous loops join the hunt.",
+      "type": "toggle",
+      "value": false
+    },
+    "customEndScreen": {
+      "title": "Custom Death Screen",
+      "tooltip": "Turn this on to show a custom death screen when Ernesto catches you. It will also return you to the main menu.",
+      "type": "toggle",
+      "value": false
+    },
+    "randomMode": {
+      "title": "Enable Randomizer",
+      "tooltip": "Randomizes all of the settings each loop. You can customize the randomizer using the RandomizerSettings.json file in the mod folder.",
+      "type": "toggle",
+      "value": false
+    },
+
+    "Ernesto Settings": {
       "type": "separator"
     },
 
@@ -52,49 +87,27 @@
       "type": "number",
       "value": 0.6
     },
-
-    "Startup": {
-      "type": "separator"
-    },
-
-    "startDelay": {
-      "title": "Start Delay",
-      "tooltip": "The time in seconds Ernesto waits before chasing you.",
-      "type": "number",
-      "value": 15
-    },
-    "ernestoNumber": {
-      "title": "Number of Ernestos",
-      "tooltip": "The number of Ernestos to spawn each loop.",
-      "type": "number",
-      "value": 1
-    },
-    "ernestoStacking": {
-      "title": "Enable Ernesto Stacking",
-      "tooltip": "Lets Ernestos from previous loops join the hunt.",
+    "enableStealthMode": {
+      "title": "Enable Stealth Mode",
+      "tooltip": "Makes Ernesto completely silent. You won't know where he is until he's right behind you.",
       "type": "toggle",
       "value": false
     },
-
-    "Extras": {
-      "type": "separator"
-    },
-
-    "enableStealthMode": {
-      "title": "Enable Stealth Mode",
-      "tooltip": "Makes Ernesto silent and turns off his light. You won't know where he is until he's right behind you.",
+    "disableLight": {
+      "title": "Disable Light",
+      "tooltip": "Turns off Ernesto's glowing bulb. He won't light up the area around him, but he will also be very hard to see in the dark.",
       "type": "toggle",
       "value": false
     },
     "enableQuantumMode": {
       "title": "Enable Quantum Mode",
-      "tooltip": "Freezes Ernesto if you can see him, but makes him move at maximum speed when you look away.",
+      "tooltip": "Freezes Ernesto if you can see him, but makes him move a lot faster.",
       "type": "toggle",
       "value": false
     },
     "ernestoCam": {
       "title": "Enable ErnestoCam",
-      "tooltip": "Lets you see Ernesto's POV by taking a reverse snapshot with your probe launcher while in photo mode.",
+      "tooltip": "Lets you see Ernesto's POV by taking a reverse snapshot with your probe launcher while in photo mode. You can switch between Ernestos with tool up/down.",
       "type": "toggle",
       "value": false
     },
@@ -104,15 +117,9 @@
       "type": "toggle",
       "value": false
     },
-    "customEndScreen": {
-      "title": "Custom Death Screen",
-      "tooltip": "Turn this off to reset the loop like normal if Ernesto catches you.",
-      "type": "toggle",
-      "value": false
-    },
-    "randomMode": {
-      "title": "Enable Randomizer",
-      "tooltip": "Randomizes all of the settings each loop. You can customize the randomizer using the RandomizerSettings.json file in the mod folder.",
+    "advancedSettings": {
+      "title": "Enable Advanced Settings",
+      "tooltip": "Enabling this will ignore this section of the settings and use the values from the AdvancedErnestoSettings.json file in the mod folder.",
       "type": "toggle",
       "value": false
     }

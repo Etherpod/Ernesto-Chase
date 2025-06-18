@@ -4,6 +4,7 @@
 public record ErnestoData(
     uint id,
     uint localid,
+    float time,
     float MovementSpeed,
     string SpaceAccelerationType,
     float SpaceSpeed,
