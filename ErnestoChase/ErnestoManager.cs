@@ -47,6 +47,7 @@ public class ErnestoManager : MonoBehaviour
         ernestoEffects.OnEnterBlackHole += OnEnterBlackHole;
 
         ErnestoChase.Instance.OnPlayerWarped += planetManager.OnPlayerWarped;
+        GlobalMessenger<DeathType>.AddListener("PlayerDeath", OnPlayerDeath);
 
         releaseDelay = state.StartDelay;
 
@@ -83,6 +84,7 @@ public class ErnestoManager : MonoBehaviour
                 ernestoEffects.OnCaughtPlayer();
                 OnCaughtPlayer?.Invoke(this);
                 PatchnestoClass.OnCaughtPlayer(this);
+                GlobalMessenger.FireEvent("CaughtPlayer");
                 Locator.GetDeathManager().KillPlayer(DeathType.Digestion);
                 startedDeathSequence = true;
             }
@@ -115,6 +117,11 @@ public class ErnestoManager : MonoBehaviour
     public TargetDataQueue GetStoredTargets()
     {
         return ernestoMovement.GetStoredTargets();
+    }
+
+    private void OnPlayerDeath(DeathType deathType)
+    {
+        killVolume.gameObject.SetActive(false);
     }
 
     public void OnUpdateTravelMode(bool isSpace)
@@ -199,5 +206,6 @@ public class ErnestoManager : MonoBehaviour
         ernestoEffects.OnEnterBlackHole -= OnEnterBlackHole;
 
         ErnestoChase.Instance.OnPlayerWarped -= planetManager.OnPlayerWarped;
+        GlobalMessenger<DeathType>.RemoveListener("PlayerDeath", OnPlayerDeath);
     }
 }

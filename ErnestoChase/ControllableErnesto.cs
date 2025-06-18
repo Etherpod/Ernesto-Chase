@@ -44,6 +44,8 @@ public class ControllableErnesto : MonoBehaviour
         rulesetDetector = GetComponentInChildren<RulesetDetector>();
         forceDetector = GetComponentInChildren<AlignmentForceDetector>();
         owCamera.GetComponent<PlanetaryFogImageEffect>().fogShader = Shader.Find("Hidden/PlanetaryFogImageEffect");
+        owCamera.GetComponent<FlashbackScreenGrabImageEffect>()._downsampleShader = Shader.Find("Hidden/DownsampleImageEffect");
+        owCamera.gameObject.SetActive(true);
 
         baseMass = rigidbody.GetMass();
         baseFOV = owCamera.fieldOfView;

@@ -1,0 +1,37 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <LangVersion>latest</LangVersion>
+    <Copyright>Copyright © 2025 Etherpod</Copyright>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+    <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+    <NoWarn>MSB3270</NoWarn>
+    <DebugType>portable</DebugType>
+  </PropertyGroup>
+  
+  <ItemGroup>
+    <PackageReference Include="OWML" Version="2.14.0" />
+    <PackageReference Include="OuterWildsGameLibs" Version="1.1.15.1018" />
+  </ItemGroup>
+  
+  <ItemGroup>
+    <Content Include="ErnestoChaseQSB.csproj.user" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\ErnestoChase\ErnestoChase.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="QSB">
+      <HintPath>$(OuterWildsModsDirectory)\Raicuparta.QuantumSpaceBuddies\QSB.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+    <Reference Include="QSB">
+      <HintPath>$(OuterWildsModsDirectory)\Raicuparta.QuantumSpaceBuddies\Mirror.dll</HintPath>
+      <Private>False</Private>
+    </Reference>
+  </ItemGroup>
+</Project>

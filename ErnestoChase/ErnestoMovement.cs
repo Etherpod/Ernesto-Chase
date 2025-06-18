@@ -32,7 +32,7 @@ public class ErnestoMovement : MonoBehaviour
     private TargetDataQueue storedTargets;
     private bool usingStoredTargets = false;
     private bool failedPlanetCheck = false;
-    private readonly int storedTargetsFrameDelay = 100;
+    private readonly int storedTargetsFrameDelay = 10;
     private int frameDelay;
 
     private float targetSpawnDelay = 0.25f;

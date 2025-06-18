@@ -32,8 +32,16 @@ public class ErnestoChase : ModBehaviour
     public List<GameObject> oldErnestos = [];
     public List<GameObject> camErnestos = [];
     public List<TargetDataQueue> storedErnestoTargets = [];
+    public List<SpectatorCamera> spectatorCameras = [];
     public Dictionary<uint, Dictionary<uint, GameObject>> remoteErnestos = [];
     public static IQSBAPI QSBAPI;
+
+    private bool spectating = false;
+    private bool spectatingErnesto = true;
+    private SpectatorCamera[] availableCams;
+    private int ernestoCamIndex = 0;
+    private int playerCamIndex = 0;
+
     public static uint[] Players => QSBAPI?.GetPlayerIDs().Where(id => id != QSBAPI.GetLocalPlayerID()).ToArray();
 
     public static bool InMultiplayer => QSBAPI != null && QSBAPI.GetIsInMultiplayer();
@@ -91,11 +99,7 @@ public class ErnestoChase : ModBehaviour
         AssetBundleUtilities.ReplaceShaders(ernesto);
         ernesto.SetActive(false);
 
-        if (ModHelper.Interaction.ModExists("Raicuparta.QuantumSpaceBuddies"))
-        {
-            QSBAPI = ModHelper.Interaction.TryGetModApi<IQSBAPI>("Raicuparta.QuantumSpaceBuddies");
-            QSBCompat.Init(QSBAPI);
-        }
+        InitializeQSB();
 
         LoadManager.OnCompleteSceneLoad += (scene, loadScene) =>
         {
@@ -106,6 +110,7 @@ public class ErnestoChase : ModBehaviour
             camErnestos.Clear();
             oldErnestos.Clear();
             remoteErnestos.Clear();
+            spectatorCameras.Clear();
             PatchnestoClass.Initialize();
 
             UpdateProperties();
@@ -115,7 +120,7 @@ public class ErnestoChase : ModBehaviour
                 storedErnestoTargets.Clear();
             }
 
-            if (!InMultiplayer || scene == OWScene.SolarSystem)
+            if (true || !InMultiplayer || scene == OWScene.SolarSystem)
             {
                 StartCoroutine(WaitForPlayer());
             }
@@ -150,21 +155,73 @@ public class ErnestoChase : ModBehaviour
 
     private void Update()
     {
-        if ((QSBAPI?.GetIsHost() ?? false) && Keyboard.current.numpadDivideKey.wasPressedThisFrame)
-        {
-            GameObject prefab = LoadPrefab("Assets/ErnestoChase/ControllableErnesto_Body.prefab");
-            ControllableErnesto ernesto = Instantiate(prefab, Locator.GetPlayerTransform().position, Locator.GetPlayerTransform().rotation)
-                .GetComponent<ControllableErnesto>();
-            ModHelper.Events.Unity.FireOnNextUpdate(() => ernesto.AttachPlayer());
+        if (!InMultiplayer) return;
 
-            if (InMultiplayer)
+        if (Players.Length > 0 && QSBAPI.GetPlayerDead(QSBAPI.GetLocalPlayerID()))
+        {
+            if (OWInput.IsNewlyPressed(InputLibrary.map))
             {
-                ErnestoData fakeData = new(QSBAPI.GetLocalPlayerID(), 0, Time.fixedTime, 1f, "Linear", 1f, 1f, 1f, 1f, 5f, StealthMode, QuantumMode, ErnestoCam, false);
-                foreach (var id in Players)
+                SwitchToSpectatorCam(spectatorCameras[1]);
+            }
+
+            /*if (OWInput.IsNewlyPressed(InputLibrary.toolOptionUp) || OWInput.IsNewlyPressed(InputLibrary.toolOptionDown))
+            {
+                spectatingErnesto = !spectatingErnesto;
+                availableCams = spectatorCameras.Where(cam => cam.IsErnestoCam() == spectatingErnesto && cam.CanSpectate()).ToArray();
+
+                // Update cams
+            }
+
+            List<SpectatorCamera> cams = spectatorCameras.Where(cam => cam.IsErnestoCam() == spectatingErnesto && cam.CanSpectate()).ToList();
+
+            int currentIndex = spectatingErnesto ? ernestoCamIndex : playerCamIndex;
+            int camIndex = Mathf.Max(cams.IndexOf(spectatorCameras[currentIndex], 0));
+
+            if (OWInput.IsNewlyPressed(InputLibrary.toolOptionLeft))
+            {
+                camIndex--;
+                if (camIndex < 0)
                 {
-                    QSBCompat.SendControlledErnestoData(id, fakeData);
+                    camIndex = cams.Count - 1;
                 }
             }
+            else if (OWInput.IsNewlyPressed(InputLibrary.toolOptionRight))
+            {
+                camIndex++;
+                if (camIndex >= cams.Count)
+                {
+                    camIndex = 0;
+                }
+            }
+
+            int finalIndex = spectatorCameras.IndexOf(cams[camIndex]);
+            if (finalIndex != currentIndex)
+            {
+                if (spectatingErnesto)
+                {
+                    ernestoCamIndex = finalIndex;
+                }
+                else
+                {
+                    playerCamIndex = finalIndex;
+                }
+
+                SwitchToSpectatorCam(spectatorCameras[finalIndex]);
+            }*/
+        }
+    }
+
+    private void InitializeQSB()
+    {
+        bool qsbEnabled = ModHelper.Interaction.ModExists("Raicuparta.QuantumSpaceBuddies");
+        if (qsbEnabled)
+        {
+            QSBAPI = ModHelper.Interaction.TryGetModApi<IQSBAPI>("Raicuparta.QuantumSpaceBuddies");
+            QSBCompat.Init(QSBAPI);
+            var qsbAssembly = Assembly.LoadFrom(Path.Combine(ModHelper.Manifest.ModFolderPath, "ErnestoChaseQSB.dll"));
+            gameObject.AddComponent(qsbAssembly.GetType("ErnestoChaseQSB.QSBInteraction", true));
+
+            QSBAPI.RegisterRequiredForAllPlayers(this);
         }
     }
 
@@ -255,6 +312,26 @@ public class ErnestoChase : ModBehaviour
 
         remoteErnesto = null;
         return false;
+    }
+
+    public void SwitchToSpectatorCam(SpectatorCamera camera)
+    {
+        if (!spectating)
+        {
+            GlobalMessenger<OWCamera>.FireEvent("SwitchActiveCamera", camera.GetOWCamera());
+
+            Locator.GetMapController().ExitMapView();
+
+            var mixer = Locator.GetAudioMixer();
+            mixer._deathMixed = false;
+            mixer._nonEndTimesVolume.FadeTo(1, 0.5f);
+            mixer._endTimesVolume.FadeTo(1, 0.5f);
+            mixer.UnmixMap();
+
+            spectating = true;
+        }
+
+        camera.AttachPlayer();
     }
 
     private IEnumerator WaitForPlayer()
