@@ -1,10 +1,12 @@
 ﻿using UnityEngine;
-using static TargetDataQueue;
+using static ErnestoChase.TargetDataQueue;
 
 namespace ErnestoChase;
 
 public class ControllableErnesto : MonoBehaviour
 {
+    [SerializeField]
+    private Transform scaleRoot;
     [SerializeField]
     private PlayerAttachPoint attachPoint;
     [SerializeField]
@@ -12,26 +14,53 @@ public class ControllableErnesto : MonoBehaviour
 
     private OWRigidbody rigidbody;
     private SectorDetector sectorDetector;
+    private RulesetDetector rulesetDetector;
+    private AlignmentForceDetector forceDetector;
     private TargetDataQueue storedTargets;
     private int frameDelay;
     private readonly int storedTargetsFrameDelay;
 
-    private readonly float angularDrag = 0.92f;
-    private readonly float movementMultiplier = 25f;
+    private bool shrinked = false;
+    private bool changingSize = false;
+    private float sizeStartTime;
+    private float lastSize;
+    private readonly float sizeChangeLength = 2f;
+
+    private float baseMass;
+    private float baseFOV;
+
+    private float adjustedManualDrag;
+    private Vector3 manualAngularVelocity;
+
+    private readonly float angularDrag = 0.95f;
+    private readonly float movementMultiplier = 30f;
     private readonly float rotationMultiplier = 2f;
+    private readonly float forceMultiplier = 0.8f;
 
     private void Awake()
     {
         rigidbody = GetComponent<OWRigidbody>();
         sectorDetector = GetComponentInChildren<SectorDetector>();
+        rulesetDetector = GetComponentInChildren<RulesetDetector>();
+        forceDetector = GetComponentInChildren<AlignmentForceDetector>();
         owCamera.GetComponent<PlanetaryFogImageEffect>().fogShader = Shader.Find("Hidden/PlanetaryFogImageEffect");
 
-        rigidbody.GetRigidbody().angularDrag = angularDrag;
+        baseMass = rigidbody.GetMass();
+        baseFOV = owCamera.fieldOfView;
+        forceDetector._fieldMultiplier = forceMultiplier;
+        manualAngularVelocity = Vector3.zero;
+        rigidbody.FreezeRotation();
     }
 
     private void Start()
     {
+        adjustedManualDrag = Mathf.Pow(angularDrag, OWTime.GetFixedTimestep() / 0.01666666f);
         storedTargets = new();
+    }
+
+    private void OnDisable()
+    {
+        manualAngularVelocity = Vector3.zero;
     }
 
     private void FixedUpdate()
@@ -40,6 +69,7 @@ public class ControllableErnesto : MonoBehaviour
 
         UpdateMovement();
         UpdateRotation();
+        UpdateSize();
 
         /*if (frameDelay > 0)
         {
@@ -90,8 +120,9 @@ public class ControllableErnesto : MonoBehaviour
         {
             acceleration += Vector3.down;
         }
-
-        rigidbody.AddLocalAcceleration(acceleration * movementMultiplier);
+        
+        float multiplier = Mathf.Min(movementMultiplier * (scaleRoot.localScale.x / 2 + 0.5f), rulesetDetector.GetThrustLimit());
+        rigidbody.AddLocalAcceleration(acceleration.normalized * multiplier);
     }
 
     private void UpdateRotation()
@@ -109,7 +140,55 @@ public class ControllableErnesto : MonoBehaviour
 
         rotation.x -= OWInput.GetValue(InputLibrary.pitch);
 
-        rigidbody.AddLocalAngularAcceleration(rotation * rotationMultiplier);
+        manualAngularVelocity += transform.TransformDirection(rotation * rotationMultiplier * Time.fixedDeltaTime);
+        manualAngularVelocity *= adjustedManualDrag;
+        Quaternion quaternion = Quaternion.AngleAxis(manualAngularVelocity.magnitude * 180f / 3.1415927f * Time.fixedDeltaTime, manualAngularVelocity.normalized);
+        rigidbody.AddRotation(quaternion);
+    }
+
+    private void UpdateSize()
+    {
+        bool downPressed = OWInput.IsNewlyPressed(InputLibrary.toolOptionDown);
+        bool upPressed = OWInput.IsNewlyPressed(InputLibrary.toolOptionUp);
+
+        if (!changingSize && (downPressed || upPressed))
+        {
+            shrinked = downPressed;
+            lastSize = scaleRoot.localScale.x;
+            sizeStartTime = Time.fixedTime;
+            changingSize = true;
+
+            if (ErnestoChase.InMultiplayer)
+            {
+                foreach (var id in ErnestoChase.Players)
+                {
+                    QSBCompat.SendErnestoSizeChange(id, 0, shrinked);
+                }
+            }
+        }
+
+        if (changingSize)
+        {
+            float timeLerp = Mathf.InverseLerp(sizeStartTime, sizeStartTime + sizeChangeLength, Time.fixedTime);
+            float scale;
+
+            if (shrinked)
+            {
+                scale = Mathf.SmoothStep(lastSize, 0.1f, timeLerp);
+            }
+            else
+            {
+                scale = Mathf.SmoothStep(lastSize, 1f, timeLerp);
+            }
+
+            scaleRoot.localScale = Vector3.one * scale;
+            owCamera.fieldOfView = Mathf.Lerp(baseFOV + 10f, baseFOV, scale);
+
+            if (timeLerp == 1)
+            {
+                changingSize = false;
+            }
+        }
     }
 
     /*private TargetData GenerateTargetData()
@@ -140,6 +219,8 @@ public class ControllableErnesto : MonoBehaviour
         {
             Locator.GetPlayerSuit().RemoveSuit();
         }
+
+        Locator.GetToolModeSwapper().UnequipTool();
 
         foreach (var renderer in Locator.GetPlayerBody().GetComponentsInChildren<Renderer>())
         {

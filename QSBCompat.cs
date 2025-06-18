@@ -1,7 +1,7 @@
 ﻿using Newtonsoft.Json;
 using System;
 using UnityEngine;
-using static TargetDataQueue;
+using static ErnestoChase.TargetDataQueue;
 
 namespace ErnestoChase;
 
@@ -40,6 +40,7 @@ public static class QSBCompat
         api.RegisterHandler<string>("controlled-ernesto-data", ReceiveControlledErnestoData);
         api.RegisterHandler<(uint, SerializedTargetData)>("target-data", ReceiveTargetData);
         api.RegisterHandler<(uint, bool)>("visibility-state", ReceiveVisibilityState);
+        api.RegisterHandler<(uint, bool)>("size-change", ReceiveErnestoSizeChange);
     }
 
     private static void OnPlayerJoin(uint id)
@@ -96,9 +97,22 @@ public static class QSBCompat
 
     private static void ReceiveVisibilityState(uint from, (uint localID, bool visible) data)
     {
-        if (ErnestoChase.Instance.remoteErnestos.ContainsKey(0) && ErnestoChase.Instance.remoteErnestos[0].ContainsKey(data.localID))
+        if (ErnestoChase.TryGetRemoteErnesto(0, data.localID, out GameObject remoteErnesto))
         {
-            ErnestoChase.Instance.remoteErnestos[0][data.localID].GetComponent<ErnestoMovement>().UpdateVisibilityRemote(from, data.visible);
+            remoteErnesto.GetComponent<ErnestoMovement>().UpdateVisibilityRemote(from, data.visible);
+        }
+    }
+
+    public static void SendErnestoSizeChange(uint to, uint localID, bool shrink)
+    {
+        api.SendMessage("size-change", (localID, shrink), to, false);
+    }
+
+    private static void ReceiveErnestoSizeChange(uint from, (uint localID, bool shrink) data)
+    {
+        if (ErnestoChase.TryGetRemoteErnesto(from, data.localID, out GameObject remoteErnesto))
+        {
+            remoteErnesto.GetComponent<RemoteSizeChanger>()?.SetSize(data.shrink);
         }
     }
 }

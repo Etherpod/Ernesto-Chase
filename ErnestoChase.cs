@@ -52,6 +52,7 @@ public class ErnestoChase : ModBehaviour
     public float ErnestoNumber => (float)settings["ernestoNumber"].property;
     public bool ErnestoStacking => (bool)settings["ernestoStacking"].property;
     public bool RandomMode => (bool)settings["randomMode"].property;
+    public bool ErnestoMorph => (bool)settings["ernestoMorph"].property;
 
     private Dictionary<string, (object value, object property)> settings = new()
     {
@@ -72,6 +73,7 @@ public class ErnestoChase : ModBehaviour
         { "ernestoMusic", (false, false) },
         { "disableLight", (false, false) },
         { "advancedSettings", (false, false) },
+        { "ernestoMorph", (false, false) },
     };
 
     public static readonly bool EnableDebugMode = true;
@@ -113,7 +115,15 @@ public class ErnestoChase : ModBehaviour
                 storedErnestoTargets.Clear();
             }
 
-            StartCoroutine(WaitForPlayer());
+            if (!InMultiplayer || scene == OWScene.SolarSystem)
+            {
+                StartCoroutine(WaitForPlayer());
+            }
+            else
+            {
+                ModHelper.Console.WriteLine("\nSkip to the next loop when everyone has joined! Joining during the middle of the loop will break Ernesto.\n",
+                   MessageType.Warning);
+            }
         };
 
         LoadManager.OnStartSceneLoad += (scene, loadScene) =>
@@ -235,9 +245,39 @@ public class ErnestoChase : ModBehaviour
         return output;
     }
 
+    public static bool TryGetRemoteErnesto(uint playerID, uint localID, out GameObject remoteErnesto)
+    {
+        if (Instance.remoteErnestos.ContainsKey(playerID) && Instance.remoteErnestos[playerID].ContainsKey(localID))
+        {
+            remoteErnesto = Instance.remoteErnestos[playerID][localID];
+            return true;
+        }
+
+        remoteErnesto = null;
+        return false;
+    }
+
     private IEnumerator WaitForPlayer()
     {
         yield return new WaitUntil(() => Locator.GetPlayerBody() != null);
+
+        if (ErnestoMorph)
+        {
+            GameObject prefab = LoadPrefab("Assets/ErnestoChase/ControllableErnesto_Body.prefab");
+            ControllableErnesto ernesto = Instantiate(prefab, Locator.GetPlayerTransform().position + Locator.GetPlayerTransform().up * 3f, Locator.GetPlayerTransform().rotation)
+                .GetComponent<ControllableErnesto>();
+            ModHelper.Events.Unity.FireOnNextUpdate(ernesto.AttachPlayer);
+
+            if (InMultiplayer)
+            {
+                ErnestoData fakeData = new(QSBAPI.GetLocalPlayerID(), 0, Time.fixedTime, 1f, "Linear", 1f, 1f, 1f, 1f, 5f, StealthMode, QuantumMode, ErnestoCam, false);
+                foreach (var id in Players)
+                {
+                    QSBCompat.SendControlledErnestoData(id, fakeData);
+                }
+            }
+        }
+
         SpawnErnestos();
     }
 
@@ -280,7 +320,12 @@ public class ErnestoChase : ModBehaviour
                     remoteErnestos.Add(0, []);
                 }
 
-                uint localID = Convert.ToUInt32(remoteErnestos[0].Count);
+                int numErnestos = remoteErnestos[0].Count;
+                if (ErnestoMorph)
+                {
+                    numErnestos++;
+                }
+                uint localID = Convert.ToUInt32(numErnestos);
                 state.LocalID = localID;
                 remoteErnestos[0].Add(localID, ernestoObj);
 
@@ -329,13 +374,15 @@ public class ErnestoChase : ModBehaviour
 
     public IEnumerator SpawnControlledErnestoRemote(ErnestoData data)
     {
-        yield return new WaitUntil(() => QSBAPI.GetPlayerReady(QSBAPI.GetLocalPlayerID()));
+        yield return new WaitUntil(() => QSBAPI.GetPlayerReady(QSBAPI.GetLocalPlayerID()) 
+            && QSBAPI.GetPlayerReady(data.id));
 
         ErnestoChase.WriteDebugMessage("Spawn controlled Ernesto with data");
 
         GameObject ernestoObj = Instantiate(ernesto, Locator.GetPlayerTransform().position, Quaternion.identity);
         ErnestoManager manager = ernestoObj.GetComponent<ErnestoManager>();
         ErnestoState state = ernestoObj.GetComponent<ErnestoState>();
+        ernestoObj.AddComponent<RemoteSizeChanger>();
 
         state.SetData(data);
         state.AIEnabled = false;
@@ -357,6 +404,10 @@ public class ErnestoChase : ModBehaviour
         manager.SetStoredTargets(new());
 
         Transform remoteParent = QSBAPI.GetPlayerBody(data.id).transform;
+        foreach (var renderer in remoteParent.GetComponentsInChildren<Renderer>())
+        {
+            renderer.forceRenderingOff = true;
+        }
         ernestoObj.transform.parent = remoteParent;
         ModHelper.Events.Unity.FireInNUpdates(() =>
         {
@@ -373,9 +424,9 @@ public class ErnestoChase : ModBehaviour
 
     public void AddTargetDataRemote(uint from, uint localID, TargetDataQueue.TargetData targetData)
     {
-        if (remoteErnestos.ContainsKey(from) && remoteErnestos[from].ContainsKey(localID))
+        if (TryGetRemoteErnesto(from, localID, out GameObject remoteErnesto))
         {
-            remoteErnestos[from][localID].GetComponent<ErnestoManager>().AddTargetData(targetData);
+            remoteErnesto.GetComponent<ErnestoMovement>().AddTargetData(targetData);
         }
     }
 
@@ -550,9 +601,16 @@ public class ErnestoChase : ModBehaviour
                     };
                     break;
                 case SettingType.SEPARATOR:
-                    OptionsMenuManager.AddSeparator(newModTab, true);
-                    OptionsMenuManager.CreateLabel(newModTab, name);
-                    OptionsMenuManager.AddSeparator(newModTab, false);
+                    if (!name.Contains("."))
+                    {
+                        OptionsMenuManager.AddSeparator(newModTab, true);
+                        OptionsMenuManager.CreateLabel(newModTab, name);
+                        OptionsMenuManager.AddSeparator(newModTab, false);
+                    }
+                    else
+                    {
+                        OptionsMenuManager.AddSeparator(newModTab, false);
+                    }
                     break;
                 case SettingType.SLIDER:
                     var currentSliderValue = ModHelper.Config.GetSettingsValue<float>(name);

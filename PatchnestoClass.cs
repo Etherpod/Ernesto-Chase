@@ -74,14 +74,35 @@ public static class PatchnestoClass
         return false;
     }
 
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(DeathManager), nameof(DeathManager.KillPlayer))]
+    public static void OverwriteInvincibility(DeathManager __instance)
+    {
+        if (caughtErnestos.Count > 0)
+        {
+            __instance._invincible = false;
+        }
+    }
+
     [HarmonyPostfix]
     [HarmonyPatch(typeof(DeathManager), nameof(DeathManager.KillPlayer))]
-    public static void CheckPlayerDied(bool __runOriginal)
+    public static void CheckPlayerDied(DeathManager __instance, bool __runOriginal)
     {
         if (!__runOriginal)
         {
             ErnestoChase.Instance.RespawnErnesto();
         }
+        if (ErnestoChase.Instance.ErnestoMorph)
+        {
+            __instance._invincible = true;
+        }
+    }
+
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(ToolModeSwapper), nameof(ToolModeSwapper.EquipToolMode))]
+    public static bool CancelToolEquip()
+    {
+        return !ErnestoChase.Instance.ErnestoMorph;
     }
 
     [HarmonyPrefix]
@@ -280,7 +301,7 @@ public static class PatchnestoClass
     [HarmonyPatch(typeof(OWML.ModHelper.Menus.NewMenuSystem.PauseMenuManager), "OnSceneLoadCompleted")]
     public static void AddDebugPauseMenu() => DebugMenu.Initialize();
     
-    [HarmonyPostfix]
+    /*[HarmonyPostfix]
     [HarmonyPatch(typeof(OWML.ModHelper.Menus.NewMenuSystem.PauseMenuManager), "OnSceneLoadCompleted")]
-    public static void AddPauseMenuSettings() => SettingsMenu.InitializePauseMenu();
+    public static void AddPauseMenuSettings() => SettingsMenu.InitializePauseMenu();*/
 }

@@ -1,6 +1,6 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
-using static TargetDataQueue;
+using static ErnestoChase.TargetDataQueue;
 
 namespace ErnestoChase;
 
@@ -32,7 +32,7 @@ public class ErnestoMovement : MonoBehaviour
     private TargetDataQueue storedTargets;
     private bool usingStoredTargets = false;
     private bool failedPlanetCheck = false;
-    private readonly int storedTargetsFrameDelay = 5;
+    private readonly int storedTargetsFrameDelay = 100;
     private int frameDelay;
 
     private float targetSpawnDelay = 0.25f;
@@ -100,6 +100,7 @@ public class ErnestoMovement : MonoBehaviour
 
     public void Initialize()
     {
+        // no parent being set?
         Vector3 playerStartPos = transform.parent.InverseTransformPoint(Locator.GetPlayerTransform().position);
         transform.localPosition = playerStartPos;
         lastPosition = playerStartPos;
@@ -192,6 +193,7 @@ public class ErnestoMovement : MonoBehaviour
                 frameDelay = storedTargetsFrameDelay;
                 TargetData data = GenerateTargetData();
                 storedTargets.AddTarget(data);
+                //ErnestoChase.WriteDebugMessage("Send parent: " + data.parent);
 
                 if (ErnestoChase.InMultiplayer)
                 {
@@ -471,25 +473,26 @@ public class ErnestoMovement : MonoBehaviour
             frameDelay = storedTargetsFrameDelay;
 
             int num = 0;
-            while (storedTargets.PopNextTarget(out var nextData)
-                && nextData.time < Time.fixedTime + state.TimeOffset)
+            while (storedTargets.PeekNextTarget(out var nextData)
+                && nextData.time < Time.fixedTime + state.TimeOffset
+                && storedTargets.Count > 2)
             {
+                storedTargets.PopNextTarget(out _);
                 num++;
-                ErnestoChase.WriteDebugMessage("Skip");
             }
 
-            ErnestoChase.WriteDebugMessage("\nSkipped " + num + " targets\n");
+            //ErnestoChase.WriteDebugMessage("\nSkipped " + num + " targets\n");
 
             storedTargets.PopNextTarget(out var data);
             targetData = data;
-            ErnestoChase.WriteDebugMessage("   Host: " + targetData.time);
-            ErnestoChase.WriteDebugMessage("   Client: " + Time.fixedTime);
+            //ErnestoChase.WriteDebugMessage("   Receive: " + targetData.parent);
 
             if (transform.parent.name != targetData.parent)
             {
                 var parent = GameObject.Find(targetData.parent);
                 if (parent != null)
                 {
+                    //ErnestoChase.WriteDebugMessage("\n\n\n\n\n\n" + parent + "\n\n\n\n\n\n");
                     transform.parent = parent.transform;
                     transform.localPosition = targetData.localPosition;
                     failedPlanetCheck = false;
@@ -507,7 +510,8 @@ public class ErnestoMovement : MonoBehaviour
         }
         else
         {
-            targetData = storedTargets.PeekNextTarget();
+            storedTargets.PeekNextTarget(out TargetData data);
+            targetData = data;
             frameDelay--;
         }
 

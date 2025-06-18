@@ -112,11 +112,6 @@ public class ErnestoManager : MonoBehaviour
         ernestoMovement.SetStoredTargets(queue);
     }
 
-    public void AddTargetData(TargetDataQueue.TargetData data)
-    {
-        ernestoMovement.AddTargetData(data);
-    }
-
     public TargetDataQueue GetStoredTargets()
     {
         return ernestoMovement.GetStoredTargets();

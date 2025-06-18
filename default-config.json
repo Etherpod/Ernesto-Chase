@@ -30,6 +30,12 @@
       "type": "toggle",
       "value": false
     },
+    "ernestoMorph": {
+      "title": "Enable Ernesto Morph",
+      "tooltip": "Turns you into Ernesto. Maybe they'll stop chasing you now?",
+      "type": "toggle",
+      "value": false
+    },
     "randomMode": {
       "title": "Enable Randomizer",
       "tooltip": "Randomizes all of the settings each loop. You can customize the randomizer using the RandomizerSettings.json file in the mod folder.",
@@ -117,6 +123,11 @@
       "type": "toggle",
       "value": false
     },
+
+    ".": {
+      "type": "separator"
+    },
+
     "advancedSettings": {
       "title": "Enable Advanced Settings",
       "tooltip": "Enabling this will ignore this section of the settings and use the values from the AdvancedErnestoSettings.json file in the mod folder.",

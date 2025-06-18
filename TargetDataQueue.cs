@@ -1,6 +1,8 @@
 ﻿using System;
 using UnityEngine;
 
+namespace ErnestoChase;
+
 public class TargetDataQueue
 {
     [Serializable]
@@ -24,15 +26,27 @@ public class TargetDataQueue
         nextOpenSlot++;
     }
 
-    public TargetData PeekNextTarget()
+    public bool PeekNextTarget(out TargetData targetData)
     {
-        return targetDataHistory[nextTarget];
+        if (nextTarget == nextOpenSlot)
+        {
+            targetData = targetDataHistory[nextTarget - 1];
+            ErnestoChase.WriteDebugMessage("Tried to peek but couldn't");
+            return false;
+        }
+
+        targetData = targetDataHistory[nextTarget];
+        return true;
     }
 
     public bool PopNextTarget(out TargetData targetData)
     {
-        targetData = new();
-        if (nextTarget == nextOpenSlot) return false;
+        if (nextTarget == nextOpenSlot)
+        {
+            targetData = targetDataHistory[nextTarget - 1];
+            ErnestoChase.WriteDebugMessage("Tried to pop but couldn't");
+            return false;
+        }
 
         targetData = targetDataHistory[nextTarget];
         nextTarget++;

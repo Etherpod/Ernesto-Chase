@@ -1,12 +1,12 @@
 ManifestFileVersion: 0
-CRC: 1394234861
+CRC: 3531762729
 Hashes:
   AssetFileHash:
     serializedVersion: 2
-    Hash: abee6dccbd1a61e116ff089d4020aa20
+    Hash: 9142be3dd8b9a63b5d0daeea8160b7a0
   TypeTreeHash:
     serializedVersion: 2
-    Hash: 995550aac2c01e8d623af83780fa8b2d
+    Hash: 6ea2aeffbf0cc54bcf21d8d582da29fa
 HashAppended: 0
 ClassTypes:
 - Class: 1
@@ -74,6 +74,8 @@ ClassTypes:
 - Class: 114
   Script: {fileID: 11500000, guid: 8aa7b556a5fd542f0d4d803660cdf028, type: 3}
 - Class: 114
+  Script: {fileID: 11500000, guid: 8b82ed96ad6c3649d3c3ce22fcf870a2, type: 3}
+- Class: 114
   Script: {fileID: 11500000, guid: 1dcb8b570234015f281c1774637aeaf1, type: 3}
 - Class: 114
   Script: {fileID: -775707063, guid: 730ba948cc1cb5041ba6afe86ca1eb46, type: 3}
@@ -130,7 +132,6 @@ Assets:
 - Assets/ErnestoChase/ErnestoCameraDisplay_mat.mat
 - Assets/ErnestoChase/SpaceTargetsParent.prefab
 - Assets/ErnestoChase/WhiteHole.prefab
-- Assets/ErnestoChase/ControllableErnesto_REMOTE.prefab
 - Assets/ErnestoChase/Beast_Anglerfish.prefab
 - Assets/ErnestoChase/ControllableErnesto_Body.prefab
 Dependencies: []
