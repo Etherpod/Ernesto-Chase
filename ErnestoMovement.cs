@@ -113,7 +113,7 @@ public class ErnestoMovement : MonoBehaviour
             storedTargets = new();
         }
 
-        enabled = true;
+        enabled = state.AIEnabled;
     }
 
     public void SetStoredTargets(TargetDataQueue queue)
@@ -462,6 +462,8 @@ public class ErnestoMovement : MonoBehaviour
 
     private void FollowStoredTargets()
     {
+        if (storedTargets.Count == 0) return;
+
         TargetData targetData;
 
         if (frameDelay <= 0)

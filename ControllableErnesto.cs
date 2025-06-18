@@ -27,6 +27,10 @@ public class ControllableErnesto : MonoBehaviour
         owCamera.GetComponent<PlanetaryFogImageEffect>().fogShader = Shader.Find("Hidden/PlanetaryFogImageEffect");
 
         rigidbody.GetRigidbody().angularDrag = angularDrag;
+    }
+
+    private void Start()
+    {
         storedTargets = new();
     }
 
@@ -37,7 +41,7 @@ public class ControllableErnesto : MonoBehaviour
         UpdateMovement();
         UpdateRotation();
 
-        if (frameDelay > 0)
+        /*if (frameDelay > 0)
         {
             frameDelay--;
         }
@@ -55,7 +59,7 @@ public class ControllableErnesto : MonoBehaviour
                     QSBCompat.SendTargetData(id, 0, data);
                 }
             }
-        }
+        }*/
     }
 
     private void UpdateMovement()
@@ -108,7 +112,7 @@ public class ControllableErnesto : MonoBehaviour
         rigidbody.AddLocalAngularAcceleration(rotation * rotationMultiplier);
     }
 
-    private TargetData GenerateTargetData()
+    /*private TargetData GenerateTargetData()
     {
         var staticRef = Locator.GetCenterOfTheUniverse().GetStaticReferenceFrame().transform;
         Transform reference;
@@ -124,7 +128,7 @@ public class ControllableErnesto : MonoBehaviour
         var localPos = reference.InverseTransformPoint(transform.position);
         var worldPos = staticRef.InverseTransformDirection(transform.position);
         return new TargetData(reference.name, localPos, worldPos, Time.fixedTime);
-    }
+    }*/
 
     public void AttachPlayer()
     {

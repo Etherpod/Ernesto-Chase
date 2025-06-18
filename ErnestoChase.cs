@@ -152,7 +152,7 @@ public class ErnestoChase : ModBehaviour
                 ErnestoData fakeData = new(QSBAPI.GetLocalPlayerID(), 0, Time.fixedTime, 1f, "Linear", 1f, 1f, 1f, 1f, 5f, StealthMode, QuantumMode, ErnestoCam, false);
                 foreach (var id in Players)
                 {
-                    QSBCompat.SendErnestoData(id, fakeData);
+                    QSBCompat.SendControlledErnestoData(id, fakeData);
                 }
             }
         }
@@ -319,6 +319,50 @@ public class ErnestoChase : ModBehaviour
 
         remoteErnestos[data.id].Add(data.localid, ernestoObj);
         manager.SetStoredTargets(new());
+
+        /*if (ErnestoStacking && storedErnestoTargets.Count > i)
+        {
+            manager.SetStoredTargets(storedErnestoTargets[i]);
+            oldErnestos.Add(ernestoObj);
+        }*/
+    }
+
+    public IEnumerator SpawnControlledErnestoRemote(ErnestoData data)
+    {
+        yield return new WaitUntil(() => QSBAPI.GetPlayerReady(QSBAPI.GetLocalPlayerID()));
+
+        ErnestoChase.WriteDebugMessage("Spawn controlled Ernesto with data");
+
+        GameObject ernestoObj = Instantiate(ernesto, Locator.GetPlayerTransform().position, Quaternion.identity);
+        ErnestoManager manager = ernestoObj.GetComponent<ErnestoManager>();
+        ErnestoState state = ernestoObj.GetComponent<ErnestoState>();
+
+        state.SetData(data);
+        state.AIEnabled = false;
+
+        ernestoObj.SetActive(true);
+        ernestos.Add(ernestoObj);
+
+        if (state.ErnestoCam)
+        {
+            camErnestos.Add(ernestoObj);
+        }
+
+        if (!remoteErnestos.ContainsKey(data.id))
+        {
+            remoteErnestos.Add(data.id, []);
+        }
+
+        remoteErnestos[data.id].Add(data.localid, ernestoObj);
+        manager.SetStoredTargets(new());
+
+        Transform remoteParent = QSBAPI.GetPlayerBody(data.id).transform;
+        ernestoObj.transform.parent = remoteParent;
+        ModHelper.Events.Unity.FireInNUpdates(() =>
+        {
+            ernestoObj.transform.localPosition = new Vector3(0f, 0f, 0f);
+            ernestoObj.transform.localRotation = Quaternion.identity;
+        }, 10);
 
         /*if (ErnestoStacking && storedErnestoTargets.Count > i)
         {

@@ -37,6 +37,7 @@ public static class QSBCompat
         api.OnPlayerJoin().AddListener(OnPlayerJoin);
 
         api.RegisterHandler<string>("ernesto-data", ReceiveErnestoData);
+        api.RegisterHandler<string>("controlled-ernesto-data", ReceiveControlledErnestoData);
         api.RegisterHandler<(uint, SerializedTargetData)>("target-data", ReceiveTargetData);
         api.RegisterHandler<(uint, bool)>("visibility-state", ReceiveVisibilityState);
     }
@@ -59,6 +60,22 @@ public static class QSBCompat
         {
             ErnestoChase.WriteDebugMessage("Receive Ernesto on " + api.GetLocalPlayerID() + " - " + data.id);
             ErnestoChase.Instance.StartCoroutine(ErnestoChase.Instance.SpawnErnestoRemote(data));
+        }
+    }
+
+    public static void SendControlledErnestoData(uint to, ErnestoData data)
+    {
+        string json = JsonConvert.SerializeObject(data);
+        api.SendMessage("controlled-ernesto-data", json, to, false);
+    }
+
+    private static void ReceiveControlledErnestoData(uint from, string json)
+    {
+        ErnestoData data = JsonConvert.DeserializeObject<ErnestoData>(json);
+        if (data != null)
+        {
+            ErnestoChase.WriteDebugMessage("Receive controlled Ernesto on " + api.GetLocalPlayerID() + " - " + data.id);
+            ErnestoChase.Instance.StartCoroutine(ErnestoChase.Instance.SpawnControlledErnestoRemote(data));
         }
     }
 

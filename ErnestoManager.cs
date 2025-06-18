@@ -89,7 +89,7 @@ public class ErnestoManager : MonoBehaviour
             return;
         }
 
-        if (state.ErnestoReleased)
+        if (state.ErnestoReleased && state.AIEnabled)
         {
             if (planetManager.UpdatePlayerPlanetState(!ernestoMovement.IsNextSpaceTargetTeleport()))
             {
