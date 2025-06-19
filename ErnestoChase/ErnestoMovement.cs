@@ -466,6 +466,8 @@ public class ErnestoMovement : MonoBehaviour
     {
         if (storedTargets.Count == 0) return;
 
+        ErnestoChase.WriteDebugMessage("count: " + storedTargets.Count);
+
         TargetData targetData;
 
         if (frameDelay <= 0)
@@ -473,17 +475,19 @@ public class ErnestoMovement : MonoBehaviour
             frameDelay = storedTargetsFrameDelay;
 
             int num = 0;
-            while (storedTargets.PeekNextTarget(out var nextData)
-                && nextData.time < Time.fixedTime + state.TimeOffset
-                && storedTargets.Count > 2)
+            while (storedTargets.Count > 2 
+                && storedTargets.PeekCurrentTarget(out var nextData)
+                && nextData.time < Time.fixedTime + state.TimeOffset)
             {
-                storedTargets.PopNextTarget(out _);
+                storedTargets.PopCurrentTarget(out _);
                 num++;
             }
 
-            //ErnestoChase.WriteDebugMessage("\nSkipped " + num + " targets\n");
+            ErnestoChase.WriteDebugMessage("\nSkipped " + num + " targets\n");
 
-            storedTargets.PopNextTarget(out var data);
+            storedTargets.PopCurrentTarget(out _);
+            ErnestoChase.WriteDebugMessage("Start lerp peek");
+            storedTargets.PeekCurrentTarget(out var data);
             targetData = data;
             //ErnestoChase.WriteDebugMessage("   Receive: " + targetData.parent);
 
@@ -510,7 +514,7 @@ public class ErnestoMovement : MonoBehaviour
         }
         else
         {
-            storedTargets.PeekNextTarget(out TargetData data);
+            storedTargets.PeekCurrentTarget(out TargetData data);
             targetData = data;
             frameDelay--;
         }
@@ -519,10 +523,12 @@ public class ErnestoMovement : MonoBehaviour
         Quaternion targetRotation = Quaternion.LookRotation(gameObject.GetAttachedOWRigidbody().transform.TransformPoint(targetPos) - transform.position,
                 -planetManager.GetCurrentGravity().CalculateForceAccelerationAtPoint(transform.position));
 
-        float timeLerp = Mathf.InverseLerp(lastTime, lastTime + (Time.fixedDeltaTime * storedTargetsFrameDelay), Time.fixedTime);
+        float timeLerp = 1f - (frameDelay / (float)storedTargetsFrameDelay);
         transform.localPosition = Vector3.Lerp(lastPosition, targetPos, timeLerp);
+
         if ((targetPos - lastPosition).sqrMagnitude < 0.01f)
         {
+            ErnestoChase.WriteDebugMessage("reset");
             transform.rotation = lastRotation;
         }
         else

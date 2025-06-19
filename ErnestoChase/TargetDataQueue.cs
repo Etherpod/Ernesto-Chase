@@ -26,7 +26,7 @@ public class TargetDataQueue
         nextOpenSlot++;
     }
 
-    public bool PeekNextTarget(out TargetData targetData)
+    public bool PeekCurrentTarget(out TargetData targetData)
     {
         if (nextTarget == nextOpenSlot)
         {
@@ -39,7 +39,7 @@ public class TargetDataQueue
         return true;
     }
 
-    public bool PopNextTarget(out TargetData targetData)
+    public bool PopCurrentTarget(out TargetData targetData)
     {
         if (nextTarget == nextOpenSlot)
         {
