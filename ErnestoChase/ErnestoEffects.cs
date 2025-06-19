@@ -47,6 +47,8 @@ public class ErnestoEffects : MonoBehaviour
     private bool cachedFromSpace;
     private bool cachedToSpace;
 
+    private bool isFinalWarp = false;
+
     private void Awake()
     {
         state = GetComponent<ErnestoState>();
@@ -225,6 +227,12 @@ public class ErnestoEffects : MonoBehaviour
         }
     }
 
+    public void OnFinalWarp()
+    {
+        isFinalWarp = true;
+        OnTeleportStarted(false, false);
+    }
+
     private void HandleBlackHoleCollapse()
     {
         OnBlackHoleCollapse(cachedFromSpace, cachedToSpace);
@@ -233,6 +241,13 @@ public class ErnestoEffects : MonoBehaviour
     private void OnBlackHoleCollapse(bool fromSpace, bool toSpace)
     {
         blackHole.singularityController.OnCollapse -= HandleBlackHoleCollapse;
+
+        if (isFinalWarp)
+        {
+            gameObject.SetActive(false);
+            return;
+        }
+
         OnEnterBlackHole?.Invoke(fromSpace, toSpace);
 
         whiteHole.transform.parent = transform.parent;

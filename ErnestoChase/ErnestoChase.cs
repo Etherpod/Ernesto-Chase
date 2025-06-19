@@ -16,6 +16,7 @@ using System.Globalization;
 using UnityEngine.UI;
 using Newtonsoft.Json;
 using UnityEngine.PostProcessing;
+using CSharpFunctionalExtensions;
 
 namespace ErnestoChase;
 
@@ -32,13 +33,14 @@ public class ErnestoChase : ModBehaviour
     public List<GameObject> oldErnestos = [];
     public List<GameObject> camErnestos = [];
     public List<TargetDataQueue> storedErnestoTargets = [];
-    public List<SpectatorCamera> spectatorCameras = [];
     public Dictionary<uint, Dictionary<uint, GameObject>> remoteErnestos = [];
     public static IQSBAPI QSBAPI;
+    public PlayerAttachPoint currentAttach;
 
     private bool spectating = false;
-    private bool spectatingErnesto = true;
-    private SpectatorCamera[] availableCams;
+    private bool spectatingErnesto = false;
+    public List<SpectatorCamera> ernestoSpectatorCams = [];
+    public List<SpectatorCamera> playerSpectatorCams = [];
     private int ernestoCamIndex = 0;
     private int playerCamIndex = 0;
 
@@ -110,7 +112,8 @@ public class ErnestoChase : ModBehaviour
             camErnestos.Clear();
             oldErnestos.Clear();
             remoteErnestos.Clear();
-            spectatorCameras.Clear();
+            ernestoSpectatorCams.Clear();
+            playerSpectatorCams.Clear();
             PatchnestoClass.Initialize();
 
             UpdateProperties();
@@ -161,54 +164,78 @@ public class ErnestoChase : ModBehaviour
         {
             if (OWInput.IsNewlyPressed(InputLibrary.map))
             {
-                SwitchToSpectatorCam(spectatorCameras[1]);
+                if (!spectating)
+                {
+                    if (spectatingErnesto)
+                    {
+                        SwitchToSpectatorCam(ernestoSpectatorCams[1]);
+                    }
+                    else
+                    {
+                        SwitchToSpectatorCam(playerSpectatorCams[0]);
+                    }
+                }
+                /*else
+                {
+                    currentAttach?.DetachPlayer();
+                    spectating = false;
+                }*/
             }
 
-            /*if (OWInput.IsNewlyPressed(InputLibrary.toolOptionUp) || OWInput.IsNewlyPressed(InputLibrary.toolOptionDown))
+            if (OWInput.IsNewlyPressed(InputLibrary.toolOptionUp) || OWInput.IsNewlyPressed(InputLibrary.toolOptionDown))
             {
                 spectatingErnesto = !spectatingErnesto;
-                availableCams = spectatorCameras.Where(cam => cam.IsErnestoCam() == spectatingErnesto && cam.CanSpectate()).ToArray();
-
-                // Update cams
-            }
-
-            List<SpectatorCamera> cams = spectatorCameras.Where(cam => cam.IsErnestoCam() == spectatingErnesto && cam.CanSpectate()).ToList();
-
-            int currentIndex = spectatingErnesto ? ernestoCamIndex : playerCamIndex;
-            int camIndex = Mathf.Max(cams.IndexOf(spectatorCameras[currentIndex], 0));
-
-            if (OWInput.IsNewlyPressed(InputLibrary.toolOptionLeft))
-            {
-                camIndex--;
-                if (camIndex < 0)
-                {
-                    camIndex = cams.Count - 1;
-                }
-            }
-            else if (OWInput.IsNewlyPressed(InputLibrary.toolOptionRight))
-            {
-                camIndex++;
-                if (camIndex >= cams.Count)
-                {
-                    camIndex = 0;
-                }
-            }
-
-            int finalIndex = spectatorCameras.IndexOf(cams[camIndex]);
-            if (finalIndex != currentIndex)
-            {
                 if (spectatingErnesto)
                 {
-                    ernestoCamIndex = finalIndex;
+                    SwitchToSpectatorCam(ernestoSpectatorCams[1]);
                 }
                 else
                 {
-                    playerCamIndex = finalIndex;
+                    SwitchToSpectatorCam(playerSpectatorCams[0]);
                 }
+            }
 
-                SwitchToSpectatorCam(spectatorCameras[finalIndex]);
-            }*/
+            return;
+
+            bool leftPressed = OWInput.IsNewlyPressed(InputLibrary.toolOptionLeft);
+            if (leftPressed || OWInput.IsNewlyPressed(InputLibrary.toolOptionRight))
+            {
+                if (spectatingErnesto)
+                {
+                    var newIndex = GetSpectatorCamIndex(ernestoSpectatorCams, ernestoCamIndex, leftPressed);
+                    if (newIndex.HasValue && newIndex.Value != ernestoCamIndex)
+                    {
+                        ernestoCamIndex = newIndex.Value;
+                        SwitchToSpectatorCam(ernestoSpectatorCams[ernestoCamIndex]);
+                    }
+                }
+                else
+                {
+                    var newIndex = GetSpectatorCamIndex(playerSpectatorCams, playerCamIndex, leftPressed);
+                    if (newIndex.HasValue)
+                    {
+                        playerCamIndex = newIndex.Value;
+                        SwitchToSpectatorCam(playerSpectatorCams[playerCamIndex]);
+                    }
+                }
+            }
         }
+    }
+
+    private Maybe<int> GetSpectatorCamIndex(List<SpectatorCamera> cams, int currentIndex, bool cycleLeft)
+    {
+        int delta = cycleLeft ? -1 : 1;
+
+        for (int i = 0; i <= cams.Count; i++)
+        {
+            currentIndex = (currentIndex + delta) % cams.Count;
+            if (cams[currentIndex].CanSpectate())
+            {
+                return currentIndex;
+            }
+        }
+
+        return Maybe.None;
     }
 
     private void InitializeQSB()
@@ -302,6 +329,21 @@ public class ErnestoChase : ModBehaviour
         return output;
     }
 
+    public IEnumerator AddCamToRemotePlayer(uint playerID)
+    {
+        yield return new WaitUntil(() => QSBAPI.GetPlayerReady(playerID));
+
+        if (playerID == QSBAPI.GetLocalPlayerID()) yield break;
+
+        ErnestoChase.WriteDebugMessage("add cam to " + playerID);
+        GameObject body = QSBAPI.GetPlayerBody(playerID);
+        ErnestoChase.WriteDebugMessage("body: " + body);
+        ErnestoChase.WriteDebugMessage("body rigidbody: " + body.GetAttachedOWRigidbody());
+        GameObject remoteCam = LoadPrefab("Assets/ErnestoChase/PlayerRemoteSpectatorCam.prefab");
+        GameObject remoteCamObj = Instantiate(remoteCam, body.transform.Find("REMOTE_PlayerCamera"));
+        remoteCamObj.GetComponent<SpectatorCamera>().SetPlayerID(playerID);
+    }
+
     public static bool TryGetRemoteErnesto(uint playerID, uint localID, out GameObject remoteErnesto)
     {
         if (Instance.remoteErnestos.ContainsKey(playerID) && Instance.remoteErnestos[playerID].ContainsKey(localID))
@@ -330,8 +372,18 @@ public class ErnestoChase : ModBehaviour
 
             spectating = true;
         }
+        else
+        {
+            Locator.GetActiveCamera().enabled = false;
+            camera.enabled = true;
+            GlobalMessenger<OWCamera>.FireEvent("SwitchActiveCamera", camera.GetOWCamera());
+        }
 
-        camera.AttachPlayer();
+        currentAttach?.DetachPlayer();
+        ModHelper.Events.Unity.FireOnNextUpdate(() =>
+        {
+            camera.AttachPlayer();
+        });
     }
 
     private IEnumerator WaitForPlayer()

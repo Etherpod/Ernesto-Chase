@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.ComponentModel.Design;
 using UnityEngine;
 using static ErnestoChase.TargetDataQueue;
 
@@ -16,6 +17,8 @@ public class ErnestoMovement : MonoBehaviour
     public event TakeShortcutEvent OnTakeShortcut;
     public delegate void UpdateVisibilityEvent(bool visible);
     public event UpdateVisibilityEvent OnUpdateVisibility;
+    public delegate void FinalWarpEvent();
+    public event FinalWarpEvent OnFinalWarp;
 
     ErnestoState state;
     PlanetManager planetManager;
@@ -63,6 +66,7 @@ public class ErnestoMovement : MonoBehaviour
     private bool ernestoFrozen = false;
 
     private List<uint> observers = [];
+    private bool warpOutOnTargetComplete = false;
 
     private void Awake()
     {
@@ -245,6 +249,29 @@ public class ErnestoMovement : MonoBehaviour
         }
     }
 
+    public void OnPlayerDeath()
+    {
+        ErnestoChase.WriteDebugMessage("Let's get outta here");
+        if (targets.Count > 0 && !state.CaughtPlayer)
+        {
+            ErnestoChase.WriteDebugMessage("Warp at end of path");
+            var targetArray = targets.ToArray();
+            var lastTarget = targetArray[targetArray.Length - 1];
+            lastTarget.isTeleport = true;
+            targetArray[targetArray.Length - 1] = lastTarget;
+            warpOutOnTargetComplete = true;
+        }
+        else
+        {
+            ErnestoChase.WriteDebugMessage("Instant warp");
+            targets.Clear();
+            spaceTargets.Clear();
+            canMove = false;
+            enabled = false;
+            OnFinalWarp?.Invoke();
+        }
+    }
+
     private void SpawnTarget(Transform parent, Vector3 worldPosition, bool isTeleport = false)
     {
         targets.Enqueue((parent.InverseTransformPoint(worldPosition), isTeleport));
@@ -408,7 +435,22 @@ public class ErnestoMovement : MonoBehaviour
         {
             if (targets.Peek().isTeleport)
             {
-                OnTeleportRequired?.Invoke(false);
+                if (warpOutOnTargetComplete)
+                {
+                    ErnestoChase.WriteDebugMessage("Try final teleport, count is: " + targets.ToArray().Length);
+                }
+                if (warpOutOnTargetComplete && targets.ToArray().Length == 1)
+                {
+                    targets.Clear();
+                    spaceTargets.Clear();
+                    canMove = false;
+                    enabled = false;
+                    OnFinalWarp?.Invoke();
+                }
+                else
+                {
+                    OnTeleportRequired?.Invoke(false);
+                }
             }
             else
             {
@@ -466,8 +508,6 @@ public class ErnestoMovement : MonoBehaviour
     {
         if (storedTargets.Count == 0) return;
 
-        ErnestoChase.WriteDebugMessage("count: " + storedTargets.Count);
-
         TargetData targetData;
 
         if (frameDelay <= 0)
@@ -475,7 +515,8 @@ public class ErnestoMovement : MonoBehaviour
             frameDelay = storedTargetsFrameDelay;
 
             int num = 0;
-            while (storedTargets.Count > 2 
+
+            while (storedTargets.Count > 2
                 && storedTargets.PeekCurrentTarget(out var nextData)
                 && nextData.time < Time.fixedTime + state.TimeOffset)
             {
@@ -483,10 +524,7 @@ public class ErnestoMovement : MonoBehaviour
                 num++;
             }
 
-            ErnestoChase.WriteDebugMessage("\nSkipped " + num + " targets\n");
-
             storedTargets.PopCurrentTarget(out _);
-            ErnestoChase.WriteDebugMessage("Start lerp peek");
             storedTargets.PeekCurrentTarget(out var data);
             targetData = data;
             //ErnestoChase.WriteDebugMessage("   Receive: " + targetData.parent);
@@ -528,7 +566,6 @@ public class ErnestoMovement : MonoBehaviour
 
         if ((targetPos - lastPosition).sqrMagnitude < 0.01f)
         {
-            ErnestoChase.WriteDebugMessage("reset");
             transform.rotation = lastRotation;
         }
         else

@@ -19,14 +19,13 @@ public class SpectatorCamera : MonoBehaviour
         {
             ernestoManager = GetComponent<ErnestoManager>();
             isErnestoCam = true;
+            ErnestoChase.Instance.ernestoSpectatorCams.Add(this);
         }
 
-        owCamera.GetComponent<PlanetaryFogImageEffect>().fogShader = Shader.Find("Hidden/PlanetaryFogImageEffect");
+            owCamera.GetComponent<PlanetaryFogImageEffect>().fogShader = Shader.Find("Hidden/PlanetaryFogImageEffect");
         owCamera.GetComponent<FlashbackScreenGrabImageEffect>()._downsampleShader = Shader.Find("Hidden/DownsampleImageEffect");
         owCamera.enabled = false;
         owCamera.gameObject.SetActive(true);
-
-        ErnestoChase.Instance.spectatorCameras.Add(this);
     }
 
     public bool IsErnestoCam()
@@ -43,13 +42,19 @@ public class SpectatorCamera : MonoBehaviour
     {
         isErnestoCam = false;
         playerID = id;
+        ErnestoChase.Instance.playerSpectatorCams.Add(this);
     }
 
     public bool CanSpectate()
     {
-        return isErnestoCam ? 
-            !ernestoManager.GetComponent<ErnestoState>().CaughtPlayer 
-            : !ErnestoChase.QSBAPI.GetPlayerDead(playerID);
+        if (isErnestoCam)
+        {
+            return ernestoManager.CanSpectate();
+        }
+        else
+        {
+            return !ErnestoChase.QSBAPI.GetPlayerDead(playerID);
+        }
     }
     
     public void AttachPlayer()
@@ -70,6 +75,7 @@ public class SpectatorCamera : MonoBehaviour
 
         ErnestoChase.WriteDebugMessage("Attach body: " + gameObject.GetAttachedOWRigidbody());
         attachPoint.AttachPlayer();
+        ErnestoChase.Instance.currentAttach = attachPoint;
 
         GlobalMessenger.FireEvent("PlayerRepositioned");
 

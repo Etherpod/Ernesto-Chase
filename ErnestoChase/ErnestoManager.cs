@@ -21,6 +21,7 @@ public class ErnestoManager : MonoBehaviour
     private bool initialized = false;
     private bool startedDeathSequence = false;
     private bool playerCollided = false;
+    private bool missionComplete = false;
 
     private void Awake()
     {
@@ -42,6 +43,7 @@ public class ErnestoManager : MonoBehaviour
         ernestoMovement.OnSpaceWarp += OnSpaceWarp;
         ernestoMovement.OnTakeShortcut += ernestoEffects.OnTakeShortcut;
         ernestoMovement.OnUpdateVisibility += ernestoEffects.OnUpdateVisibility;
+        ernestoMovement.OnFinalWarp += OnFinalWarp;
 
         ernestoEffects.OnExitWhiteHole += OnExitWhiteHole;
         ernestoEffects.OnEnterBlackHole += OnEnterBlackHole;
@@ -119,9 +121,34 @@ public class ErnestoManager : MonoBehaviour
         return ernestoMovement.GetStoredTargets();
     }
 
+    public bool CanSpectate()
+    {
+        if (state.RemoteID > 0)
+        {
+            return GetStoredTargets().Count > 0;
+        }
+        else
+        {
+            return false;
+            return !state.CaughtPlayer && !missionComplete;
+        }
+    }
+
+    private void OnFinalWarp()
+    {
+        ernestoEffects.OnFinalWarp();
+        missionComplete = true;
+        // switch cams
+    }
+
     private void OnPlayerDeath(DeathType deathType)
     {
         killVolume.gameObject.SetActive(false);
+        if (state.RemoteID == 0)
+        {
+            return;
+            ernestoMovement.OnPlayerDeath();
+        }
     }
 
     public void OnUpdateTravelMode(bool isSpace)
@@ -201,6 +228,8 @@ public class ErnestoManager : MonoBehaviour
         ernestoMovement.OnProximityRoar -= ernestoEffects.OnProximityRoar;
         ernestoMovement.OnSpaceWarp -= OnSpaceWarp;
         ernestoMovement.OnTakeShortcut -= ernestoEffects.OnTakeShortcut;
+        ernestoMovement.OnUpdateVisibility -= ernestoEffects.OnUpdateVisibility;
+        ernestoMovement.OnFinalWarp -= OnFinalWarp;
 
         ernestoEffects.OnExitWhiteHole -= OnExitWhiteHole;
         ernestoEffects.OnEnterBlackHole -= OnEnterBlackHole;

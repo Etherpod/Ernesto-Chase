@@ -1,9 +1,9 @@
 ManifestFileVersion: 0
-CRC: 258479500
+CRC: 1402762827
 Hashes:
   AssetFileHash:
     serializedVersion: 2
-    Hash: 17c1ae1f46dc2a9a8bbf2058c8bae5cb
+    Hash: 8f2f70cf7e84f7f85e50c560ff6d26e6
   TypeTreeHash:
     serializedVersion: 2
     Hash: cc08c36b47d9023fdd1b0bfa5142918c
@@ -127,6 +127,7 @@ SerializeReferenceClassIdentifiers: []
 Assets:
 - Assets/ErnestoChase/ErnestoBody.prefab
 - Assets/ErnestoChase/Anglerfish_Body.prefab
+- Assets/ErnestoChase/PlayerRemoteSpectatorCam.prefab
 - Assets/ErnestoChase/Materials/Test.mat
 - Assets/ErnestoChase/Ernesto.prefab
 - Assets/ErnestoChase/Anglerfish_Body 1.prefab

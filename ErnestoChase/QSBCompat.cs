@@ -45,7 +45,7 @@ public static class QSBCompat
 
     private static void OnPlayerJoin(uint id)
     {
-        // initialize existing ernestos
+        ErnestoChase.Instance.StartCoroutine(ErnestoChase.Instance.AddCamToRemotePlayer(id));
     }
 
     public static void SendErnestoData(uint to, ErnestoData data)
