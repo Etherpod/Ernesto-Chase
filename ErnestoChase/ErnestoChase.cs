@@ -123,7 +123,7 @@ public class ErnestoChase : ModBehaviour
                 storedErnestoTargets.Clear();
             }
 
-            if (true || !InMultiplayer || scene == OWScene.SolarSystem)
+            if (!InMultiplayer || scene == OWScene.SolarSystem)
             {
                 StartCoroutine(WaitForPlayer());
             }
@@ -388,26 +388,29 @@ public class ErnestoChase : ModBehaviour
 
     private IEnumerator WaitForPlayer()
     {
-        yield return new WaitUntil(() => Locator.GetPlayerBody() != null);
+        yield return new WaitUntil(() => Locator.GetPlayerBody() != null && (QSBAPI == null || QSBAPI.GetPlayerReady(QSBAPI.GetLocalPlayerID())));
 
-        if (ErnestoMorph)
+        ModHelper.Events.Unity.FireInNUpdates(() =>
         {
-            GameObject prefab = LoadPrefab("Assets/ErnestoChase/ControllableErnesto_Body.prefab");
-            ControllableErnesto ernesto = Instantiate(prefab, Locator.GetPlayerTransform().position + Locator.GetPlayerTransform().up * 3f, Locator.GetPlayerTransform().rotation)
-                .GetComponent<ControllableErnesto>();
-            ModHelper.Events.Unity.FireOnNextUpdate(ernesto.AttachPlayer);
-
-            if (InMultiplayer)
+            if (ErnestoMorph)
             {
-                ErnestoData fakeData = new(QSBAPI.GetLocalPlayerID(), 0, Time.fixedTime, 1f, "Linear", 1f, 1f, 1f, 1f, 5f, StealthMode, QuantumMode, ErnestoCam, false);
-                foreach (var id in Players)
+                GameObject prefab = LoadPrefab("Assets/ErnestoChase/ControllableErnesto_Body.prefab");
+                ControllableErnesto ernesto = Instantiate(prefab, Locator.GetPlayerTransform().position + Locator.GetPlayerTransform().up * 3f, Locator.GetPlayerTransform().rotation)
+                    .GetComponent<ControllableErnesto>();
+                ModHelper.Events.Unity.FireOnNextUpdate(ernesto.AttachPlayer);
+
+                if (InMultiplayer)
                 {
-                    QSBCompat.SendControlledErnestoData(id, fakeData);
+                    ErnestoData fakeData = new(QSBAPI.GetLocalPlayerID(), 0, Time.fixedTime, 1f, "Linear", 1f, 1f, 1f, 1f, 5f, StealthMode, QuantumMode, ErnestoCam, false);
+                    foreach (var id in Players)
+                    {
+                        QSBCompat.SendControlledErnestoData(id, fakeData);
+                    }
                 }
             }
-        }
 
-        SpawnErnestos();
+            SpawnErnestos();
+        }, 50);
     }
 
     private void SpawnErnestos()
@@ -555,7 +558,7 @@ public class ErnestoChase : ModBehaviour
     {
         if (TryGetRemoteErnesto(from, localID, out GameObject remoteErnesto))
         {
-            remoteErnesto.GetComponent<ErnestoMovement>().AddTargetData(targetData);
+            remoteErnesto?.GetComponent<ErnestoMovement>()?.AddTargetData(targetData);
         }
     }
 
