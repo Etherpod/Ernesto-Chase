@@ -13,6 +13,9 @@ public class PlanetManager : MonoBehaviour
     public event PlayerWarpEvent OnPlayerWarpStarted;
     public event PlayerWarpEvent OnPlayerWarpComplete;
 
+    [SerializeField]
+    private ErnestoForceDetector _forceDetector;
+
     private ErnestoState state;
 
     private GameObject currentPlanet;
@@ -254,6 +257,11 @@ public class PlanetManager : MonoBehaviour
         return rigidbody;
     }
 
+    public void AssignForceDetector(ErnestoForceDetector detector)
+    {
+        _forceDetector = detector;
+    }
+
     public OWRigidbody GetCurrentPlanetBody()
     {
         OWRigidbody body = null;
@@ -265,9 +273,13 @@ public class PlanetManager : MonoBehaviour
             return staticTransformParent.GetComponent<OWRigidbody>();
         }
 
-        AlignmentForceDetector detector = Locator.GetPlayerForceDetector();
+        PriorityDetector detector = _forceDetector;
         if (detector._trackedLayers.Count > 0)
         {
+            detector = Locator.GetPlayerForceDetector();
+
+            if (detector._trackedLayers.Count == 0) return body;
+
             foreach (int num in detector._trackedLayers.Keys)
             {
                 if (detector._trackedLayers[num].volumes.Count == 0) continue;

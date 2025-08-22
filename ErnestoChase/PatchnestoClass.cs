@@ -7,7 +7,6 @@ using System.Reflection;
 using System.Collections.Generic;
 using System.Linq;
 using System.Globalization;
-using ErnestoChase.Debug;
 
 namespace ErnestoChase;
 
@@ -296,10 +295,6 @@ public static class PatchnestoClass
 
         //SettingExtensions.ResetCustomSettings();
     }
-    
-    [HarmonyPostfix]
-    [HarmonyPatch(typeof(OWML.ModHelper.Menus.NewMenuSystem.PauseMenuManager), "OnSceneLoadCompleted")]
-    public static void AddDebugPauseMenu() => DebugMenu.Initialize();
     
     /*[HarmonyPostfix]
     [HarmonyPatch(typeof(OWML.ModHelper.Menus.NewMenuSystem.PauseMenuManager), "OnSceneLoadCompleted")]

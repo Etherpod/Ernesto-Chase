@@ -45,7 +45,7 @@ public static class QSBCompat
 
     private static void OnPlayerJoin(uint id)
     {
-        ErnestoChase.Instance.StartCoroutine(ErnestoChase.Instance.AddCamToRemotePlayer(id));
+        //ErnestoChase.Instance.StartCoroutine(ErnestoChase.Instance.AddCamToRemotePlayer(id));
     }
 
     public static void SendErnestoData(uint to, ErnestoData data)
@@ -87,6 +87,7 @@ public static class QSBCompat
 
     private static void ReceiveTargetData(uint from, (uint localID, SerializedTargetData targetData) data)
     {
+        ErnestoChase.WriteDebugMessage("Received target data on " + api.GetLocalPlayerID() + " from " + from + " for " + data.localID);
         ErnestoChase.Instance.AddTargetDataRemote(from, data.localID, data.targetData.TargetData);
     }
 

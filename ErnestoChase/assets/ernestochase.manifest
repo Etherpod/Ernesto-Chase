@@ -1,12 +1,12 @@
 ManifestFileVersion: 0
-CRC: 1402762827
+CRC: 2369440083
 Hashes:
   AssetFileHash:
     serializedVersion: 2
-    Hash: 8f2f70cf7e84f7f85e50c560ff6d26e6
+    Hash: 03febed72086f71d211b7933445fe586
   TypeTreeHash:
     serializedVersion: 2
-    Hash: cc08c36b47d9023fdd1b0bfa5142918c
+    Hash: 64109f6b75e09f46c702074dd6113a4c
 HashAppended: 0
 ClassTypes:
 - Class: 1
@@ -92,9 +92,13 @@ ClassTypes:
 - Class: 114
   Script: {fileID: 1178014591, guid: 730ba948cc1cb5041ba6afe86ca1eb46, type: 3}
 - Class: 114
+  Script: {fileID: -1730067339, guid: 730ba948cc1cb5041ba6afe86ca1eb46, type: 3}
+- Class: 114
   Script: {fileID: 11500000, guid: 4b9c6268c11d3fc73458b0f7090ae995, type: 3}
 - Class: 114
   Script: {fileID: 11500000, guid: f913c288c393f80a7e923fc1c775f4fb, type: 3}
+- Class: 114
+  Script: {fileID: 11500000, guid: 25b7e56961bf1df33ed31b8c786ab1c3, type: 3}
 - Class: 114
   Script: {fileID: 11500000, guid: 2145ed3a866d4bd5a94d98ee05d0fa4f, type: 3}
 - Class: 114
@@ -112,7 +116,7 @@ ClassTypes:
 - Class: 114
   Script: {fileID: 11500000, guid: 8be1049f863d9d3c48975ef4f4e82059, type: 3}
 - Class: 114
-  Script: {fileID: -1730067339, guid: 730ba948cc1cb5041ba6afe86ca1eb46, type: 3}
+  Script: {fileID: -594834746, guid: 730ba948cc1cb5041ba6afe86ca1eb46, type: 3}
 - Class: 115
   Script: {instanceID: 0}
 - Class: 134
@@ -133,6 +137,7 @@ Assets:
 - Assets/ErnestoChase/Anglerfish_Body 1.prefab
 - Assets/ErnestoChase/BlackHole.prefab
 - Assets/ErnestoChase/ErnestoCameraDisplay_mat.mat
+- Assets/ErnestoChase/ErnestoForceDetector.prefab
 - Assets/ErnestoChase/SpaceTargetsParent.prefab
 - Assets/ErnestoChase/WhiteHole.prefab
 - Assets/ErnestoChase/Beast_Anglerfish.prefab

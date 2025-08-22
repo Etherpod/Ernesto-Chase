@@ -3,13 +3,23 @@ using OWML.Common;
 using OWML.ModHelper;
 using System.Reflection;
 using UnityEngine;
+using ErnestoChase;
+using QSB.Player;
+using System.Linq;
 
 namespace ErnestoChaseQSB;
 
-public class QSBInteraction : MonoBehaviour
+public class QSBInteraction : MonoBehaviour, IQSBInteraction
 {
     public void Start()
     {
         Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly());
+        ErnestoChase.ErnestoChase.Instance.SetQSBInterface(this);
+    }
+
+    public GameObject GetRemoteFluidDetector(uint id)
+    {
+        var player = QSBPlayerManager.PlayerList.Where(x => x.PlayerId == id).First();
+        return player.FluidDetector.gameObject;
     }
 }

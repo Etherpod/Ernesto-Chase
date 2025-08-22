@@ -15,4 +15,75 @@ public class QSBPatches
     {
         ____playersPendingRespawn.Clear();
     }
+
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(SectorStreaming), nameof(SectorStreaming.FixedUpdate))]
+    public static bool SectorStreaming_FixedUpdate(SectorStreaming __instance)
+    {
+        if (!ErnestoChase.ErnestoChase.Instance.IsSpectating) return true;
+
+        var playerInSoftRadius =
+            (ErnestoChase.ErnestoChase.Instance.SpectateTarget.transform.position 
+            - __instance._sector.transform.position).sqrMagnitude < __instance._softLoadRadius * __instance._softLoadRadius;
+
+        if (PlayerState.OnQuantumMoon() && Locator.GetQuantumMoon().IsPlayerInsideShrine() 
+            && __instance._sector.GetName() != Sector.Name.QuantumMoon)
+        {
+            playerInSoftRadius = false;
+        }
+
+        if (!__instance._playerInSoftLoadRadius && playerInSoftRadius)
+        {
+            __instance._streamingGroup.RequestRequiredAssets(0);
+        }
+        else if (__instance._playerInSoftLoadRadius && !playerInSoftRadius)
+        {
+            __instance._streamingGroup.ReleaseRequiredAssets();
+        }
+
+        if (__instance._probeInSoftLoadRadius)
+        {
+            __instance._streamingGroup.ReleaseRequiredAssets();
+        }
+
+        __instance._playerInSoftLoadRadius = playerInSoftRadius;
+        __instance._probeInSoftLoadRadius = false;
+
+        return false;
+    }
+
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(ShipLODTrigger), nameof(ShipLODTrigger.FixedUpdate))]
+    public static bool ShipLODTrigger_FixedUpdate(ShipLODTrigger __instance)
+    {
+        if (!ErnestoChase.ErnestoChase.Instance.IsSpectating) return true;
+
+        var playerInRadius = __instance._playerInRadius;
+        var probeInRadius = __instance._probeInRadius;
+
+        if (__instance._playerTransform != null)
+        {
+            __instance._playerInRadius =
+                Vector3.SqrMagnitude(ErnestoChase.ErnestoChase.Instance.SpectateTarget.transform.position 
+                - __instance._playerTransform.position) < __instance._radius * __instance._radius;
+        }
+
+        if (__instance._probeTransform != null)
+        {
+            __instance._probeInRadius =
+                __instance._probe != null
+                && __instance._probe.IsLaunched()
+                && Vector3.SqrMagnitude(__instance._transform.position - __instance._probeTransform.position) 
+                < __instance._radius * __instance._radius;
+        }
+
+        if (playerInRadius != __instance._playerInRadius
+            || probeInRadius != __instance._probeInRadius)
+        {
+            __instance.OnTriggerUpdated.Invoke();
+
+        }
+
+        return false;
+    }
 }

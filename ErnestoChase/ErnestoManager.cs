@@ -73,6 +73,15 @@ public class ErnestoManager : MonoBehaviour
 
         if (state.KillVolumeEnabled && playerCollided && !state.CaughtPlayer)
         {
+            if (state.RemoteID > 0)
+            {
+                if (!startedDeathSequence)
+                {
+                    Locator.GetDeathManager().KillPlayer(DeathType.Digestion);
+                    startedDeathSequence = true;
+                }
+                return;
+            }
             state.CaughtPlayer = true;
         }
 
@@ -123,6 +132,8 @@ public class ErnestoManager : MonoBehaviour
 
     public bool CanSpectate()
     {
+        return true;
+
         if (state.RemoteID > 0)
         {
             return GetStoredTargets().Count > 0;
