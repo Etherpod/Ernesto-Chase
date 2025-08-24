@@ -45,6 +45,13 @@ public class ErnestoChase : ModBehaviour
     private int playerCamIndex = 0;
     public SpectatorCamera SpectateTarget { get; private set; }
     public bool IsSpectating { get => spectating; }
+    private int spectateRefreshFrames = 60;
+    private int spectateRefresh;
+
+    private ScreenPrompt _changeSpectateTargetPrompt;
+    private ScreenPrompt _changeSpectateTypePrompt;
+    private ScreenPrompt _enterSpectateModePrompt;
+    private ScreenPrompt _exitSpectateModePrompt;
 
     public static uint[] Players => QSBAPI?.GetPlayerIDs().Where(id => id != QSBAPI.GetLocalPlayerID()).ToArray();
 
@@ -102,6 +109,13 @@ public class ErnestoChase : ModBehaviour
         ernesto = LoadPrefab("Assets/ErnestoChase/Ernesto.prefab");
         AssetBundleUtilities.ReplaceShaders(ernesto);
         ernesto.SetActive(false);
+
+        _changeSpectateTargetPrompt = new(InputLibrary.toolOptionLeft, InputLibrary.toolOptionRight, 
+            "Switch Spectate Target" + " <CMD1> <CMD2>", ScreenPrompt.MultiCommandType.CUSTOM_BOTH);
+        _changeSpectateTypePrompt = new(InputLibrary.toolOptionUp, InputLibrary.toolOptionDown,
+            "Switch Spectate Type" + " <CMD1> <CMD2>", ScreenPrompt.MultiCommandType.CUSTOM_BOTH);
+        _enterSpectateModePrompt = new(InputLibrary.map, "Enter Spectator Mode");
+        _exitSpectateModePrompt = new(InputLibrary.map, "Exit Spectator Mode");
 
         InitializeQSB();
 
@@ -165,6 +179,14 @@ public class ErnestoChase : ModBehaviour
 
                 storedErnestoTargets.Add(ernesto.GetComponent<ErnestoManager>().GetStoredTargets());
             }
+
+            if (InMultiplayer)
+            {
+                Locator.GetPromptManager().RemoveScreenPrompt(_changeSpectateTargetPrompt);
+                Locator.GetPromptManager().RemoveScreenPrompt(_changeSpectateTypePrompt);
+                Locator.GetPromptManager().RemoveScreenPrompt(_enterSpectateModePrompt);
+                Locator.GetPromptManager().RemoveScreenPrompt(_exitSpectateModePrompt);
+            }
         };
     }
 
@@ -174,6 +196,11 @@ public class ErnestoChase : ModBehaviour
 
         if (Players.Length > 0 && QSBAPI.GetPlayerDead(QSBAPI.GetLocalPlayerID()))
         {
+            if (spectating && !_enterSpectateModePrompt.IsVisible())
+            {
+                _enterSpectateModePrompt.SetVisibility(true);
+            }
+
             if (OWInput.IsNewlyPressed(InputLibrary.map))
             {
                 if (!spectating)
@@ -188,13 +215,40 @@ public class ErnestoChase : ModBehaviour
 
                     if (spectatingErnesto)
                     {
-                        SwitchToSpectatorCam(ernestoSpectatorCams[1]);
+                        if (ernestoSpectatorCams.Count == 0)
+                        {
+                            if (playerSpectatorCams.Count == 0)
+                            {
+                                return;
+                            }
+
+                            SwitchToSpectatorCam(playerSpectatorCams[playerCamIndex]);
+                        }
+                        else
+                        {
+                            SwitchToSpectatorCam(ernestoSpectatorCams[ernestoCamIndex]);
+                        }
                     }
                     else
                     {
-                        //SwitchToSpectatorCam(playerSpectatorCams[0]);
-                        SwitchToSpectatorCam(ernestoSpectatorCams[1]);
+                        if (playerSpectatorCams.Count == 0)
+                        {
+                            if (ernestoSpectatorCams.Count == 0)
+                            {
+                                return;
+                            }
+
+                            SwitchToSpectatorCam(ernestoSpectatorCams[ernestoCamIndex]);
+                        }
+                        else
+                        {
+                            SwitchToSpectatorCam(playerSpectatorCams[playerCamIndex]);
+                        }
                     }
+
+                    _changeSpectateTargetPrompt.SetVisibility(true);
+                    _changeSpectateTypePrompt.SetVisibility(true);
+                    //_exitSpectateModePrompt.SetVisibility(true);
 
                     spectating = true;
                 }
@@ -212,11 +266,35 @@ public class ErnestoChase : ModBehaviour
                     spectatingErnesto = !spectatingErnesto;
                     if (spectatingErnesto)
                     {
-                        SwitchToSpectatorCam(ernestoSpectatorCams[0]);
+                        if (ernestoSpectatorCams.Count == 0)
+                        {
+                            if (playerSpectatorCams.Count == 0)
+                            {
+                                return;
+                            }
+
+                            SwitchToSpectatorCam(playerSpectatorCams[playerCamIndex]);
+                        }
+                        else
+                        {
+                            SwitchToSpectatorCam(ernestoSpectatorCams[ernestoCamIndex]);
+                        }
                     }
                     else
                     {
-                        SwitchToSpectatorCam(playerSpectatorCams[0]);
+                        if (playerSpectatorCams.Count == 0)
+                        {
+                            if (ernestoSpectatorCams.Count == 0)
+                            {
+                                return;
+                            }
+
+                            SwitchToSpectatorCam(ernestoSpectatorCams[ernestoCamIndex]);
+                        }
+                        else
+                        {
+                            SwitchToSpectatorCam(playerSpectatorCams[playerCamIndex]);
+                        }
                     }
                 }
 
@@ -414,6 +492,11 @@ public class ErnestoChase : ModBehaviour
         yield return new WaitUntil(() => Locator.GetPlayerBody() != null 
         && (!InMultiplayer || QSBAPI.GetPlayerReady(QSBAPI.GetLocalPlayerID())));
 
+        Locator.GetPromptManager().AddScreenPrompt(_changeSpectateTargetPrompt, PromptPosition.UpperRight);
+        Locator.GetPromptManager().AddScreenPrompt(_changeSpectateTypePrompt, PromptPosition.UpperRight);
+        Locator.GetPromptManager().AddScreenPrompt(_enterSpectateModePrompt, PromptPosition.BottomCenter);
+        Locator.GetPromptManager().AddScreenPrompt(_exitSpectateModePrompt, PromptPosition.UpperRight);
+
         ModHelper.Events.Unity.FireInNUpdates(() =>
         {
             if (ErnestoMorph)
@@ -580,7 +663,6 @@ public class ErnestoChase : ModBehaviour
 
     public void AddTargetDataRemote(uint from, uint localID, TargetDataQueue.TargetData targetData)
     {
-        ErnestoChase.WriteDebugMessage("Try get Ernesto " + localID + ": " + TryGetRemoteErnesto(from, localID, out GameObject test));
         if (TryGetRemoteErnesto(from, localID, out GameObject remoteErnesto))
         {
             remoteErnesto?.GetComponent<ErnestoMovement>()?.AddTargetData(targetData);

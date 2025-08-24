@@ -87,7 +87,6 @@ public static class QSBCompat
 
     private static void ReceiveTargetData(uint from, (uint localID, SerializedTargetData targetData) data)
     {
-        ErnestoChase.WriteDebugMessage("Received target data on " + api.GetLocalPlayerID() + " from " + from + " for " + data.localID);
         ErnestoChase.Instance.AddTargetDataRemote(from, data.localID, data.targetData.TargetData);
     }
 

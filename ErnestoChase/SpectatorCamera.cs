@@ -14,6 +14,7 @@ public class SpectatorCamera : MonoBehaviour
     private ErnestoManager ernestoManager;
 
     public bool IsErnestoCam { get => isErnestoCam; }
+    public uint PlayerID { get => playerID; }
     public OWCamera Camera { get => owCamera; }
     public SectorDetector Detector { get => sectorDetector; }
 

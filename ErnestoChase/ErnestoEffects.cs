@@ -192,6 +192,7 @@ public class ErnestoEffects : MonoBehaviour
             {
                 loopingAudio.SetLocalVolume(1f);
                 musicAudio.SetLocalVolume(1f);
+                musicAudio.Play();
             }
             if (!animator.enabled)
             {
@@ -204,6 +205,7 @@ public class ErnestoEffects : MonoBehaviour
             {
                 loopingAudio.SetLocalVolume(0f);
                 musicAudio.SetLocalVolume(0f);
+                musicAudio.Pause();
             }
             if (animator.enabled)
             {

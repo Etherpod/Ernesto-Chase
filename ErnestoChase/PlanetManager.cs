@@ -20,6 +20,7 @@ public class PlanetManager : MonoBehaviour
 
     private GameObject currentPlanet;
     private ForceVolume currentGravity;
+    private ForceVolume currentAlignGravity;
 
     private List<GameObject> teleportPlanets = new();
     private Queue<Vector3> teleportVelocities = new();
@@ -212,6 +213,15 @@ public class PlanetManager : MonoBehaviour
         return currentGravity;
     }
 
+    public ForceVolume GetCurrentAlignGravity(bool refresh = false)
+    {
+        if (refresh)
+        {
+            GetCurrentPlanetBody();
+        }
+        return currentAlignGravity;
+    }
+
     public Transform GetTargetParent()
     {
         if (teleportPlanets.Count > 0 && teleportPlanets[teleportPlanets.Count - 1] != null)
@@ -273,20 +283,16 @@ public class PlanetManager : MonoBehaviour
             return staticTransformParent.GetComponent<OWRigidbody>();
         }
 
-        PriorityDetector detector = _forceDetector;
+        AlignmentForceDetector detector = Locator.GetPlayerForceDetector();
         if (detector._trackedLayers.Count > 0)
         {
-            detector = Locator.GetPlayerForceDetector();
-
-            if (detector._trackedLayers.Count == 0) return body;
-
             foreach (int num in detector._trackedLayers.Keys)
             {
                 if (detector._trackedLayers[num].volumes.Count == 0) continue;
 
                 foreach (PriorityVolume priorityVolume in detector._trackedLayers[num].volumes)
                 {
-                    if (priorityVolume is ForceVolume volume)
+                    if (priorityVolume is ForceVolume volume && volume.GetAttachedOWRigidbody().IsKinematic())
                     {
                         if (gravVol == null && volume.GetAffectsAlignment(Locator.GetPlayerBody()))
                         {
@@ -302,17 +308,48 @@ public class PlanetManager : MonoBehaviour
                 ForceVolume theVolume = gravVol ?? zeroGVol;
                 if (theVolume != null)
                 {
-                    OWRigidbody[] parentBodies = theVolume.GetComponentsInParent<OWRigidbody>();
-                    foreach (OWRigidbody parentBody in parentBodies)
+                    var parentBody = theVolume.GetAttachedOWRigidbody();
+                    if (parentBody.IsKinematic())
                     {
-                        if (parentBody.IsKinematic())
-                        {
-                            body = parentBody;
-                            currentGravity = theVolume;
-                            return body;
-                        }
+                        body = parentBody;
+                        currentGravity = theVolume;
+                        currentAlignGravity = theVolume;
                     }
                 }
+            }
+        }
+
+        gravVol = null;
+        zeroGVol = null;
+
+        if (transform.parent != rigidbody.transform)
+        {
+            rigidbody.transform.position = transform.position;
+        }
+
+        Collider[] cols = Physics.OverlapSphere(transform.position, 3f, OWLayerMask.effectVolumeMask);
+        if (cols.Length > 0)
+        {
+            foreach (var col in cols)
+            {
+                if (col.TryGetComponent(out EffectVolume vol) && vol is ForceVolume volume
+                    && volume.GetAttachedOWRigidbody().IsKinematic())
+                {
+                    if (gravVol == null)
+                    {
+                        gravVol = volume;
+                    }
+                    else if (zeroGVol == null && volume is ZeroGVolume)
+                    {
+                        zeroGVol = volume;
+                    }
+                }
+            }
+
+            ForceVolume theVolume = gravVol ?? zeroGVol;
+            if (theVolume != null)
+            {
+                currentAlignGravity = theVolume;
             }
         }
 

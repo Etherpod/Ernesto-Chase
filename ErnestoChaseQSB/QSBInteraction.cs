@@ -22,4 +22,16 @@ public class QSBInteraction : MonoBehaviour, IQSBInteraction
         var player = QSBPlayerManager.PlayerList.Where(x => x.PlayerId == id).First();
         return player.FluidDetector.gameObject;
     }
+
+    public bool GetPlayerInCloak(uint id)
+    {
+        var player = QSBPlayerManager.PlayerList.Where(x => x.PlayerId == id).First();
+        return player.IsInCloak;
+    }
+
+    public bool GetPlayerInDream(uint id)
+    {
+        var player = QSBPlayerManager.PlayerList.Where(x => x.PlayerId == id).First();
+        return player.InDreamWorld;
+    }
 }

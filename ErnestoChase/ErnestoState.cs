@@ -7,7 +7,7 @@ public class ErnestoState : MonoBehaviour
 {
     public uint RemoteID { get; set; } = 0;
     public uint LocalID { get; set; }
-    public float TimeOffset { get; private set; }
+    public float TimeOffset { get; set; }
 
     // Stats
     public float MovementSpeed { get; set; }

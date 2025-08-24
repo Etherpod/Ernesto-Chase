@@ -140,8 +140,7 @@ public class ErnestoManager : MonoBehaviour
         }
         else
         {
-            return false;
-            return !state.CaughtPlayer && !missionComplete;
+            return !state.CaughtPlayer;
         }
     }
 
@@ -211,7 +210,8 @@ public class ErnestoManager : MonoBehaviour
 
     private void OnEntry(GameObject hitObj)
     {
-        if (hitObj.CompareTag("PlayerDetector"))
+        if (hitObj.CompareTag("PlayerDetector") 
+            && (state.RemoteID == 0 || !ErnestoChase.Instance.ErnestoMorph))
         {
             playerCollided = true;
         }

@@ -3,6 +3,11 @@ using QSB.RespawnSync;
 using HarmonyLib;
 using System.Collections.Generic;
 using QSB.Player;
+using QSB.DeathSync;
+using QSB.Player.TransformSync;
+using QSB.ShipSync;
+using QSB.Localization;
+using System.Linq;
 
 namespace ErnestoChaseQSB;
 
@@ -20,7 +25,8 @@ public class QSBPatches
     [HarmonyPatch(typeof(SectorStreaming), nameof(SectorStreaming.FixedUpdate))]
     public static bool SectorStreaming_FixedUpdate(SectorStreaming __instance)
     {
-        if (!ErnestoChase.ErnestoChase.Instance.IsSpectating) return true;
+        if (!ErnestoChase.ErnestoChase.Instance.IsSpectating 
+            || ErnestoChase.ErnestoChase.Instance.SpectateTarget == null) return true;
 
         var playerInSoftRadius =
             (ErnestoChase.ErnestoChase.Instance.SpectateTarget.transform.position 
@@ -56,7 +62,8 @@ public class QSBPatches
     [HarmonyPatch(typeof(ShipLODTrigger), nameof(ShipLODTrigger.FixedUpdate))]
     public static bool ShipLODTrigger_FixedUpdate(ShipLODTrigger __instance)
     {
-        if (!ErnestoChase.ErnestoChase.Instance.IsSpectating) return true;
+        if (!ErnestoChase.ErnestoChase.Instance.IsSpectating
+            || ErnestoChase.ErnestoChase.Instance.SpectateTarget == null) return true;
 
         var playerInRadius = __instance._playerInRadius;
         var probeInRadius = __instance._probeInRadius;
@@ -82,6 +89,35 @@ public class QSBPatches
         {
             __instance.OnTriggerUpdated.Invoke();
 
+        }
+
+        return false;
+    }
+
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(RespawnOnDeath), "OnGUI")]
+    public static bool ReplaceDeathLabel(GUIStyle ____deadTextStyle)
+    {
+        if (PlayerTransformSync.LocalInstance == null || ShipManager.Instance.ShipCockpitUI == null)
+        {
+            return true;
+        }
+
+        if (QSBPlayerManager.LocalPlayer.IsDead)
+        {
+            GUI.contentColor = Color.white;
+
+            var width = 200;
+            var height = 100;
+
+            // it is good day to be not dead
+
+            var secondText = "Spectate players or wait until next loop to respawn";
+
+            GUI.Label(
+                new Rect((Screen.width / 2) - (width / 2), (Screen.height / 2) - (height / 2) + (height * 2), width, height),
+                $"{QSBLocalization.Current.YouAreDead}\n{secondText}",
+                ____deadTextStyle);
         }
 
         return false;

@@ -242,7 +242,12 @@ public class ErnestoMovement : MonoBehaviour
 
     public void OnErnestoRelease()
     {
-        if (targets.Count == 0)
+        if (usingStoredTargets && state.RemoteID == 0)
+        {
+            storedTargets.PeekCurrentTarget(out var data);
+            state.TimeOffset = data.time - Time.fixedTime;
+        }
+        else if (targets.Count == 0)
         {
             spawnDelayTimer = targetSpawnDelay;
             SpawnTarget(planetManager.GetTargetParent(), Locator.GetPlayerTransform().position);
@@ -308,11 +313,15 @@ public class ErnestoMovement : MonoBehaviour
             return;
         }
 
-        Bounds meshBounds = GetComponentInChildren<SkinnedMeshRenderer>().bounds;
-        Plane[] camPlanes = Locator.GetPlayerCamera().GetFrustumPlanes();
-        float dot = Vector3.Dot(Locator.GetPlayerCamera().transform.forward,
-            transform.position - Locator.GetPlayerCamera().transform.position);
-        bool ernestoInView = dot > 0 && GeometryUtility.TestPlanesAABB(camPlanes, meshBounds);
+        bool ernestoInView = false;
+        if (!ErnestoChase.QSBAPI.GetPlayerDead(ErnestoChase.QSBAPI.GetLocalPlayerID()))
+        {
+            Bounds meshBounds = GetComponentInChildren<SkinnedMeshRenderer>().bounds;
+            Plane[] camPlanes = Locator.GetPlayerCamera().GetFrustumPlanes();
+            float dot = Vector3.Dot(Locator.GetPlayerCamera().transform.forward,
+                transform.position - Locator.GetPlayerCamera().transform.position);
+            ernestoInView = dot > 0 && GeometryUtility.TestPlanesAABB(camPlanes, meshBounds);
+        }
 
         if (ernestoInView && !observers.Contains(0))
         {
@@ -331,10 +340,8 @@ public class ErnestoMovement : MonoBehaviour
             {
                 QSBCompat.SendVisibilityState(state.RemoteID, state.LocalID, ernestoFrozen);
             }
-            else
-            {
-                OnUpdateVisibility?.Invoke(ernestoFrozen);
-            }
+
+            OnUpdateVisibility?.Invoke(ernestoFrozen);
         }
     }
 
@@ -559,7 +566,7 @@ public class ErnestoMovement : MonoBehaviour
 
         Vector3 targetPos = failedPlanetCheck ? targetData.worldPosition : targetData.localPosition;
         Quaternion targetRotation = Quaternion.LookRotation(gameObject.GetAttachedOWRigidbody().transform.TransformPoint(targetPos) - transform.position,
-                -planetManager.GetCurrentGravity().CalculateForceAccelerationAtPoint(transform.position));
+                -planetManager.GetCurrentAlignGravity(true).CalculateForceAccelerationAtPoint(transform.position));
 
         float timeLerp = 1f - (frameDelay / (float)storedTargetsFrameDelay);
         transform.localPosition = Vector3.Lerp(lastPosition, targetPos, timeLerp);
