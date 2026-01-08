@@ -250,6 +250,7 @@ public class ErnestoMovement : MonoBehaviour
         else if (targets.Count == 0)
         {
             spawnDelayTimer = targetSpawnDelay;
+            planetManager.UpdatePlayerPlanetState(true);
             SpawnTarget(planetManager.GetTargetParent(), Locator.GetPlayerTransform().position);
         }
     }
@@ -314,12 +315,18 @@ public class ErnestoMovement : MonoBehaviour
         }
 
         bool ernestoInView = false;
-        if (!ErnestoChase.QSBAPI.GetPlayerDead(ErnestoChase.QSBAPI.GetLocalPlayerID()))
+        if (!ErnestoChase.InMultiplayer || !ErnestoChase.QSBAPI.GetPlayerDead(ErnestoChase.QSBAPI.GetLocalPlayerID()))
         {
             Bounds meshBounds = GetComponentInChildren<SkinnedMeshRenderer>().bounds;
-            Plane[] camPlanes = Locator.GetPlayerCamera().GetFrustumPlanes();
-            float dot = Vector3.Dot(Locator.GetPlayerCamera().transform.forward,
-                transform.position - Locator.GetPlayerCamera().transform.position);
+            var camera = ErnestoChase.Instance.ErnestoMorph && state.RemoteID == 0
+                ? Locator.GetPlayerBody()
+                    .GetComponentInParent<ControllableErnesto>()
+                    .transform.Find("ScaleRoot/ErnestoCam")
+                    .GetComponent<OWCamera>()
+                : Locator.GetPlayerCamera();
+            Plane[] camPlanes = camera.GetFrustumPlanes();
+            float dot = Vector3.Dot(camera.transform.forward,
+                transform.position - camera.transform.position);
             ernestoInView = dot > 0 && GeometryUtility.TestPlanesAABB(camPlanes, meshBounds);
         }
 

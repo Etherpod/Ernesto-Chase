@@ -22,8 +22,8 @@
   </Target>
 
   <ItemGroup>
-    <PackageReference Include="OWML" Version="2.14.0" IncludeAssets="compile" />
-    <PackageReference Include="OuterWildsGameLibs" Version="1.1.15.1018" IncludeAssets="compile" />
+      <PackageReference Include="OWML" Version="2.15.4"/>
+      <PackageReference Include="OuterWildsGameLibs" Version="1.1.16.1372"/>
     <PackageReference Include="CSharpFunctionalExtensions" Version="3.6.0" />
   </ItemGroup>
   

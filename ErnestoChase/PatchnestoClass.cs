@@ -39,8 +39,10 @@ public static class PatchnestoClass
     [HarmonyPatch(typeof(OWRigidbody), nameof(OWRigidbody.SetPosition))]
     public static void DetectPlayerWarp(OWRigidbody __instance, Vector3 worldPosition)
     {
-        bool flag = (__instance.CompareTag("Player") && !PlayerState.IsInsideShip()) || (__instance.CompareTag("Ship") && PlayerState.IsInsideShip())
-            || (__instance.CompareTag("ShipCockpit") && PlayerState.AtFlightConsole() && PlayerState.IsAttached());
+        bool flag = (__instance.CompareTag("Player") && !PlayerState.IsInsideShip()) || 
+	        (__instance.CompareTag("Ship") && PlayerState.IsInsideShip()) || 
+	        (__instance.CompareTag("ShipCockpit") && PlayerState.AtFlightConsole() && PlayerState.IsAttached()) ||
+	        (__instance is ControllableErnestoBody && PlayerState.IsAttached());
 
         if (!flag || !ErnestoChase.Instance.playerDetectorReady || !TimeLoop.IsTimeFlowing())
         {
@@ -294,6 +296,143 @@ public static class PatchnestoClass
         }
 
         //SettingExtensions.ResetCustomSettings();
+    }
+
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(FirstPersonManipulator), nameof(FirstPersonManipulator.LateUpdate))]
+    public static bool FixMorphRaycast(FirstPersonManipulator __instance)
+    {
+	    var parent = __instance.GetComponentInParent<ControllableErnesto>();
+	    if (!parent) return true;
+
+	    var cam = parent.transform.Find("ScaleRoot/ErnestoCam");
+	    
+        RaycastHit raycastHit;
+		if (Physics.Raycast(cam.position, cam.forward, out raycastHit, 
+			75f, OWLayerMask.blockableInteractMask))
+		{
+			if (raycastHit.collider != __instance._lastHitCollider)
+			{
+				__instance._lastHitCollider = raycastHit.collider;
+				if (__instance._observable != null)
+				{
+					__instance._observable.LoseFocus();
+				}
+				__instance._observable = __instance._lastHitCollider.GetComponent<IObservable>();
+				if (__instance._interactReceiver != null)
+				{
+					__instance._interactReceiver.LoseFocus();
+				}
+				__instance._interactReceiver = __instance._lastHitCollider.GetComponent<IRaycastInteractable>();
+				NomaiInterfaceOrb component = __instance._lastHitCollider.GetComponent<NomaiInterfaceOrb>();
+				if (__instance._pendingOrb != null && component == null)
+				{
+					__instance._pendingOrb.OnLoseStartDragFocus();
+				}
+				__instance._pendingOrb = component;
+			}
+		}
+		else
+		{
+			__instance._lastHitCollider = null;
+			if (__instance._interactReceiver != null)
+			{
+				__instance._interactReceiver.LoseFocus();
+				__instance._interactReceiver = null;
+			}
+			if (__instance._observable != null)
+			{
+				__instance._observable.LoseFocus();
+				__instance._observable = null;
+			}
+			__instance._focusedRepairReceiver = null;
+			__instance._focusedNomaiText = null;
+			__instance._focusedItemSocket = null;
+			__instance._focusedItem = null;
+			if (__instance._pendingOrb != null)
+			{
+				__instance._pendingOrb.OnLoseStartDragFocus();
+			}
+			__instance._pendingOrb = null;
+		}
+		if (__instance._activeOrb != null)
+		{
+			RaycastHit raycastHit2;
+			if (Physics.Raycast(cam.position, cam.forward, 
+				out raycastHit2, 75f, OWLayerMask.interactMask))
+			{
+				if (!__instance._activeOrb.UpdateDragFromPosition(cam.position, raycastHit2.point))
+				{
+					__instance._activeOrb.CancelDrag();
+					__instance._activeOrb = null;
+				}
+			}
+			else
+			{
+				__instance._activeOrb.CancelDrag();
+				__instance._activeOrb = null;
+			}
+		}
+		else if (__instance._pendingOrb != null && __instance._pendingOrb.StartDragFromPosition(cam.position))
+		{
+			__instance._activeOrb = __instance._pendingOrb;
+		}
+		if (__instance._lastHitCollider != null && false)
+		{
+			__instance._focusedRepairReceiver = __instance._lastHitCollider.GetComponent<RepairReceiver>();
+			if (__instance._focusedRepairReceiver != null && (raycastHit.distance > __instance._focusedRepairReceiver.repairDistance || !__instance._focusedRepairReceiver.IsRepairable()))
+			{
+				__instance._focusedRepairReceiver = null;
+			}
+			__instance._focusedNomaiText = __instance._lastHitCollider.GetComponent<NomaiText>();
+			if (__instance._focusedNomaiText != null && !__instance._focusedNomaiText.CheckAllowFocus(raycastHit.distance, cam.forward))
+			{
+				__instance._focusedNomaiText = null;
+			}
+			__instance._focusedItemSocket = __instance._lastHitCollider.GetComponent<OWItemSocket>();
+			if (__instance._focusedItemSocket != null && (!__instance._focusedItemSocket.IsInteractable() || raycastHit.distance > __instance._focusedItemSocket.GetInteractRange()))
+			{
+				__instance._focusedItemSocket = null;
+			}
+			__instance._focusedItem = __instance._lastHitCollider.GetComponent<OWItem>();
+			if (__instance._focusedItem != null && (!__instance._focusedItem.IsInteractable() || raycastHit.distance > __instance._focusedItem.GetInteractRange()))
+			{
+				__instance._focusedItem = null;
+			}
+		}
+		if (__instance._observable != null)
+		{
+			__instance._observable.Observe(raycastHit, cam.position);
+		}
+		if (__instance._interactReceiver != null)
+		{
+			__instance._interactReceiver.Observe(raycastHit);
+		}
+
+		return false;
+    }
+
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(PlayerSpawner), nameof(PlayerSpawner.FixedUpdate))]
+    public static void FixDebugWarpForErnestoMorph(PlayerSpawner __instance)
+    {
+	    if (!__instance._debugWarpNextUpdate) return;
+
+	    var ernesto = Locator.GetPlayerBody()?.GetComponentInParent<ControllableErnesto>();
+	    if (ernesto)
+	    {
+		    __instance._debugWarpNextUpdate = false;
+		    OWRigidbody owrigidbody = ernesto.GetComponent<OWRigidbody>();
+		    owrigidbody.WarpToPositionRotation(__instance._debugWarpPoint.transform.position, __instance._debugWarpPoint.transform.rotation);
+		    owrigidbody.SetVelocity(__instance._debugWarpPoint.GetPointVelocity());
+		    if (owrigidbody == __instance._playerBody)
+		    {
+			    __instance._debugWarpPoint.AddObjectToTriggerVolumes(Locator.GetPlayerDetector().gameObject);
+			    __instance._debugWarpPoint.AddObjectToTriggerVolumes(Locator.GetPlayerCamera().GetComponentInChildren<FluidDetector>().gameObject);
+			    __instance._debugWarpPoint.OnSpawnPlayer();
+			    MonoBehaviour.print("DEBUG PLAYER WARP");
+		    }
+	    }
     }
     
     /*[HarmonyPostfix]
