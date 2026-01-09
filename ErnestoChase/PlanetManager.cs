@@ -61,10 +61,10 @@ public class PlanetManager : MonoBehaviour
         lastPlayerPlanetState = body != null;
     }
 
-    public bool UpdatePlayerPlanetState(bool noSpaceTeleportTarget)
+    public bool UpdatePlayerPlanetState(bool noSpaceTeleportTarget, bool forceUpdate = false)
     {
         bool onPlanet = IsOnPlanet();
-        if (lastPlayerPlanetState != onPlanet)
+        if (lastPlayerPlanetState != onPlanet || forceUpdate)
         {
             if (!playerRecentlyWarped)
             {
@@ -75,21 +75,28 @@ public class PlanetManager : MonoBehaviour
             {
                 teleportPlanets.Clear();
                 state.FollowedPlayerToPlanet = false;
-                staticTransformParent.GetComponent<OWRigidbody>().SetVelocity(Vector3.zero);
-                rigidbody.SetPosition(transform.position);
-                rigidbody.SetVelocity(gameObject.GetAttachedOWRigidbody().GetVelocity());
-                transform.parent = rigidbody.transform;
+
+                if (state.ErnestoReleased)
+                {
+                    staticTransformParent.GetComponent<OWRigidbody>().SetVelocity(Vector3.zero);
+                    rigidbody.SetPosition(transform.position);
+                    rigidbody.SetVelocity(gameObject.GetAttachedOWRigidbody().GetVelocity());
+                    transform.parent = rigidbody.transform;
+                }
+                
                 OnUpdateTravelMode?.Invoke(true);
             }
             else if (onPlanet)
             {
                 currentPlanet = GetCurrentPlanetBody().gameObject;
-                if (noSpaceTeleportTarget)
+
+                if (noSpaceTeleportTarget && state.ErnestoReleased)
                 {
                     ErnestoChase.WriteDebugMessage("enter atmo");
                     rigidbody.SetVelocity(Vector3.zero);
                     transform.parent = currentPlanet.transform;
                 }
+                
                 OnUpdateTravelMode?.Invoke(false);
             }
 
