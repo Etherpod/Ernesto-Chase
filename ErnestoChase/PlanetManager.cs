@@ -285,11 +285,6 @@ public class PlanetManager : MonoBehaviour
         ForceVolume gravVol = null;
         ForceVolume zeroGVol = null;
 
-        if (PlayerState.InBrambleDimension())
-        {
-            return staticTransformParent.GetComponent<OWRigidbody>();
-        }
-
         AlignmentForceDetector detector = Locator.GetPlayerForceDetector();
         if (detector._trackedLayers.Count > 0)
         {
@@ -360,6 +355,11 @@ public class PlanetManager : MonoBehaviour
             }
         }
 
+        if (PlayerState.InBrambleDimension())
+        {
+            return staticTransformParent.GetComponent<OWRigidbody>();
+        }
+        
         return body;
     }
 

@@ -428,8 +428,20 @@ public class ErnestoMovement : MonoBehaviour
     {
         Vector3 targetPos = targets.Count > 0 ? targets.Peek().pos : Locator.GetPlayerTransform().position;
         float dist = (targetPos - lastPosition).magnitude;
+        float speed = currentSpeed;
 
-        float positionLerp = Mathf.InverseLerp(lastTime, lastTime + (dist / currentSpeed), Time.time);
+        if (targets.Count > 1)
+        {
+            var endTargetRef = targets.ToArray()[1];
+            var toLast = targetPos - lastPosition;
+            var toNext = targetPos - endTargetRef.pos;
+            var dot = Vector3.Dot(toLast.normalized, toNext.normalized);
+            ErnestoChase.WriteDebugMessage("dot: " + dot);
+            var angleSpeedMult = Mathf.Lerp(1.2f, 0.6f, Mathf.Sqrt((dot + 1f) / 2f));
+            speed *= angleSpeedMult;
+        }
+
+        float positionLerp = Mathf.InverseLerp(lastTime, lastTime + (dist / speed), Time.time);
 
         if (dist < 0.01f)
         {
@@ -454,22 +466,7 @@ public class ErnestoMovement : MonoBehaviour
         {
             if (targets.Peek().isTeleport)
             {
-                if (warpOutOnTargetComplete)
-                {
-                    ErnestoChase.WriteDebugMessage("Try final teleport, count is: " + targets.ToArray().Length);
-                }
-                if (warpOutOnTargetComplete && targets.ToArray().Length == 1)
-                {
-                    targets.Clear();
-                    spaceTargets.Clear();
-                    canMove = false;
-                    enabled = false;
-                    OnFinalWarp?.Invoke();
-                }
-                else
-                {
-                    OnTeleportRequired?.Invoke(false);
-                }
+                OnTeleportRequired?.Invoke(false);
             }
             else
             {
