@@ -20,6 +20,8 @@ public class ErnestoEffects : MonoBehaviour
     private OWAudioSource oneShotAudio;
     [SerializeField]
     private OWAudioSource musicAudio;
+    [SerializeField] 
+    private AudioLowPassFilter[] lowPassFilters;
     [SerializeField]
     private Animator animator;
     [SerializeField]
@@ -46,6 +48,8 @@ public class ErnestoEffects : MonoBehaviour
 
     private bool cachedFromSpace;
     private bool cachedToSpace;
+    
+    private float filterLerp = 1f;
 
     private bool isFinalWarp = false;
 
@@ -74,7 +78,7 @@ public class ErnestoEffects : MonoBehaviour
         {
             anglerLight.intensity = 0f;
             ernestoRenderer.material.SetTexture("_EmissionMap", noBulbTex);
-            enabled = false;
+            //enabled = false;
         }
         if (state.ErnestoMusic)
         {
@@ -84,7 +88,40 @@ public class ErnestoEffects : MonoBehaviour
 
     private void Update()
     {
-        anglerLight.range = baseLightRange * (ernestoMesh.transform.localScale.magnitude / baseMeshScale);
+        if (!state.DisableLight)
+        {
+            anglerLight.range = baseLightRange * (ernestoMesh.transform.localScale.magnitude / baseMeshScale);
+        }
+        
+        UpdateMuffle();
+    }
+
+    private void UpdateMuffle(bool instant = false)
+    {
+        var toPlayer = Locator.GetPlayerTransform().position - transform.position;
+        float distMult = Mathf.InverseLerp(50f * 50f, 500f * 500f, toPlayer.sqrMagnitude);
+        bool muffle = false;
+        if (distMult < 1f && Locator.GetAudioMixer()._playerInReverbVolume)
+        {
+            muffle = Physics.Raycast(transform.position, toPlayer, toPlayer.magnitude - 1f, 
+                OWLayerMask.physicalMask);
+        }
+
+        if (instant)
+        {
+            filterLerp = muffle ? 1f : 0f;
+        }
+        else
+        {
+            filterLerp = Mathf.MoveTowards(filterLerp, muffle ? 1f : 0f, Time.deltaTime / 2f);
+        }
+
+        ErnestoChase.WriteDebugMessage(filterLerp);
+        
+        foreach (var filter in lowPassFilters)
+        {
+            filter.cutoffFrequency = Mathf.Lerp(22000, 3000, Mathf.Lerp(Mathf.Sqrt(filterLerp), 1f, distMult));
+        }
     }
 
     private IEnumerator ReadAudioFiles()
@@ -140,6 +177,7 @@ public class ErnestoEffects : MonoBehaviour
                 loopingAudio.FadeIn(1f);
                 musicAudio.Play();
             }
+            UpdateMuffle(true);
         }
         OnExitWhiteHole?.Invoke();
     }
@@ -261,6 +299,8 @@ public class ErnestoEffects : MonoBehaviour
             loopingAudio.FadeIn(1f);
             musicAudio.FadeIn(1f);
         }
+        
+        UpdateMuffle(true);
     }
 
     private IEnumerator SpaceAudioTransition()

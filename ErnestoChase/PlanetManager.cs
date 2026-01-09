@@ -13,9 +13,6 @@ public class PlanetManager : MonoBehaviour
     public event PlayerWarpEvent OnPlayerWarpStarted;
     public event PlayerWarpEvent OnPlayerWarpComplete;
 
-    [SerializeField]
-    private ErnestoForceDetector _forceDetector;
-
     private ErnestoState state;
 
     private GameObject currentPlanet;
@@ -32,6 +29,7 @@ public class PlanetManager : MonoBehaviour
     private bool playerRecentlyWarped = false;
     private bool teleportedIntoSpace = false;
     private bool lastPlayerPlanetState = false;
+    private bool teleportedBeforeRelease = false;
 
     private void Awake()
     {
@@ -86,8 +84,10 @@ public class PlanetManager : MonoBehaviour
                 
                 OnUpdateTravelMode?.Invoke(true);
             }
-            else if (onPlanet)
+            else if (onPlanet && (!forceUpdate || !teleportedBeforeRelease))
             {
+                teleportedBeforeRelease = false;
+                
                 currentPlanet = GetCurrentPlanetBody().gameObject;
 
                 if (noSpaceTeleportTarget && state.ErnestoReleased)
@@ -110,7 +110,12 @@ public class PlanetManager : MonoBehaviour
     {
         ErnestoChase.WriteDebugMessage("\nReceive warp event");
         playerRecentlyWarped = true;
-        OnPlayerWarpStarted.Invoke(!lastPlayerPlanetState);
+        OnPlayerWarpStarted?.Invoke(!lastPlayerPlanetState);
+
+        if (!state.ErnestoReleased && GetCurrentPlanetBody() == gameObject.GetAttachedOWRigidbody())
+        {
+            teleportedBeforeRelease = true;
+        }
 
         ErnestoChase.Instance.ModHelper.Events.Unity.FireInNUpdates(() =>
         {
@@ -129,7 +134,7 @@ public class PlanetManager : MonoBehaviour
                 teleportPlanets.Add(planet.gameObject);
             }
 
-            OnPlayerWarpComplete.Invoke(planet == null);
+            OnPlayerWarpComplete?.Invoke(planet == null);
         }, 10);
     }
 
@@ -272,11 +277,6 @@ public class PlanetManager : MonoBehaviour
     public OWRigidbody GetErnestoBody()
     {
         return rigidbody;
-    }
-
-    public void AssignForceDetector(ErnestoForceDetector detector)
-    {
-        _forceDetector = detector;
     }
 
     public OWRigidbody GetCurrentPlanetBody()

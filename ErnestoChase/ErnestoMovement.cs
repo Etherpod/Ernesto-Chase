@@ -436,8 +436,7 @@ public class ErnestoMovement : MonoBehaviour
             var toLast = targetPos - lastPosition;
             var toNext = targetPos - endTargetRef.pos;
             var dot = Vector3.Dot(toLast.normalized, toNext.normalized);
-            ErnestoChase.WriteDebugMessage("dot: " + dot);
-            var angleSpeedMult = Mathf.Lerp(1.2f, 0.6f, Mathf.Sqrt((dot + 1f) / 2f));
+            var angleSpeedMult = Mathf.Lerp(1f, 0.4f, Mathf.Sqrt((dot + 1f) / 2f));
             speed *= angleSpeedMult;
         }
 
@@ -482,9 +481,8 @@ public class ErnestoMovement : MonoBehaviour
 
         if (!hasTakenShortcut && targets.Count > 20
             && (Locator.GetPlayerTransform().position - transform.position).sqrMagnitude < Mathf.Lerp(15f * 15f, 25f * 25f, speedLerp)
-            && !Physics.Raycast(transform.position, toPlayer, toPlayer.magnitude,
-            LayerMask.NameToLayer("Default") | LayerMask.NameToLayer("ShipInterior")
-            | LayerMask.NameToLayer("IgnoreSun") | LayerMask.NameToLayer("IgnoreOrbRaycast")))
+            && !Physics.Raycast(transform.position, toPlayer, toPlayer.magnitude - 1f, 
+                OWLayerMask.physicalMask))
         {
             targets.Clear();
             SpawnTarget(planetManager.GetCurrentPlanet().transform, Locator.GetPlayerTransform().position);
