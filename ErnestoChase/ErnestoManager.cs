@@ -51,6 +51,11 @@ public class ErnestoManager : MonoBehaviour
         ErnestoChase.Instance.OnPlayerWarped += planetManager.OnPlayerWarped;
         GlobalMessenger<DeathType>.AddListener("PlayerDeath", OnPlayerDeath);
 
+        if (ErnestoChase.QSBAPI != null)
+        {
+            ErnestoChase.QSBAPI.OnPlayerLeave().AddListener(OnPlayerLeave);
+        }
+
         releaseDelay = state.StartDelay;
 
         if (!state.ErnestoCam)
@@ -132,11 +137,11 @@ public class ErnestoManager : MonoBehaviour
 
     public bool CanSpectate()
     {
-        return true;
-
+        if (missionComplete) return false;
+        
         if (state.RemoteID > 0)
         {
-            return GetStoredTargets().Count > 0;
+            return !ErnestoChase.QSBAPI.GetPlayerDead(state.RemoteID);
         }
         else
         {
@@ -156,8 +161,15 @@ public class ErnestoManager : MonoBehaviour
         killVolume.gameObject.SetActive(false);
         if (state.RemoteID == 0)
         {
-            return;
             ernestoMovement.OnPlayerDeath();
+        }
+    }
+
+    private void OnPlayerLeave(uint id)
+    {
+        if (id == state.RemoteID)
+        {
+            OnPlayerDeathRemote();
         }
     }
 
@@ -178,6 +190,11 @@ public class ErnestoManager : MonoBehaviour
         // Order is important
         planetManager.OnEnterBlackHole(fromSpace, toSpace);
         ernestoMovement.OnEnterBlackHole(fromSpace, toSpace);
+    }
+
+    public void OnPlayerDeathRemote()
+    {
+        ernestoMovement.OnPlayerDeathRemote();
     }
 
     private void OnSpaceWarp()
@@ -247,5 +264,10 @@ public class ErnestoManager : MonoBehaviour
 
         ErnestoChase.Instance.OnPlayerWarped -= planetManager.OnPlayerWarped;
         GlobalMessenger<DeathType>.RemoveListener("PlayerDeath", OnPlayerDeath);
+        
+        if (ErnestoChase.QSBAPI != null)
+        {
+            ErnestoChase.QSBAPI.OnPlayerLeave().RemoveListener(OnPlayerLeave);
+        }
     }
 }

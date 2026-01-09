@@ -41,6 +41,7 @@ public static class QSBCompat
         api.RegisterHandler<(uint, SerializedTargetData)>("target-data", ReceiveTargetData);
         api.RegisterHandler<(uint, bool)>("visibility-state", ReceiveVisibilityState);
         api.RegisterHandler<(uint, bool)>("size-change", ReceiveErnestoSizeChange);
+        api.RegisterHandler<uint>("final-warp", ReceiveErnestoFinalWarp);
     }
 
     private static void OnPlayerJoin(uint id)
@@ -113,6 +114,19 @@ public static class QSBCompat
         if (ErnestoChase.TryGetRemoteErnesto(from, data.localID, out GameObject remoteErnesto))
         {
             remoteErnesto.GetComponent<RemoteSizeChanger>()?.SetSize(data.shrink);
+        }
+    }
+
+    public static void SendErnestoFinalWarp(uint to, uint localID)
+    {
+        api.SendMessage("final-warp", localID, to, false);
+    }
+
+    private static void ReceiveErnestoFinalWarp(uint from, uint localID)
+    {
+        if (ErnestoChase.TryGetRemoteErnesto(from, localID, out GameObject remoteErnesto))
+        {
+            remoteErnesto.GetComponent<ErnestoManager>()?.OnPlayerDeathRemote();
         }
     }
 }

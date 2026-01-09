@@ -258,24 +258,29 @@ public class ErnestoMovement : MonoBehaviour
     public void OnPlayerDeath()
     {
         ErnestoChase.WriteDebugMessage("Let's get outta here");
-        if (targets.Count > 0 && !state.CaughtPlayer)
+        targets.Clear();
+        spaceTargets.Clear();
+        canMove = false;
+        enabled = false;
+        OnFinalWarp?.Invoke();
+
+        if (ErnestoChase.InMultiplayer)
         {
-            ErnestoChase.WriteDebugMessage("Warp at end of path");
-            var targetArray = targets.ToArray();
-            var lastTarget = targetArray[targetArray.Length - 1];
-            lastTarget.isTeleport = true;
-            targetArray[targetArray.Length - 1] = lastTarget;
-            warpOutOnTargetComplete = true;
+            foreach (var id in ErnestoChase.Players)
+            {
+                QSBCompat.SendErnestoFinalWarp(id, state.LocalID);
+            }
         }
-        else
-        {
-            ErnestoChase.WriteDebugMessage("Instant warp");
-            targets.Clear();
-            spaceTargets.Clear();
-            canMove = false;
-            enabled = false;
-            OnFinalWarp?.Invoke();
-        }
+    }
+    
+    public void OnPlayerDeathRemote()
+    {
+        ErnestoChase.WriteDebugMessage("REMOTE Let's get outta here");
+        targets.Clear();
+        spaceTargets.Clear();
+        canMove = false;
+        enabled = false;
+        OnFinalWarp?.Invoke();
     }
 
     private void SpawnTarget(Transform parent, Vector3 worldPosition, bool isTeleport = false)

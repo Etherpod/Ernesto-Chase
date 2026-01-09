@@ -47,6 +47,7 @@ public class ErnestoChase : ModBehaviour
     public bool IsSpectating { get => spectating; }
     private int spectateRefreshFrames = 60;
     private int spectateRefresh;
+    private bool lastSpectateTargetState;
 
     private ScreenPrompt _changeSpectateTargetPrompt;
     private ScreenPrompt _changeSpectateTypePrompt;
@@ -196,15 +197,22 @@ public class ErnestoChase : ModBehaviour
 
         if (Players.Length > 0 && QSBAPI.GetPlayerDead(QSBAPI.GetLocalPlayerID()))
         {
-            if (spectating && !_enterSpectateModePrompt.IsVisible())
-            {
-                _enterSpectateModePrompt.SetVisibility(true);
-            }
+            _exitSpectateModePrompt.SetVisibility(spectating);
+            _enterSpectateModePrompt.SetVisibility(!spectating);
 
             if (OWInput.IsNewlyPressed(InputLibrary.map))
             {
                 if (!spectating)
                 {
+                    spectating = true;
+                    
+                    SpectatorCamera targetCam = GetCurrentSpectatorCamera();
+                    if (!targetCam)
+                    {
+                        spectating = false;
+                        return;
+                    }
+                    
                     Locator.GetMapController().ExitMapView();
 
                     var mixer = Locator.GetAudioMixer();
@@ -212,90 +220,37 @@ public class ErnestoChase : ModBehaviour
                     mixer._nonEndTimesVolume.FadeTo(1, 0.5f);
                     mixer._endTimesVolume.FadeTo(1, 0.5f);
                     mixer.UnmixMap();
-
-                    if (spectatingErnesto)
-                    {
-                        if (ernestoSpectatorCams.Count == 0)
-                        {
-                            if (playerSpectatorCams.Count == 0)
-                            {
-                                return;
-                            }
-
-                            SwitchToSpectatorCam(playerSpectatorCams[playerCamIndex]);
-                        }
-                        else
-                        {
-                            SwitchToSpectatorCam(ernestoSpectatorCams[ernestoCamIndex]);
-                        }
-                    }
-                    else
-                    {
-                        if (playerSpectatorCams.Count == 0)
-                        {
-                            if (ernestoSpectatorCams.Count == 0)
-                            {
-                                return;
-                            }
-
-                            SwitchToSpectatorCam(ernestoSpectatorCams[ernestoCamIndex]);
-                        }
-                        else
-                        {
-                            SwitchToSpectatorCam(playerSpectatorCams[playerCamIndex]);
-                        }
-                    }
+                    
+                    SwitchToSpectatorCam(targetCam);
 
                     _changeSpectateTargetPrompt.SetVisibility(true);
                     _changeSpectateTypePrompt.SetVisibility(true);
-                    //_exitSpectateModePrompt.SetVisibility(true);
 
                     spectating = true;
                 }
-                /*else
+                else
                 {
-                    currentAttach?.DetachPlayer();
                     spectating = false;
-                }*/
+                    Locator.GetMapController().EnterMapView(SpectateTarget.transform);
+                }
             }
 
             if (spectating)
             {
+                if (!SpectateTarget || SpectateTarget.CanSpectate() != lastSpectateTargetState)
+                {
+                    RefreshSpectateTarget();
+                    return;
+                }
+                
                 if (OWInput.IsNewlyPressed(InputLibrary.toolOptionUp) || OWInput.IsNewlyPressed(InputLibrary.toolOptionDown))
                 {
                     spectatingErnesto = !spectatingErnesto;
-                    if (spectatingErnesto)
-                    {
-                        if (ernestoSpectatorCams.Count == 0)
-                        {
-                            if (playerSpectatorCams.Count == 0)
-                            {
-                                return;
-                            }
-
-                            SwitchToSpectatorCam(playerSpectatorCams[playerCamIndex]);
-                        }
-                        else
-                        {
-                            SwitchToSpectatorCam(ernestoSpectatorCams[ernestoCamIndex]);
-                        }
-                    }
-                    else
-                    {
-                        if (playerSpectatorCams.Count == 0)
-                        {
-                            if (ernestoSpectatorCams.Count == 0)
-                            {
-                                return;
-                            }
-
-                            SwitchToSpectatorCam(ernestoSpectatorCams[ernestoCamIndex]);
-                        }
-                        else
-                        {
-                            SwitchToSpectatorCam(playerSpectatorCams[playerCamIndex]);
-                        }
-                    }
+                    
+                    SpectatorCamera targetCam = GetCurrentSpectatorCamera();
+                    if (!targetCam) return;
+                    
+                    SwitchToSpectatorCam(targetCam);
                 }
 
                 bool leftPressed = OWInput.IsNewlyPressed(InputLibrary.toolOptionLeft);
@@ -306,7 +261,7 @@ public class ErnestoChase : ModBehaviour
                         var newIndex = GetSpectatorCamIndex(ernestoSpectatorCams, ernestoCamIndex, leftPressed);
                         if (newIndex.HasValue && newIndex.Value != ernestoCamIndex)
                         {
-                            ErnestoChase.WriteDebugMessage("Switch to cam " + newIndex);
+                            //ErnestoChase.WriteDebugMessage("Switch to cam " + newIndex);
                             ernestoCamIndex = newIndex.Value;
                             SwitchToSpectatorCam(ernestoSpectatorCams[ernestoCamIndex]);
                         }
@@ -346,6 +301,82 @@ public class ErnestoChase : ModBehaviour
         return Maybe.None;
     }
 
+    private Maybe<int> GetSpectatorCamIndex(List<SpectatorCamera> cams, int currentIndex)
+    {
+        for (int i = 0; i <= cams.Count; i++)
+        {
+            currentIndex = (currentIndex - 1 + cams.Count) % cams.Count;
+            ErnestoChase.WriteDebugMessage("Check index " + currentIndex);
+            if (cams[currentIndex].CanSpectate())
+            {
+                ErnestoChase.WriteDebugMessage(currentIndex + " can spectate!");
+                return currentIndex;
+            }
+        }
+
+        ErnestoChase.WriteDebugMessage("No Ernestos found");
+        return Maybe.None;
+    }
+
+    private SpectatorCamera GetCurrentSpectatorCamera()
+    {
+        if (!spectating) return null;
+        
+        SpectatorCamera targetCam = null;
+                    
+        if (spectatingErnesto && ernestoSpectatorCams.Count > 0)
+        {
+            var index = GetSpectatorCamIndex(ernestoSpectatorCams, ernestoCamIndex);
+            if (index.HasValue)
+            {
+                targetCam = ernestoSpectatorCams[index.Value];
+            }
+        }
+                    
+        if (!targetCam && !spectatingErnesto && playerSpectatorCams.Count > 0)
+        {
+            var index = GetSpectatorCamIndex(playerSpectatorCams, playerCamIndex);
+            if (index.HasValue)
+            {
+                targetCam = playerSpectatorCams[index.Value];
+            }
+        }
+
+        return targetCam;
+    }
+
+    public void RefreshSpectateTarget()
+    {
+        SpectatorCamera targetCam = GetCurrentSpectatorCamera();
+        if (!targetCam || targetCam == SpectateTarget) return;
+                    
+        SwitchToSpectatorCam(targetCam);
+    }
+    
+    public void SwitchToSpectatorCam(SpectatorCamera camera)
+    {
+        if (!camera.CanSpectate())
+        {
+            ModHelper.Console.WriteLine("Tried to switch to a target that can't be spectated!", MessageType.Error);
+            return;
+        }
+        
+        ErnestoChase.WriteDebugMessage("Switching spectator camera");
+        GlobalMessenger<OWCamera>.FireEvent("SwitchActiveCamera", camera.Camera);
+        Locator.GetPlayerCamera().enabled = false;
+
+        if (SpectateTarget != null)
+        {
+            SpectateTarget.Camera.enabled = false;
+            SpectateTarget.Detector.gameObject.SetActive(false);
+        }
+
+        SpectateTarget = camera;
+        lastSpectateTargetState = true;
+        camera.Camera.enabled = true;
+        camera.Detector.gameObject.SetActive(true);
+    }
+    
     private void InitializeQSB()
     {
         bool qsbEnabled = ModHelper.Interaction.ModExists("Raicuparta.QuantumSpaceBuddies");
@@ -468,23 +499,6 @@ public class ErnestoChase : ModBehaviour
 
         remoteErnesto = null;
         return false;
-    }
-
-    public void SwitchToSpectatorCam(SpectatorCamera camera)
-    {
-        ErnestoChase.WriteDebugMessage("Switching spectator camera");
-        GlobalMessenger<OWCamera>.FireEvent("SwitchActiveCamera", camera.Camera);
-        Locator.GetPlayerCamera().enabled = false;
-
-        if (SpectateTarget != null)
-        {
-            SpectateTarget.Camera.enabled = false;
-            SpectateTarget.Detector.gameObject.SetActive(false);
-        }
-
-        SpectateTarget = camera;
-        camera.Camera.enabled = true;
-        camera.Detector.gameObject.SetActive(true);
     }
 
     private IEnumerator WaitForPlayer()
