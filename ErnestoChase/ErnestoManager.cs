@@ -96,9 +96,8 @@ public class ErnestoManager : MonoBehaviour
         {
             if (!startedDeathSequence)
             {
-                transform.parent = null;
+                //transform.parent = null;
                 transform.position = Locator.GetPlayerTransform().position;
-                planetManager.OnCaughtPlayer();
                 ernestoEffects.OnCaughtPlayer();
                 OnCaughtPlayer?.Invoke(this);
                 PatchnestoClass.OnCaughtPlayer(this);
@@ -166,6 +165,7 @@ public class ErnestoManager : MonoBehaviour
         killVolume.gameObject.SetActive(false);
         if (state.RemoteID == 0)
         {
+            StopCoroutine(ErnestoReleaseDelay());
             ernestoMovement.OnPlayerDeath();
         }
     }
@@ -199,6 +199,7 @@ public class ErnestoManager : MonoBehaviour
 
     public void OnPlayerDeathRemote()
     {
+        StopCoroutine(ErnestoReleaseDelay());
         ernestoMovement.OnPlayerDeathRemote();
     }
 

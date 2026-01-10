@@ -45,8 +45,6 @@ public class ErnestoChase : ModBehaviour
     private int playerCamIndex = 0;
     public SpectatorCamera SpectateTarget { get; private set; }
     public bool IsSpectating { get => spectating; }
-    private int spectateRefreshFrames = 60;
-    private int spectateRefresh;
     private bool lastSpectateTargetState;
 
     private ScreenPrompt _changeSpectateTargetPrompt;
@@ -119,6 +117,8 @@ public class ErnestoChase : ModBehaviour
         _exitSpectateModePrompt = new(InputLibrary.map, "Exit Spectator Mode");
 
         InitializeQSB();
+        
+        GlobalMessenger<DeathType>.AddListener("PlayerDeath", OnPlayerDeath);
 
         LoadManager.OnCompleteSceneLoad += (scene, loadScene) =>
         {
@@ -175,6 +175,11 @@ public class ErnestoChase : ModBehaviour
                 if (oldErnestos.Contains(ernesto))
                 {
                     oldErnestos.Remove(ernesto);
+                    continue;
+                }
+
+                if (remoteErnestos[0].All(e => e.Value != ernesto))
+                {
                     continue;
                 }
 
@@ -560,7 +565,7 @@ public class ErnestoChase : ModBehaviour
                 camErnestos.Add(ernestoObj);
             }
 
-            if (ErnestoStacking && storedErnestoTargets.Count > i)
+            if (ErnestoStacking && i < storedErnestoTargets.Count)
             {
                 manager.SetStoredTargets(storedErnestoTargets[i]);
                 oldErnestos.Add(ernestoObj);
@@ -616,7 +621,7 @@ public class ErnestoChase : ModBehaviour
         }
 
         remoteErnestos[data.id].Add(data.localid, ernestoObj);
-        manager.SetStoredTargets(new());
+        manager.SetStoredTargets(new TargetDataQueue());
 
         /*if (ErnestoStacking && storedErnestoTargets.Count > i)
         {
@@ -688,12 +693,23 @@ public class ErnestoChase : ModBehaviour
         OnPlayerWarped?.Invoke();
     }
 
+    private void OnPlayerDeath(DeathType deathType)
+    {
+        if (spectating)
+        {
+            spectating = false;
+            SpectateTarget?.Camera.enabled = false;
+            Locator.GetPlayerCamera().enabled = true;
+            GlobalMessenger<OWCamera>.FireEvent("SwitchActiveCamera", Locator.GetPlayerCamera());
+        }
+    }
+
     public void RespawnErnesto()
     {
         foreach (GameObject ernesto in ernestos)
         {
             Destroy(ernesto);
-            WaitForPlayer();
+            StartCoroutine(WaitForPlayer());
         }
     }
 

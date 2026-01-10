@@ -201,7 +201,6 @@ public class ErnestoMovement : MonoBehaviour
                 frameDelay = storedTargetsFrameDelay;
                 TargetData data = GenerateTargetData();
                 storedTargets.AddTarget(data);
-                //ErnestoChase.WriteDebugMessage("Send parent: " + data.parent);
 
                 if (ErnestoChase.InMultiplayer)
                 {
@@ -316,7 +315,7 @@ public class ErnestoMovement : MonoBehaviour
         bool isFinalTarget = false)
     {
         Transform parent;
-        if (transform.parent == planetManager.GetErnestoBody().transform)
+        if (transform.parent == planetManager.GetErnestoBody().transform || transform.parent == null)
         {
             parent = planetManager.GetStaticParent();
         }
@@ -502,7 +501,6 @@ public class ErnestoMovement : MonoBehaviour
                 
                 var data = GenerateTargetData(isTeleportEnter: true);
                 storedTargets.AddTarget(data);
-                ErnestoChase.WriteDebugMessage("Send teleport: " + data.isTeleportEnter);
 
                 if (ErnestoChase.InMultiplayer)
                 {
@@ -568,6 +566,7 @@ public class ErnestoMovement : MonoBehaviour
         if (storedTargets.Count == 0) return;
 
         TargetData targetData;
+        bool sendTarget = false;
 
         if (frameDelay <= 0)
         {
@@ -608,6 +607,8 @@ public class ErnestoMovement : MonoBehaviour
             lastPosition = transform.localPosition;
             lastRotation = transform.rotation;
             lastTime = Time.fixedTime;
+
+            sendTarget = true;
         }
         else
         {
@@ -643,6 +644,14 @@ public class ErnestoMovement : MonoBehaviour
         else if (targetData.isFinalTarget)
         {
             OnFinalWarp?.Invoke();
+        }
+        
+        if (ErnestoChase.InMultiplayer && sendTarget && state.RemoteID == 0)
+        {
+            foreach (var id in ErnestoChase.Players)
+            {
+                QSBCompat.SendTargetData(id, state.LocalID, targetData);
+            }
         }
     }
 
@@ -806,7 +815,6 @@ public class ErnestoMovement : MonoBehaviour
         
         var data = GenerateTargetData(isTeleportExit: true);
         storedTargets.AddTarget(data);
-        ErnestoChase.WriteDebugMessage("Send teleport: " + data.isTeleportEnter);
 
         if (ErnestoChase.InMultiplayer)
         {

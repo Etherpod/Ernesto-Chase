@@ -362,10 +362,4 @@ public class PlanetManager : MonoBehaviour
         
         return body;
     }
-
-    public void OnCaughtPlayer()
-    {
-        ErnestoChase.Instance.ModHelper.Events.Unity
-            .FireOnNextUpdate(() => Destroy(staticTransformParent.gameObject));
-    }
 }
