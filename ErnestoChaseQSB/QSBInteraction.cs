@@ -19,19 +19,19 @@ public class QSBInteraction : MonoBehaviour, IQSBInteraction
 
     public GameObject GetRemoteFluidDetector(uint id)
     {
-        var player = QSBPlayerManager.PlayerList.Where(x => x.PlayerId == id).First();
+        var player = QSBPlayerManager.PlayerList.First(x => x.PlayerId == id);
         return player.FluidDetector.gameObject;
     }
 
     public bool GetPlayerInCloak(uint id)
     {
-        var player = QSBPlayerManager.PlayerList.Where(x => x.PlayerId == id).First();
+        var player = QSBPlayerManager.PlayerList.First(x => x.PlayerId == id);
         return player.IsInCloak;
     }
 
     public bool GetPlayerInDream(uint id)
     {
-        var player = QSBPlayerManager.PlayerList.Where(x => x.PlayerId == id).First();
+        var player = QSBPlayerManager.PlayerList.First(x => x.PlayerId == id);
         return player.InDreamWorld;
     }
 }

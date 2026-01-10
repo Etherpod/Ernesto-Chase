@@ -399,3 +399,7 @@ FodyWeavers.xsd
 # JetBrains Rider
 *.sln.iml
 .idea
+
+# Unity assets
+ErnestoChase/assets/*
+!ErnestoChase/assets/*.gitkeep
