@@ -115,8 +115,6 @@ public class ErnestoEffects : MonoBehaviour
         {
             filterLerp = Mathf.MoveTowards(filterLerp, muffle ? 1f : 0f, Time.deltaTime / 2f);
         }
-
-        ErnestoChase.WriteDebugMessage(filterLerp);
         
         foreach (var filter in lowPassFilters)
         {
@@ -179,6 +177,7 @@ public class ErnestoEffects : MonoBehaviour
             }
             UpdateMuffle(true);
         }
+
         OnExitWhiteHole?.Invoke();
     }
 
@@ -288,19 +287,23 @@ public class ErnestoEffects : MonoBehaviour
             return;
         }
 
-        OnEnterBlackHole?.Invoke(fromSpace, toSpace);
-
-        whiteHole.transform.parent = transform.parent;
-        whiteHole.transform.localPosition = transform.localPosition;
-        whiteHole.WarpObjectIn(2f);
-        whiteHole.singularityController.OnCreation += OnWhiteHoleCreated;
-        if (!state.StealthMode)
+        // This is run elsewhere for fake warping
+        if (!state.UsingStoredTargets)
         {
-            loopingAudio.FadeIn(1f);
-            musicAudio.FadeIn(1f);
+            OnEnterBlackHole?.Invoke(fromSpace, toSpace);
+            
+            whiteHole.transform.parent = transform.parent;
+            whiteHole.transform.localPosition = transform.localPosition;
+            whiteHole.WarpObjectIn(2f);
+            whiteHole.singularityController.OnCreation += OnWhiteHoleCreated;
+            if (!state.StealthMode)
+            {
+                loopingAudio.FadeIn(1f);
+                musicAudio.FadeIn(1f);
+            }
+            
+            UpdateMuffle(true);
         }
-        
-        UpdateMuffle(true);
     }
 
     private IEnumerator SpaceAudioTransition()
@@ -351,5 +354,25 @@ public class ErnestoEffects : MonoBehaviour
     {
         loopingAudio.FadeOut(2f);
         animator.SetTrigger("Stop");
+    }
+
+    public void OnFakeWarpEntry()
+    {
+        OnTeleportStarted(false, false);
+    }
+    
+    public void OnFakeWarpExit()
+    {
+        whiteHole.transform.parent = transform.parent;
+        whiteHole.transform.localPosition = transform.localPosition;
+        whiteHole.WarpObjectIn(2f);
+        whiteHole.singularityController.OnCreation += OnWhiteHoleCreated;
+        if (!state.StealthMode)
+        {
+            loopingAudio.FadeIn(1f);
+            musicAudio.FadeIn(1f);
+        }
+            
+        UpdateMuffle(true);
     }
 }

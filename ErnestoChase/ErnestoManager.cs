@@ -44,6 +44,8 @@ public class ErnestoManager : MonoBehaviour
         ernestoMovement.OnTakeShortcut += ernestoEffects.OnTakeShortcut;
         ernestoMovement.OnUpdateVisibility += ernestoEffects.OnUpdateVisibility;
         ernestoMovement.OnFinalWarp += OnFinalWarp;
+        ernestoMovement.TriggerFakeWarpEntry += ernestoEffects.OnFakeWarpEntry;
+        ernestoMovement.TriggerFakeWarpExit += ernestoEffects.OnFakeWarpExit;
 
         ernestoEffects.OnExitWhiteHole += OnExitWhiteHole;
         ernestoEffects.OnEnterBlackHole += OnEnterBlackHole;
@@ -75,7 +77,7 @@ public class ErnestoManager : MonoBehaviour
             StartCoroutine(ErnestoReleaseDelay());
             initialized = true;
         }
-
+        
         if (state.KillVolumeEnabled && playerCollided && !state.CaughtPlayer)
         {
             if (state.RemoteID > 0)
@@ -157,7 +159,6 @@ public class ErnestoManager : MonoBehaviour
     {
         ernestoEffects.OnFinalWarp();
         missionComplete = true;
-        // switch cams
     }
 
     private void OnPlayerDeath(DeathType deathType)
@@ -222,9 +223,12 @@ public class ErnestoManager : MonoBehaviour
         {
             state.ErnestoReleased = true;
             state.KillVolumeEnabled = true;
-            planetManager.UpdatePlayerPlanetState(true, true);
+            if (!state.UsingStoredTargets)
+            {
+                planetManager.UpdatePlayerPlanetState(true, true);
+            }
         }
-        else
+        else if (!state.UsingStoredTargets)
         {
             ernestoMovement.SetMovementEnabled(true);
         }
@@ -263,6 +267,8 @@ public class ErnestoManager : MonoBehaviour
         ernestoMovement.OnTakeShortcut -= ernestoEffects.OnTakeShortcut;
         ernestoMovement.OnUpdateVisibility -= ernestoEffects.OnUpdateVisibility;
         ernestoMovement.OnFinalWarp -= OnFinalWarp;
+        ernestoMovement.TriggerFakeWarpEntry -= ernestoEffects.OnFakeWarpEntry;
+        ernestoMovement.TriggerFakeWarpExit -= ernestoEffects.OnFakeWarpExit;
 
         ernestoEffects.OnExitWhiteHole -= OnExitWhiteHole;
         ernestoEffects.OnEnterBlackHole -= OnEnterBlackHole;

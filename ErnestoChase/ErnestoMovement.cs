@@ -19,6 +19,9 @@ public class ErnestoMovement : MonoBehaviour
     public event UpdateVisibilityEvent OnUpdateVisibility;
     public delegate void FinalWarpEvent();
     public event FinalWarpEvent OnFinalWarp;
+    public delegate void FakeWarpEvent();
+    public event FakeWarpEvent TriggerFakeWarpEntry;
+    public event FakeWarpEvent TriggerFakeWarpExit;
 
     ErnestoState state;
     PlanetManager planetManager;
@@ -125,6 +128,7 @@ public class ErnestoMovement : MonoBehaviour
     {
         storedTargets = queue;
         usingStoredTargets = true;
+        state.UsingStoredTargets = true;
     }
 
     public void AddTargetData(TargetData data)
@@ -262,6 +266,21 @@ public class ErnestoMovement : MonoBehaviour
         spaceTargets.Clear();
         canMove = false;
         enabled = false;
+
+        if (!state.UsingStoredTargets)
+        {
+            TargetData data = GenerateTargetData(isFinalTarget: true);
+            storedTargets.AddTarget(data);
+
+            if (ErnestoChase.InMultiplayer)
+            {
+                foreach (var id in ErnestoChase.Players)
+                {
+                    QSBCompat.SendTargetData(id, state.LocalID, data);
+                }
+            }
+        }
+        
         OnFinalWarp?.Invoke();
 
         if (ErnestoChase.InMultiplayer)
@@ -293,7 +312,8 @@ public class ErnestoMovement : MonoBehaviour
         spaceTargets.Enqueue((localPosition, isTeleport));
     }
 
-    private TargetData GenerateTargetData()
+    private TargetData GenerateTargetData(bool isTeleportEnter = false, bool isTeleportExit = false,
+        bool isFinalTarget = false)
     {
         Transform parent;
         if (transform.parent == planetManager.GetErnestoBody().transform)
@@ -307,7 +327,7 @@ public class ErnestoMovement : MonoBehaviour
 
         return new TargetData(parent.name, parent.InverseTransformPoint(transform.position), 
             planetManager.GetStaticParent().InverseTransformPoint(transform.position), 
-            Time.fixedTime);
+            Time.fixedTime, isTeleportEnter, isTeleportExit, isFinalTarget);
     }
 
     private void UpdateErnestoVisibility()
@@ -414,6 +434,19 @@ public class ErnestoMovement : MonoBehaviour
                     spaceTargets.Dequeue();
                     lerpingToTarget = false;
                     OnTeleportRequired?.Invoke(true);
+
+                    var data = GenerateTargetData(isTeleportEnter: true);
+                    storedTargets.AddTarget(data);
+                    ErnestoChase.WriteDebugMessage("Send teleport: " + data.isTeleportEnter);
+
+                    if (ErnestoChase.InMultiplayer)
+                    {
+                        foreach (var id in ErnestoChase.Players)
+                        {
+                            QSBCompat.SendTargetData(id, state.LocalID, data);
+                        }
+                    }
+                    
                     return;
                 }
 
@@ -466,6 +499,18 @@ public class ErnestoMovement : MonoBehaviour
             if (targets.Peek().isTeleport)
             {
                 OnTeleportRequired?.Invoke(false);
+                
+                var data = GenerateTargetData(isTeleportEnter: true);
+                storedTargets.AddTarget(data);
+                ErnestoChase.WriteDebugMessage("Send teleport: " + data.isTeleportEnter);
+
+                if (ErnestoChase.InMultiplayer)
+                {
+                    foreach (var id in ErnestoChase.Players)
+                    {
+                        QSBCompat.SendTargetData(id, state.LocalID, data);
+                    }
+                }
             }
             else
             {
@@ -585,6 +630,19 @@ public class ErnestoMovement : MonoBehaviour
         else
         {
             transform.rotation = Quaternion.Slerp(lastRotation, targetRotation, timeLerp);
+        }
+
+        if (targetData.isTeleportEnter)
+        {
+            TriggerFakeWarpEntry?.Invoke();
+        }
+        else if (targetData.isTeleportExit)
+        {
+            TriggerFakeWarpExit?.Invoke();
+        }
+        else if (targetData.isFinalTarget)
+        {
+            OnFinalWarp?.Invoke();
         }
     }
 
@@ -744,6 +802,18 @@ public class ErnestoMovement : MonoBehaviour
             spawnDelayTimer = targetSpawnDelay;
             spaceTimedStartDistance = Vector3.Distance(Locator.GetPlayerTransform().position, transform.position);
             OnSpaceWarp?.Invoke();
+        }
+        
+        var data = GenerateTargetData(isTeleportExit: true);
+        storedTargets.AddTarget(data);
+        ErnestoChase.WriteDebugMessage("Send teleport: " + data.isTeleportEnter);
+
+        if (ErnestoChase.InMultiplayer)
+        {
+            foreach (var id in ErnestoChase.Players)
+            {
+                QSBCompat.SendTargetData(id, state.LocalID, data);
+            }
         }
     }
 
