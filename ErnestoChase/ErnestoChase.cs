@@ -178,7 +178,7 @@ public class ErnestoChase : ModBehaviour
                     continue;
                 }
 
-                if (remoteErnestos[0].All(e => e.Value != ernesto))
+                if (InMultiplayer && remoteErnestos[0].All(e => e.Value != ernesto))
                 {
                     continue;
                 }
