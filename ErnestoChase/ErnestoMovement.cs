@@ -32,8 +32,8 @@ public class ErnestoMovement : MonoBehaviour
     private float baseSpaceSpeed;
     private float currentSpaceSpeed;
 
-    private Queue<(Vector3 pos, bool isTeleport)> targets = new();
-    private Queue<(Vector3 pos, bool isTeleport)> spaceTargets = new();
+    private Queue<(Vector3 pos, bool isTeleport, bool isInRingWorld)> targets = new();
+    private Queue<(Vector3 pos, bool isTeleport, bool isInRingWorld)> spaceTargets = new();
 
     private TargetDataQueue storedTargets;
     private bool usingStoredTargets = false;
@@ -67,6 +67,7 @@ public class ErnestoMovement : MonoBehaviour
     private bool hasTakenShortcut = true;
     private bool proximityRoar = true;
     private bool ernestoFrozen = false;
+    private bool wasInRingWorld = false;
 
     private List<uint> observers = [];
     private bool warpOutOnTargetComplete = false;
@@ -201,6 +202,8 @@ public class ErnestoMovement : MonoBehaviour
                 frameDelay = storedTargetsFrameDelay;
                 TargetData data = GenerateTargetData();
                 storedTargets.AddTarget(data);
+                
+                ErnestoChase.WriteDebugMessage("in ring world: " + data.isInRingWorld);
 
                 if (ErnestoChase.InMultiplayer)
                 {
@@ -303,12 +306,13 @@ public class ErnestoMovement : MonoBehaviour
 
     private void SpawnTarget(Transform parent, Vector3 worldPosition, bool isTeleport = false)
     {
-        targets.Enqueue((parent.InverseTransformPoint(worldPosition), isTeleport));
+        targets.Enqueue((parent.InverseTransformPoint(worldPosition), isTeleport, 
+            Locator.GetRingWorldController()?._playerInsideRingWorld ?? false));
     }
 
     private void SpawnSpaceTarget(Vector3 localPosition, bool isTeleport = false)
     {
-        spaceTargets.Enqueue((localPosition, isTeleport));
+        spaceTargets.Enqueue((localPosition, isTeleport, false));
     }
 
     private TargetData GenerateTargetData(bool isTeleportEnter = false, bool isTeleportExit = false,
@@ -324,9 +328,19 @@ public class ErnestoMovement : MonoBehaviour
             parent = transform.parent;
         }
 
+        bool inRingWorld;
+        if (targets.Count > 0)
+        {
+            inRingWorld = targets.Peek().isInRingWorld;
+        }
+        else
+        {
+            inRingWorld = Locator.GetRingWorldController()?._playerInsideRingWorld ?? false;
+        }
+
         return new TargetData(parent.name, parent.InverseTransformPoint(transform.position), 
-            planetManager.GetStaticParent().InverseTransformPoint(transform.position), 
-            Time.fixedTime, isTeleportEnter, isTeleportExit, isFinalTarget);
+            planetManager.GetStaticParent().InverseTransformPoint(transform.position), transform.up,
+            Time.fixedTime, isTeleportEnter, isTeleportExit, isFinalTarget, inRingWorld);
     }
 
     private void UpdateErnestoVisibility()
@@ -436,7 +450,7 @@ public class ErnestoMovement : MonoBehaviour
 
                     var data = GenerateTargetData(isTeleportEnter: true);
                     storedTargets.AddTarget(data);
-                    ErnestoChase.WriteDebugMessage("Send teleport: " + data.isTeleportEnter);
+                    ErnestoChase.WriteDebugMessage("Send space teleport: " + data.isTeleportEnter);
 
                     if (ErnestoChase.InMultiplayer)
                     {
@@ -501,6 +515,7 @@ public class ErnestoMovement : MonoBehaviour
                 
                 var data = GenerateTargetData(isTeleportEnter: true);
                 storedTargets.AddTarget(data);
+                ErnestoChase.WriteDebugMessage("Send ground teleport: " + data.isTeleportEnter);
 
                 if (ErnestoChase.InMultiplayer)
                 {
@@ -564,22 +579,29 @@ public class ErnestoMovement : MonoBehaviour
     private void FollowStoredTargets()
     {
         if (storedTargets.Count == 0) return;
-
+        
         TargetData targetData;
         bool sendTarget = false;
 
+        TargetData skippedTeleport = new();
+        bool hasSkippedTeleport = false;
+        
         if (frameDelay <= 0)
         {
             frameDelay = storedTargetsFrameDelay;
-
-            int num = 0;
 
             while (storedTargets.Count > 2
                 && storedTargets.PeekCurrentTarget(out var nextData)
                 && nextData.time < Time.fixedTime + state.TimeOffset)
             {
-                storedTargets.PopCurrentTarget(out _);
-                num++;
+                storedTargets.PopCurrentTarget(out var skippedData);
+                if (skippedData.isTeleportEnter || skippedData.isTeleportExit ||
+                    skippedData.isFinalTarget)
+                {
+                    ErnestoChase.WriteDebugMessage("I SKIPPED IT OH DEAR OH GOD");
+                    skippedTeleport = skippedData;
+                    hasSkippedTeleport = true;
+                }
             }
 
             storedTargets.PopCurrentTarget(out _);
@@ -609,6 +631,8 @@ public class ErnestoMovement : MonoBehaviour
             lastTime = Time.fixedTime;
 
             sendTarget = true;
+            
+            ErnestoChase.WriteDebugMessage(targetData.isInRingWorld);
         }
         else
         {
@@ -618,8 +642,9 @@ public class ErnestoMovement : MonoBehaviour
         }
 
         Vector3 targetPos = failedPlanetCheck ? targetData.worldPosition : targetData.localPosition;
-        Quaternion targetRotation = Quaternion.LookRotation(gameObject.GetAttachedOWRigidbody().transform.TransformPoint(targetPos) - transform.position,
-                -planetManager.GetCurrentAlignGravity(true).CalculateForceAccelerationAtPoint(transform.position));
+        Quaternion targetRotation = Quaternion.LookRotation(gameObject.GetAttachedOWRigidbody()
+                .transform.TransformPoint(targetPos) - transform.position,
+                targetData.worldUp);
 
         float timeLerp = 1f - (frameDelay / (float)storedTargetsFrameDelay);
         transform.localPosition = Vector3.Lerp(lastPosition, targetPos, timeLerp);
@@ -633,17 +658,15 @@ public class ErnestoMovement : MonoBehaviour
             transform.rotation = Quaternion.Slerp(lastRotation, targetRotation, timeLerp);
         }
 
-        if (targetData.isTeleportEnter)
+        if (state.RemoteID > 0 && targetData.isInRingWorld != wasInRingWorld)
         {
-            TriggerFakeWarpEntry?.Invoke();
+            wasInRingWorld = targetData.isInRingWorld;
+            ErnestoChase.Instance.UpdateRingWorldState(state.RemoteID, state.LocalID, targetData.isInRingWorld);
         }
-        else if (targetData.isTeleportExit)
+
+        if (!ProcessStoredTeleportLogic(targetData) && hasSkippedTeleport)
         {
-            TriggerFakeWarpExit?.Invoke();
-        }
-        else if (targetData.isFinalTarget)
-        {
-            OnFinalWarp?.Invoke();
+            ProcessStoredTeleportLogic(skippedTeleport);
         }
         
         if (ErnestoChase.InMultiplayer && sendTarget && state.RemoteID == 0)
@@ -653,6 +676,32 @@ public class ErnestoMovement : MonoBehaviour
                 QSBCompat.SendTargetData(id, state.LocalID, targetData);
             }
         }
+    }
+
+    private bool ProcessStoredTeleportLogic(TargetData targetData)
+    {
+        if (targetData.isTeleportEnter)
+        {
+            TriggerFakeWarpEntry?.Invoke();
+        }
+        else if (targetData.isTeleportExit)
+        {
+            TriggerFakeWarpExit?.Invoke();
+            ErnestoChase.Instance.RefreshDreamWorld(state.RemoteID);
+            ErnestoChase.Instance.RefreshRingWorld(state.RemoteID, state.LocalID, targetData.isInRingWorld, false);
+        }
+        else if (targetData.isFinalTarget)
+        {
+            OnFinalWarp?.Invoke();
+        }
+        else
+        {
+            return false;
+        }
+        
+        ErnestoChase.WriteDebugMessage("... Processing stored teleport logic");
+
+        return true;
     }
 
     private void TryProximityRoar()

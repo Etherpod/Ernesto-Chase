@@ -12,11 +12,13 @@ public class SpectatorCamera : MonoBehaviour
     private bool isErnestoCam;
     private uint playerID;
     private ErnestoManager ernestoManager;
+    private AudioListener audioListener;
 
     public bool IsErnestoCam { get => isErnestoCam; }
     public uint PlayerID { get => playerID; }
     public OWCamera Camera { get => owCamera; }
     public SectorDetector Detector { get => sectorDetector; }
+    public AudioListener AudioListener { get => audioListener; }
 
     private void Awake()
     {
@@ -27,8 +29,10 @@ public class SpectatorCamera : MonoBehaviour
             ErnestoChase.Instance.ernestoSpectatorCams.Add(this);
         }
 
+        audioListener = owCamera.GetComponent<AudioListener>();
         owCamera.GetComponent<PlanetaryFogImageEffect>().fogShader = Shader.Find("Hidden/PlanetaryFogImageEffect");
         owCamera.GetComponent<FlashbackScreenGrabImageEffect>()._downsampleShader = Shader.Find("Hidden/DownsampleImageEffect");
+        owCamera.GetComponent<HeightmapAmbientLightRenderer>()._lightShader = Shader.Find("Hidden/HeightmapAmbientLight");
         owCamera.enabled = false;
         owCamera.gameObject.SetActive(true);
     }

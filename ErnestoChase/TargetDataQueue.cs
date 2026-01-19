@@ -7,16 +7,19 @@ namespace ErnestoChase;
 public class TargetDataQueue
 {
     [Serializable]
-    public struct TargetData(string parent, Vector3 localPosition, Vector3 worldPosition, 
-        float time, bool isTeleportEnter = false, bool isTeleportExit = false, bool isFinalTarget = false)
+    public struct TargetData(string parent, Vector3 localPosition, Vector3 worldPosition, Vector3 worldUp,
+        float time, bool isTeleportEnter = false, bool isTeleportExit = false, bool isFinalTarget = false,
+        bool isInRingWorld = false)
     {
         public string parent = parent;
         public Vector3 localPosition = localPosition;
         public Vector3 worldPosition = worldPosition;
+        public Vector3 worldUp = worldUp;
         public float time = time;
         public bool isTeleportEnter = isTeleportEnter;
         public bool isTeleportExit = isTeleportExit;
         public bool isFinalTarget = isFinalTarget;
+        public bool isInRingWorld = isInRingWorld;
     }
 
     private TargetData[] targetDataHistory = new TargetData[150000];
@@ -61,5 +64,20 @@ public class TargetDataQueue
     public void Reset()
     {
         nextTarget = 0;
+    }
+
+    public bool DebugTeleportCheck()
+    {
+        int num = 0;
+        for (int i = 0; i <= nextOpenSlot; i++)
+        {
+            if (targetDataHistory[i].isTeleportEnter || targetDataHistory[i].isTeleportExit ||
+                targetDataHistory[i].isFinalTarget)
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

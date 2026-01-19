@@ -25,9 +25,16 @@ public static class QSBCompat
         public string parent = targetData.parent;
         public SerializedVector3 localPosition = new(targetData.localPosition);
         public SerializedVector3 worldPosition = new(targetData.worldPosition);
+        public SerializedVector3 worldUp = new(targetData.worldUp);
         public float time = targetData.time;
+        public bool isTeleportEnter = targetData.isTeleportEnter;
+        public bool isTeleportExit = targetData.isTeleportExit;
+        public bool isFinalTarget = targetData.isFinalTarget;
+        public bool isInRingWorld = targetData.isInRingWorld;
 
-        public readonly TargetData TargetData => new(parent, localPosition.Vector, worldPosition.Vector, time);
+        public readonly TargetData TargetData => new(parent, localPosition.Vector, 
+            worldPosition.Vector, worldUp.Vector, time, isTeleportEnter, isTeleportExit, 
+            isFinalTarget, isInRingWorld);
     }
 
     public static void Init(IQSBAPI qsbapi)
@@ -42,6 +49,9 @@ public static class QSBCompat
         api.RegisterHandler<(uint, bool)>("visibility-state", ReceiveVisibilityState);
         api.RegisterHandler<(uint, bool)>("size-change", ReceiveErnestoSizeChange);
         api.RegisterHandler<uint>("final-warp", ReceiveErnestoFinalWarp);
+        api.RegisterHandler<bool>("ring-world-state", ReceiveRingWorldUpdate);
+        api.RegisterHandler<bool>("refresh-ring-world", ReceiveRingWorldRefresh);
+        api.RegisterHandler<bool>("refresh-dream-world", ReceiveDreamWorldRefresh);
     }
 
     private static void OnPlayerJoin(uint id)
@@ -127,6 +137,44 @@ public static class QSBCompat
         if (ErnestoChase.TryGetRemoteErnesto(from, localID, out GameObject remoteErnesto))
         {
             remoteErnesto.GetComponent<ErnestoManager>()?.OnPlayerDeathRemote();
+        }
+    }
+
+    public static void SendRingWorldUpdate(uint to, bool state)
+    {
+        api.SendMessage("ring-world-state", state, to);
+    }
+
+    private static void ReceiveRingWorldUpdate(uint from, bool state)
+    {
+        ErnestoChase.Instance.UpdateRingWorldState(from, state);
+    }
+
+    public static void SendRingWorldRefresh(uint to)
+    {
+        api.SendMessage("refresh-ring-world", false, to);
+    }
+
+    private static void ReceiveRingWorldRefresh(uint from, bool b)
+    {
+        if (ErnestoChase.Instance.IsSpectating && !ErnestoChase.Instance.SpectateTarget.IsErnestoCam &&
+            ErnestoChase.Instance.SpectateTarget.PlayerID == from)
+        {
+            ErnestoChase.Instance.SwitchToSpectatorCam(ErnestoChase.Instance.SpectateTarget);
+        }
+    }
+    
+    public static void SendDreamWorldRefresh(uint to)
+    {
+        api.SendMessage("refresh-dream-world", false, to);
+    }
+
+    private static void ReceiveDreamWorldRefresh(uint from, bool b)
+    {
+        if (ErnestoChase.Instance.IsSpectating && !ErnestoChase.Instance.SpectateTarget.IsErnestoCam &&
+            ErnestoChase.Instance.SpectateTarget.PlayerID == from)
+        {
+            ErnestoChase.Instance.SwitchToSpectatorCam(ErnestoChase.Instance.SpectateTarget);
         }
     }
 }

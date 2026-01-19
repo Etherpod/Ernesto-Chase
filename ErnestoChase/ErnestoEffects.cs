@@ -80,7 +80,7 @@ public class ErnestoEffects : MonoBehaviour
             ernestoRenderer.material.SetTexture("_EmissionMap", noBulbTex);
             //enabled = false;
         }
-        if (state.ErnestoMusic)
+        if (state.ErnestoMusic && state.RemoteID == 0)
         {
             StartCoroutine(ReadAudioFiles());
         }

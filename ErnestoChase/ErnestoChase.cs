@@ -46,6 +46,11 @@ public class ErnestoChase : ModBehaviour
     public SpectatorCamera SpectateTarget { get; private set; }
     public bool IsSpectating { get => spectating; }
     private bool lastSpectateTargetState;
+    public bool loadedRingWorld;
+    public bool loadedDreamWorld;
+    private readonly Dictionary<uint, bool> playerRingWorldStates = [];
+    private readonly Dictionary<uint, Dictionary<uint, bool>> ernestoRingWorldStates = [];
+    private bool wasInsideRingWorld;
 
     private ScreenPrompt _changeSpectateTargetPrompt;
     private ScreenPrompt _changeSpectateTypePrompt;
@@ -129,6 +134,8 @@ public class ErnestoChase : ModBehaviour
             camErnestos.Clear();
             oldErnestos.Clear();
             remoteErnestos.Clear();
+            playerRingWorldStates.Clear();
+            ernestoRingWorldStates.Clear();
             PatchnestoClass.Initialize();
 
             UpdateProperties();
@@ -144,6 +151,11 @@ public class ErnestoChase : ModBehaviour
 
                 if (InMultiplayer)
                 {
+                    Locator.GetCloakFieldController()?.OnPlayerEnter -= OnPlayerTriggerCloak;
+                    Locator.GetCloakFieldController()?.OnPlayerExit -= OnPlayerTriggerCloak;
+                    GlobalMessenger.AddListener("EnterDreamWorld", OnPlayerTriggerDreamWorld);
+                    GlobalMessenger.AddListener("ExitDreamWorld", OnPlayerTriggerDreamWorld);
+                    
                     foreach (uint id in Players)
                     {
                         StartCoroutine(AddCamToRemotePlayer(id));
@@ -192,13 +204,31 @@ public class ErnestoChase : ModBehaviour
                 Locator.GetPromptManager().RemoveScreenPrompt(_changeSpectateTypePrompt);
                 Locator.GetPromptManager().RemoveScreenPrompt(_enterSpectateModePrompt);
                 Locator.GetPromptManager().RemoveScreenPrompt(_exitSpectateModePrompt);
+
+                Locator.GetCloakFieldController()?.OnPlayerEnter -= OnPlayerTriggerCloak;
+                Locator.GetCloakFieldController()?.OnPlayerExit -= OnPlayerTriggerCloak;
+                GlobalMessenger.RemoveListener("EnterDreamWorld", OnPlayerTriggerDreamWorld);
+                GlobalMessenger.RemoveListener("ExitDreamWorld", OnPlayerTriggerDreamWorld);
             }
         };
     }
 
     private void Update()
     {
-        if (!InMultiplayer) return;
+        if (!InMultiplayer || LoadManager.GetCurrentScene() != OWScene.SolarSystem) return;
+
+        if (EntitlementsManager.IsDlcOwned() != EntitlementsManager.AsyncOwnershipStatus.NotOwned)
+        {
+            bool insideRingWorld = Locator.GetRingWorldController()?._playerInsideRingWorld ?? false;
+            if (insideRingWorld != wasInsideRingWorld)
+            {
+                wasInsideRingWorld = insideRingWorld;
+                foreach (var id in Players)
+                {
+                    QSBCompat.SendRingWorldUpdate(id, wasInsideRingWorld);
+                }
+            }
+        }
 
         if (Players.Length > 0 && QSBAPI.GetPlayerDead(QSBAPI.GetLocalPlayerID()))
         {
@@ -225,6 +255,8 @@ public class ErnestoChase : ModBehaviour
                     mixer._nonEndTimesVolume.FadeTo(1, 0.5f);
                     mixer._endTimesVolume.FadeTo(1, 0.5f);
                     mixer.UnmixMap();
+
+                    ReticleController.Hide();
                     
                     SwitchToSpectatorCam(targetCam);
 
@@ -236,6 +268,8 @@ public class ErnestoChase : ModBehaviour
                 else
                 {
                     spectating = false;
+                    ReticleController.Show();
+                    Locator.GetPlayerCameraController()._audioListener.enabled = true;
                     Locator.GetMapController().EnterMapView(SpectateTarget.transform);
                 }
             }
@@ -338,8 +372,9 @@ public class ErnestoChase : ModBehaviour
             }
         }
                     
-        if (!targetCam && !spectatingErnesto && playerSpectatorCams.Count > 0)
+        if (!targetCam && playerSpectatorCams.Count > 0)
         {
+            spectatingErnesto = false;
             var index = GetSpectatorCamIndex(playerSpectatorCams, playerCamIndex);
             if (index.HasValue)
             {
@@ -367,19 +402,42 @@ public class ErnestoChase : ModBehaviour
         }
         
         ErnestoChase.WriteDebugMessage("Switching spectator camera");
-        GlobalMessenger<OWCamera>.FireEvent("SwitchActiveCamera", camera.Camera);
         Locator.GetPlayerCamera().enabled = false;
+        Locator.GetPlayerCameraController()._audioListener.enabled = false;
 
         if (SpectateTarget != null)
         {
             SpectateTarget.Camera.enabled = false;
+            SpectateTarget.AudioListener.enabled = false;
             SpectateTarget.Detector.gameObject.SetActive(false);
         }
+        
+        GlobalMessenger<OWCamera>.FireEvent("SwitchActiveCamera", camera.Camera);
 
         SpectateTarget = camera;
         lastSpectateTargetState = true;
         camera.Camera.enabled = true;
+        camera.AudioListener.enabled = true;
         camera.Detector.gameObject.SetActive(true);
+
+        if (camera.IsErnestoCam)
+        {
+            var remoteID = camera.GetComponent<ErnestoState>().RemoteID;
+            var localID = camera.GetComponent<ErnestoState>().LocalID;
+
+            ernestoRingWorldStates.TryAdd(remoteID, []);
+            ernestoRingWorldStates[remoteID].TryAdd(localID, false);
+            
+            RefreshDreamWorld(remoteID);
+            RefreshRingWorld(remoteID, localID, ernestoRingWorldStates[remoteID][localID], false);
+        }
+        else
+        {
+            playerRingWorldStates.TryAdd(camera.PlayerID, false);
+            
+            RefreshDreamWorld(camera.PlayerID);
+            RefreshRingWorld(camera.PlayerID, playerRingWorldStates[camera.PlayerID]);
+        }
     }
     
     private void InitializeQSB()
@@ -688,6 +746,208 @@ public class ErnestoChase : ModBehaviour
         }
     }
 
+    public void RefreshRingWorld(uint remoteID, bool inside)
+    {
+        RefreshRingWorld(remoteID, 0, inside, true);
+    }
+
+    public void RefreshRingWorld(uint remoteID, uint localID, bool inside, bool isPlayer)
+    {
+        if (!spectating || isPlayer == SpectateTarget.IsErnestoCam || 
+            EntitlementsManager.IsDlcOwned() == EntitlementsManager.AsyncOwnershipStatus.NotOwned) return;
+
+        if (SpectateTarget.IsErnestoCam)
+        {
+            var state = SpectateTarget.GetComponent<ErnestoState>();
+            if (state.RemoteID != remoteID || state.LocalID != localID)
+            {
+                return;
+            }
+        }
+        else
+        {
+            if (SpectateTarget.PlayerID != remoteID) return;
+        }
+        
+        bool unload = false;
+        if (SpectateTarget.IsErnestoCam &&
+            SpectateTarget.transform.parent.gameObject != Locator.GetRingWorldController().gameObject)
+        {
+            unload = true;
+        }
+        else if (!SpectateTarget.IsErnestoCam && remoteID > 0 && !QSBInteraction.GetPlayerInCloak(remoteID))
+        {
+            unload = true;
+        }
+
+        if (unload)
+        {
+            ErnestoChase.WriteDebugMessage("unload ring world");
+            if (loadedRingWorld)
+            {
+                foreach (var proxy in FindObjectsOfType<CloakingFieldProxy>())
+                {
+                    proxy.OnPlayerExitCloakingField();
+                }
+                
+                Locator.GetRingWorldController().transform
+                    .Find("Sector_RingInterior").GetComponent<Sector>().RemoveOccupant(SpectateTarget.Detector);
+
+                loadedRingWorld = false;
+            }
+
+            return;
+        }
+        
+        ErnestoChase.WriteDebugMessage("load ring world");
+        
+        if (!loadedRingWorld)
+        {
+            foreach (var proxy in FindObjectsOfType<CloakingFieldProxy>())
+            {
+                proxy.OnPlayerEnterCloakingField();
+            }
+
+            loadedRingWorld = true;
+        }
+        
+        if (inside)
+        {
+            ErnestoChase.WriteDebugMessage("UPDATE INTERIOR");
+            Locator.GetRingWorldController().transform
+                .Find("Sector_RingInterior").GetComponent<Sector>().AddOccupant(SpectateTarget.Detector);
+        }
+        else
+        {
+            Locator.GetRingWorldController().transform
+                .Find("Sector_RingInterior").GetComponent<Sector>().RemoveOccupant(SpectateTarget.Detector);
+        }
+    }
+
+    public void UpdateRingWorldState(uint remoteID, bool state)
+    {
+        playerRingWorldStates[remoteID] = state;
+        RefreshRingWorld(remoteID, state);
+    }
+
+    public void UpdateRingWorldState(uint remoteID, uint localID, bool state)
+    {
+        ErnestoChase.WriteDebugMessage("\nupdating state: " + state);
+        ernestoRingWorldStates[remoteID][localID] = state;
+        RefreshRingWorld(remoteID, localID, state, false);
+    }
+    
+    public void RefreshDreamWorld(uint remoteID)
+    {
+        if (!spectating || EntitlementsManager.IsDlcOwned() == EntitlementsManager.AsyncOwnershipStatus.NotOwned) return;
+        
+        bool unload = false;
+        if (SpectateTarget.IsErnestoCam &&
+            SpectateTarget.transform.parent.gameObject != Locator.GetDreamWorldController().gameObject)
+        {
+            unload = true;
+        }
+        else if (!SpectateTarget.IsErnestoCam && remoteID > 0 && !QSBInteraction.GetPlayerInDream(remoteID))
+        {
+            unload = true;
+        }
+        
+        if (unload)
+        {
+            ErnestoChase.WriteDebugMessage("Unload DW");
+            if (loadedDreamWorld)
+            {
+                UnloadDreamWorld();
+            }
+
+            return;
+        }
+
+        ErnestoChase.WriteDebugMessage("LOAD DW HAHHA");
+        
+        if (!loadedDreamWorld)
+        {
+            LoadDreamWorld();
+        }
+    }
+
+    private void LoadDreamWorld()
+    {
+        ErnestoChase.WriteDebugMessage("gabagool");
+        
+        var dw = Locator.GetDreamWorldController();
+        
+        SpectateTarget.Camera.cullingMask &= ~(1 << LayerMask.NameToLayer("Sun"));
+        dw._prevPlayerCameraFarPlaneDist = SpectateTarget.Camera.farClipPlane;
+        SpectateTarget.Camera.farClipPlane = 4000f;
+        SpectateTarget.Camera.mainCamera.backgroundColor = dw._tempSkyboxColor;
+        SpectateTarget.Camera.planetaryFog.enabled = false;
+        SpectateTarget.Camera.postProcessingSettings.ambientOcclusionAvailable = false;
+        SpectateTarget.Camera.postProcessingSettings.screenSpaceReflectionAvailable = true;
+
+        var rend = SpectateTarget.Camera.GetComponent<HeightmapAmbientLightRenderer>();
+        if (rend != null)
+        {
+            rend.enabled = true;
+        }
+        
+        dw._dreamWorldSector.GetTriggerVolume().AddObjectToVolume(SpectateTarget.Detector.gameObject);
+        SunLightController.RegisterSunOverrider(dw, 1000);
+        if (dw._proxyShadowLight)
+        {
+            dw._proxyShadowLight.enabled = false;
+        }
+        
+        Locator.GetAudioMixer().MixDreamWorld();
+        foreach (var proxy in FindObjectsOfType<CloakingFieldProxy>())
+        {
+            proxy.OnEnterDreamWorld();
+        }
+        
+        loadedDreamWorld = true;
+    }
+
+    private void UnloadDreamWorld()
+    {
+        var dw = Locator.GetDreamWorldController();
+        
+        SunLightController.UnregisterSunOverrider(dw);
+        if (dw._proxyShadowLight)
+        {
+            dw._proxyShadowLight.enabled = true;
+        }
+
+        int count = SpectateTarget.Detector._sectorList.Count;
+        for (int i = 0; i < count; i++)
+        {
+            SpectateTarget.Detector._sectorList[0].GetTriggerVolume()
+                .RemoveObjectFromVolume(SpectateTarget.Detector.gameObject);
+        }
+        
+        Locator.GetAudioMixer().UnmixDreamWorld();
+
+        var rend = SpectateTarget.Camera.GetComponent<HeightmapAmbientLightRenderer>();
+        if (rend != null)
+        {
+            rend.enabled = false;
+        }
+        
+        SpectateTarget.Camera.cullingMask |= 1 << LayerMask.NameToLayer("Sun");
+        SpectateTarget.Camera.farClipPlane = dw._prevPlayerCameraFarPlaneDist;
+        dw._prevPlayerCameraFarPlaneDist = 0f;
+        SpectateTarget.Camera.mainCamera.backgroundColor = Color.black;
+        SpectateTarget.Camera.planetaryFog.enabled = true;
+        SpectateTarget.Camera.postProcessingSettings.screenSpaceReflectionAvailable = false;
+        SpectateTarget.Camera.postProcessingSettings.ambientOcclusionAvailable = true;
+        
+        foreach (var proxy in FindObjectsOfType<CloakingFieldProxy>())
+        {
+            proxy.OnExitDreamWorld();
+        }
+        
+        loadedDreamWorld = false;
+    }
+
     public void OnPlayerWarpedEvent()
     {
         OnPlayerWarped?.Invoke();
@@ -701,6 +961,22 @@ public class ErnestoChase : ModBehaviour
             SpectateTarget?.Camera.enabled = false;
             Locator.GetPlayerCamera().enabled = true;
             GlobalMessenger<OWCamera>.FireEvent("SwitchActiveCamera", Locator.GetPlayerCamera());
+        }
+    }
+
+    private void OnPlayerTriggerCloak()
+    {
+        foreach (var id in Players)
+        {
+            QSBCompat.SendRingWorldRefresh(id);
+        }
+    }
+
+    private void OnPlayerTriggerDreamWorld()
+    {
+        foreach (var id in Players)
+        {
+            QSBCompat.SendDreamWorldRefresh(id);
         }
     }
 

@@ -434,6 +434,45 @@ public static class PatchnestoClass
 		    }
 	    }
     }
+
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(DreamWorldController), nameof(DreamWorldController.ApplySunOverrides))]
+    public static bool ForceSunDisableInSpectate(DreamWorldController __instance, 
+	    SunLightController.SunOverrideSettings settings,
+	    ref SunLightController.SunOverrideSettings __result)
+    {
+	    if (ErnestoChase.Instance.IsSpectating && ErnestoChase.Instance.loadedDreamWorld)
+	    {
+		    settings.sunIntensity = 0f;
+		    settings.ambientIntensity = 0f;
+		    settings.sunShadowStrength = 0f;
+		    __result = settings;
+		    return false;
+	    }
+
+	    return true;
+    }
+
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(CloakFieldController), nameof(CloakFieldController.OnSectorOccupantsUpdated))]
+    public static bool PreventCloakExitInSpectate(CloakFieldController __instance)
+    {
+	    return !ErnestoChase.Instance.IsSpectating;
+    }
+
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(DreamWarpVolume), nameof(DreamWarpVolume.OnEnterTriggerVolume))]
+    public static bool PreventEnterDreamWarpInSpectate(GameObject hitObj)
+    {
+	    return !hitObj.GetComponentInParent<SpectatorCamera>();
+    }
+    
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(DreamWarpVolume), nameof(DreamWarpVolume.OnExitTriggerVolume))]
+    public static bool PreventExitDreamWarpInSpectate(GameObject hitObj)
+    {
+	    return !hitObj.GetComponentInParent<SpectatorCamera>();
+    }
     
     /*[HarmonyPostfix]
     [HarmonyPatch(typeof(OWML.ModHelper.Menus.NewMenuSystem.PauseMenuManager), "OnSceneLoadCompleted")]
