@@ -223,7 +223,8 @@ public static class PatchnestoClass
         IOptionsMenuManager OptionsMenuManager = menuManager.OptionsMenuManager;
 
         var menus = typeof(MenuManager).GetField("ModSettingsMenus", BindingFlags.Public
-            | BindingFlags.NonPublic | BindingFlags.Static).GetValue(menuManager)
+            | BindingFlags.NonPublic | BindingFlags.Static)
+		        ?.GetValue(menuManager)
             as List<(IModBehaviour behaviour, Menu modMenu)>;
 
         for (int i = 0; i < menus.Count; i++)
@@ -237,7 +238,7 @@ public static class PatchnestoClass
                 }
 
                 __instance.OnActivateMenu += () => ErnestoChase.Instance.ModHelper.Events.Unity
-                    .FireOnNextUpdate(() => ErnestoChase.Instance.RedrawSettingsMenu());
+                    .FireOnNextUpdate(() => ECMenuManager.RedrawSettingsMenu());
                 return;
             }
         }
@@ -248,7 +249,8 @@ public static class PatchnestoClass
     public static void PreventRepeatActivation(MenuManager __instance, bool force)
     {
         var menus = typeof(MenuManager).GetField("ModSettingsMenus", BindingFlags.Public
-            | BindingFlags.NonPublic | BindingFlags.Static).GetValue(__instance)
+            | BindingFlags.NonPublic | BindingFlags.Static)
+		        ?.GetValue(__instance)
             as List<(IModBehaviour behaviour, Menu modMenu)>;
 
         for (int i = 0; i < menus.Count; i++)
@@ -267,7 +269,8 @@ public static class PatchnestoClass
     {
         MenuManager menuManager = StartupPopupPatches.menuManager;
         var menus = typeof(MenuManager).GetField("ModSettingsMenus", BindingFlags.Public
-            | BindingFlags.NonPublic | BindingFlags.Static).GetValue(menuManager)
+            | BindingFlags.NonPublic | BindingFlags.Static)
+		        ?.GetValue(menuManager)
             as List<(IModBehaviour behaviour, Menu modMenu)>;
 
         Menu modMenu = null;
@@ -376,29 +379,6 @@ public static class PatchnestoClass
 		else if (__instance._pendingOrb != null && __instance._pendingOrb.StartDragFromPosition(cam.position))
 		{
 			__instance._activeOrb = __instance._pendingOrb;
-		}
-		if (__instance._lastHitCollider != null && false)
-		{
-			__instance._focusedRepairReceiver = __instance._lastHitCollider.GetComponent<RepairReceiver>();
-			if (__instance._focusedRepairReceiver != null && (raycastHit.distance > __instance._focusedRepairReceiver.repairDistance || !__instance._focusedRepairReceiver.IsRepairable()))
-			{
-				__instance._focusedRepairReceiver = null;
-			}
-			__instance._focusedNomaiText = __instance._lastHitCollider.GetComponent<NomaiText>();
-			if (__instance._focusedNomaiText != null && !__instance._focusedNomaiText.CheckAllowFocus(raycastHit.distance, cam.forward))
-			{
-				__instance._focusedNomaiText = null;
-			}
-			__instance._focusedItemSocket = __instance._lastHitCollider.GetComponent<OWItemSocket>();
-			if (__instance._focusedItemSocket != null && (!__instance._focusedItemSocket.IsInteractable() || raycastHit.distance > __instance._focusedItemSocket.GetInteractRange()))
-			{
-				__instance._focusedItemSocket = null;
-			}
-			__instance._focusedItem = __instance._lastHitCollider.GetComponent<OWItem>();
-			if (__instance._focusedItem != null && (!__instance._focusedItem.IsInteractable() || raycastHit.distance > __instance._focusedItem.GetInteractRange()))
-			{
-				__instance._focusedItem = null;
-			}
 		}
 		if (__instance._observable != null)
 		{

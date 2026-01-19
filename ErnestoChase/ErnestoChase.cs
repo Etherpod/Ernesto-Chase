@@ -78,8 +78,10 @@ public class ErnestoChase : ModBehaviour
     public bool ErnestoStacking => (bool)settings["ernestoStacking"].property;
     public bool RandomMode => (bool)settings["randomMode"].property;
     public bool ErnestoMorph => (bool)settings["ernestoMorph"].property;
+    public float SurvivalTimerLength => (float)settings["survivalTimerLength"].property;
+    public bool AllowShipLog => (bool)settings["allowShipLog"].property;
 
-    private Dictionary<string, (object value, object property)> settings = new()
+    public Dictionary<string, (object value, object property)> settings = new()
     {
         { "randomMode", (false, false) },
         { "groundMovementSpeed", (1f, 1f) },
@@ -99,6 +101,8 @@ public class ErnestoChase : ModBehaviour
         { "disableLight", (false, false) },
         { "advancedSettings", (false, false) },
         { "ernestoMorph", (false, false) },
+        { "survivalTimerLength", (1f, 1f) },
+        { "allowShipLog", (false, false) }
     };
 
     public static readonly bool EnableDebugMode = true;
@@ -1134,372 +1138,23 @@ public class ErnestoChase : ModBehaviour
     public override void Configure(IModConfig config)
     {
         var keys = settings.Keys.ToArray();
-        bool anyChanged = false;
+        //bool anyChanged = false;
         for (int i = 0; i < keys.Length; i++)
         {
-            object configValue = ConvertJValue(config.GetSettingsValue<object>(keys[i]));
+            /*object configValue = ConvertJValue(config.GetSettingsValue<object>(keys[i]));
             if (!anyChanged && !settings[keys[i]].value.Equals(configValue)
                 && (keys[i] == "spaceAccelerationType" || keys[i] == "advancedSettings"))
             {
                 WriteDebugMessage(keys[i] + " was changed");
                 anyChanged = true;
-            }
+            }*/
             settings[keys[i]] = (ConvertJValue(config.GetSettingsValue<object>(keys[i])), settings[keys[i]].property);
         }
 
-        if (anyChanged)
+        /*if (anyChanged)
         {
-            RedrawSettingsMenu();
-        }
-    }
-
-    public void RedrawSettingsMenu()
-    {
-        MenuManager menuManager = StartupPopupPatches.menuManager;
-        IOptionsMenuManager OptionsMenuManager = menuManager.OptionsMenuManager;
-
-        var menus = typeof(MenuManager).GetField("ModSettingsMenus", BindingFlags.Public
-            | BindingFlags.NonPublic | BindingFlags.Static).GetValue(menuManager)
-            as List<(IModBehaviour behaviour, Menu modMenu)>;
-
-        Menu newModTab = null;
-
-        for (int i = 0; i < menus.Count; i++)
-        {
-            if ((object)menus[i].behaviour == this)
-            {
-                newModTab = menus[i].modMenu;
-            }
-        }
-
-        if (newModTab == null) return;
-
-        newModTab._menuOptions = [];
-
-        Scrollbar scrollbar = newModTab.transform.Find("Scroll View/Scrollbar Vertical").GetComponent<Scrollbar>();
-        float lastScrollValue = scrollbar.value;
-
-        Transform settingsParent = newModTab.transform.Find("Scroll View/Viewport/Content");
-
-        if (!DestroyExistingSettings(newModTab, settingsParent))
-        {
-            return;
-        }
-
-        OptionsMenuManager.AddSeparator(newModTab, true);
-        OptionsMenuManager.CreateLabel(newModTab, "Any changes to Ernesto are applied on the next loop!");
-
-        int startIndex = 0;
-        int endIndex = ModHelper.Config.Settings.Count;
-
-        for (int i = startIndex; i < endIndex; i++)
-        {
-            string name = ModHelper.Config.Settings.ElementAt(i).Key;
-
-            if (ShouldHideSetting(i, name))
-            {
-                continue;
-            }
-
-            object setting = ModHelper.Config.Settings.ElementAt(i).Value;
-            var settingType = GetSettingType(setting);
-            var label = ModHelper.MenuTranslations.GetLocalizedString(name);
-            var tooltip = "";
-
-            var settingObject = setting as JObject;
-
-            if (settingObject != default(JObject))
-            {
-                if (settingObject["dlcOnly"]?.ToObject<bool>() ?? false)
-                {
-                    if (EntitlementsManager.IsDlcOwned() == EntitlementsManager.AsyncOwnershipStatus.NotOwned)
-                    {
-                        continue;
-                    }
-                }
-
-                if (settingObject["title"] != null)
-                {
-                    if (!SetCustomSettingName(ref label, name))
-                    {
-                        label = ModHelper.MenuTranslations.GetLocalizedString(settingObject["title"].ToString());
-                    }
-                }
-
-                if (settingObject["tooltip"] != null)
-                {
-                    if (!SetCustomTooltip(ref tooltip, name))
-                    {
-                        tooltip = ModHelper.MenuTranslations.GetLocalizedString(settingObject["tooltip"].ToString());
-                    }
-                }
-            }
-
-            switch (settingType)
-            {
-                case SettingType.CHECKBOX:
-                    var currentCheckboxValue = ModHelper.Config.GetSettingsValue<bool>(name);
-                    var settingCheckbox = OptionsMenuManager.AddCheckboxInput(newModTab, label, tooltip, currentCheckboxValue);
-                    settingCheckbox.ModSettingKey = name;
-                    settingCheckbox.OnValueChanged += (bool newValue) =>
-                    {
-                        ModHelper.Config.SetSettingsValue(name, newValue);
-                        ModHelper.Storage.Save(ModHelper.Config, Constants.ModConfigFileName);
-                        Configure(ModHelper.Config);
-                    };
-                    break;
-                case SettingType.TOGGLE:
-                    var currentToggleValue = ModHelper.Config.GetSettingsValue<bool>(name);
-                    var yes = settingObject["yes"].ToString();
-                    var no = settingObject["no"].ToString();
-                    var settingToggle = OptionsMenuManager.AddToggleInput(newModTab, label, yes, no, tooltip, currentToggleValue);
-                    settingToggle.ModSettingKey = name;
-                    settingToggle.OnValueChanged += (bool newValue) =>
-                    {
-                        ModHelper.Config.SetSettingsValue(name, newValue);
-                        ModHelper.Storage.Save(ModHelper.Config, Constants.ModConfigFileName);
-                        Configure(ModHelper.Config);
-                    };
-                    break;
-                case SettingType.SELECTOR:
-                    var currentSelectorValue = ModHelper.Config.GetSettingsValue<string>(name);
-                    var options = settingObject["options"].ToArray().Select(x => x.ToString()).ToArray();
-                    var currentSelectedIndex = Array.IndexOf(options, currentSelectorValue);
-                    var settingSelector = OptionsMenuManager.AddSelectorInput(newModTab, label, options, tooltip, true, currentSelectedIndex);
-                    settingSelector.ModSettingKey = name;
-                    settingSelector.OnValueChanged += (int newIndex, string newSelection) =>
-                    {
-                        ModHelper.Config.SetSettingsValue(name, newSelection);
-                        ModHelper.Storage.Save(ModHelper.Config, Constants.ModConfigFileName);
-                        Configure(ModHelper.Config);
-                    };
-                    break;
-                case SettingType.SEPARATOR:
-                    if (!name.Contains("."))
-                    {
-                        OptionsMenuManager.AddSeparator(newModTab, true);
-                        OptionsMenuManager.CreateLabel(newModTab, name);
-                        OptionsMenuManager.AddSeparator(newModTab, false);
-                    }
-                    else
-                    {
-                        OptionsMenuManager.AddSeparator(newModTab, false);
-                    }
-                    break;
-                case SettingType.SLIDER:
-                    var currentSliderValue = ModHelper.Config.GetSettingsValue<float>(name);
-                    var lower = settingObject["min"].ToObject<float>();
-                    var upper = settingObject["max"].ToObject<float>();
-                    var settingSlider = OptionsMenuManager.AddSliderInput(newModTab, label, lower, upper, tooltip, currentSliderValue);
-                    settingSlider.ModSettingKey = name;
-                    settingSlider.OnValueChanged += (float newValue) =>
-                    {
-                        ModHelper.Config.SetSettingsValue(name, newValue);
-                        ModHelper.Storage.Save(ModHelper.Config, Constants.ModConfigFileName);
-                        Configure(ModHelper.Config);
-                    };
-                    break;
-                case SettingType.TEXT:
-                    var currentTextValue = ModHelper.Config.GetSettingsValue<string>(name);
-                    var textInput = OptionsMenuManager.AddTextEntryInput(newModTab, label, currentTextValue, tooltip, false);
-                    textInput.ModSettingKey = name;
-                    textInput.OnConfirmEntry += () =>
-                    {
-                        var newValue = textInput.GetInputText();
-                        ModHelper.Config.SetSettingsValue(name, newValue);
-                        ModHelper.Storage.Save(ModHelper.Config, Constants.ModConfigFileName);
-                        Configure(ModHelper.Config);
-                        textInput.SetText(newValue);
-                    };
-                    break;
-                case SettingType.NUMBER:
-                    var currentValue = ModHelper.Config.GetSettingsValue<double>(name);
-                    var numberInput = OptionsMenuManager.AddTextEntryInput(newModTab, label, currentValue.ToString(CultureInfo.CurrentCulture), tooltip, true);
-                    numberInput.ModSettingKey = name;
-                    numberInput.OnConfirmEntry += () =>
-                    {
-                        if (!string.IsNullOrEmpty(numberInput.GetInputText()))
-                        {
-                            var newValue = double.Parse(numberInput.GetInputText());
-                            ModHelper.Config.SetSettingsValue(name, newValue);
-                            ModHelper.Storage.Save(ModHelper.Config, Constants.ModConfigFileName);
-                            Configure(ModHelper.Config);
-                            numberInput.SetText(newValue.ToString());
-                        }
-                    };
-                    break;
-                default:
-                    WriteDebugMessage($"Couldn't generate input for unkown input type {settingType}");
-                    OptionsMenuManager.CreateLabel(newModTab, $"Unknown {settingType} : {name}");
-                    break;
-            }
-        }
-
-
-        if (newModTab._tooltipDisplay != null)
-        {
-            foreach (MenuOption option in newModTab.GetComponentsInChildren<MenuOption>(true))
-            {
-                option.SetTooltipDisplay(newModTab._tooltipDisplay);
-            }
-        }
-
-        bool foundSelectable = false;
-        newModTab._listSelectables = newModTab.GetComponentsInChildren<Selectable>(true);
-        foreach (Selectable selectable in newModTab._listSelectables)
-        {
-            selectable.gameObject.GetAddComponent<Menu.MenuSelectHandler>().OnSelectableSelected += newModTab.OnMenuItemSelected;
-
-            if (newModTab._lastSelected != null
-                && selectable.gameObject.name == newModTab._lastSelected.gameObject.name)
-            {
-                SelectableAudioPlayer component = newModTab._selectOnActivate.GetComponent<SelectableAudioPlayer>();
-                if (component != null)
-                {
-                    component.SilenceNextSelectEvent();
-                }
-                Locator.GetMenuInputModule().SelectOnNextUpdate(selectable);
-                foundSelectable = true;
-            }
-        }
-
-        if (!foundSelectable && newModTab._selectOnActivate != null)
-        {
-            SelectableAudioPlayer component = newModTab._selectOnActivate.GetComponent<SelectableAudioPlayer>();
-            if (component != null)
-            {
-                component.SilenceNextSelectEvent();
-            }
-            Locator.GetMenuInputModule().SelectOnNextUpdate(newModTab._selectOnActivate);
-            newModTab._lastSelected = newModTab._selectOnActivate;
-        }
-
-        if (newModTab._setMenuNavigationOnActivate)
-        {
-            Menu.SetVerticalNavigation(newModTab, newModTab._menuOptions);
-        }
-
-        ModHelper.Events.Unity.FireInNUpdates(() =>
-        {
-            scrollbar.value = lastScrollValue;
-        }, 2);
-    }
-
-    private bool DestroyExistingSettings(Menu menu, Transform parent)
-    {
-        for (int i = 0; i < parent.childCount; i++)
-        {
-            if (i < 2)
-            {
-                MenuOption option = parent.GetChild(i).GetComponentInChildren<MenuOption>();
-                if (option != null)
-                {
-                    menu._menuOptions = menu._menuOptions.Add(option);
-                }
-            }
-            else
-            {
-                Destroy(parent.GetChild(i).gameObject);
-            }
-        }
-
-        return true;
-    }
-
-    private bool ShouldHideSetting(int currIndex, string name)
-    {
-        if (name == "spaceTimer" && (string)settings["spaceAccelerationType"].value != "Timed")
-        {
-            return true;
-        }
-        if (name == "spaceSpeed" && (string)settings["spaceAccelerationType"].value == "Timed")
-        {
-            return true;
-        }
-        if (name != "advancedSettings" && (bool)settings["advancedSettings"].value 
-            && currIndex >= ModHelper.Config.Settings.Keys.ToList().IndexOf("groundMovementSpeed"))
-        {
-            return true;
-        }
-        return false;
-    }
-
-    private bool SetCustomSettingName(ref string label, string settingName)
-    {
-        return false;
-    }
-
-    private bool SetCustomTooltip(ref string tooltip, string settingName)
-    {
-        if (settingName == "spaceAccelerationType")
-        {
-            string value = (string)settings["spaceAccelerationType"].value;
-            if (value == "Cumulative")
-            {
-                tooltip = "Cumulative means Ernesto will accelerate towards you faster and faster as time goes on. You can sometimes outrun him, and he may frequently miss his target.";
-            }
-            else if (value == "Linear")
-            {
-                tooltip = "Linear means Ernesto will move at a constant speed towards you, except it's impossible to outrun him. He will always be getting closer.";
-            }
-            else if (value == "Timed")
-            {
-                tooltip = "Timed means Ernesto will reach you in a set amount of time, no matter how far away you are. This is the most balanced type.";
-            }
-            return true;
-        }
-        if (settingName == "spaceSpeed")
-        {
-            string value = (string)settings["spaceAccelerationType"].value;
-            if (value == "Cumulative")
-            {
-                tooltip = "This changes how quickly Ernesto accelerates towards you in space.";
-            }
-            else
-            {
-                tooltip = "This changes how quickly Ernesto moves towards you in space.";
-            }
-            return true;
-        }
-
-        return false;
-    }
-
-    private SettingType GetSettingType(object setting)
-    {
-        var settingObject = setting as JObject;
-
-        if (setting is bool || (settingObject != null && settingObject["type"].ToString() == "toggle" && (settingObject["yes"] == null || settingObject["no"] == null)))
-        {
-            return SettingType.CHECKBOX;
-        }
-        else if (setting is string || (settingObject != null && settingObject["type"].ToString() == "text"))
-        {
-            return SettingType.TEXT;
-        }
-        else if (setting is int || setting is long || setting is float || setting is double || setting is decimal || (settingObject != null && settingObject["type"].ToString() == "number"))
-        {
-            return SettingType.NUMBER;
-        }
-        else if (settingObject != null && settingObject["type"].ToString() == "toggle")
-        {
-            return SettingType.TOGGLE;
-        }
-        else if (settingObject != null && settingObject["type"].ToString() == "selector")
-        {
-            return SettingType.SELECTOR;
-        }
-        else if (settingObject != null && settingObject["type"].ToString() == "slider")
-        {
-            return SettingType.SLIDER;
-        }
-        else if (settingObject != null && settingObject["type"].ToString() == "separator")
-        {
-            return SettingType.SEPARATOR;
-        }
-
-        WriteDebugMessage($"Couldn't work out setting type. Type:{setting.GetType().Name} SettingObjectType:{settingObject?["type"].ToString()}");
-        return SettingType.NONE;
+            ECMenuManager.RedrawSettingsMenu();
+        }*/
     }
 
     public static object ConvertJValue(object obj)
@@ -1524,17 +1179,5 @@ public class ErnestoChase : ModBehaviour
             return value.ToString();
         }
         return value;
-    }
-
-    enum SettingType
-    {
-        NONE,
-        CHECKBOX,
-        TOGGLE,
-        TEXT,
-        NUMBER,
-        SELECTOR,
-        SLIDER,
-        SEPARATOR
     }
 }

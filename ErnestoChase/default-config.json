@@ -2,8 +2,10 @@
   "$schema": "https://raw.githubusercontent.com/ow-mods/owml/master/schemas/config_schema.json",
   "enabled": true,
   "settings": {
-    "General Settings": {
-      "type": "separator"
+    "generalHeader": {
+      "type": "separator",
+      "title": "General Settings",
+      "separatorType": "header"
     },
 
     "startDelay": {
@@ -43,8 +45,10 @@
       "value": false
     },
 
-    "Ernesto Settings": {
-      "type": "separator"
+    "ernestoHeader": {
+      "type": "separator",
+      "title": "Ernesto Settings",
+      "separatorType": "header"
     },
 
     "groundMovementSpeed": {
@@ -124,7 +128,7 @@
       "value": false
     },
     
-    ".": {
+    "advancedSettingsSplit": {
       "type": "separator"
     },
 
@@ -133,6 +137,38 @@
       "tooltip": "Enabling this will ignore this section of the settings and use the values from the AdvancedErnestoSettings.json file in the mod folder.",
       "type": "toggle",
       "value": false
+    },
+
+    "minigamesHeader": {
+      "type": "separator",
+      "separatorType": "header",
+      "title": "Minigame Settings"
+    },
+    
+    "shipLogSidebar": {
+      "type": "separator",
+      "separatorType": "sidebar",
+      "title": "Random Ship Log"
+    },
+    
+    "allowShipLog": {
+      "type": "toggle",
+      "value": false,
+      "title": "Allow Ship Log",
+      "tooltip": "Lets you use your ship log while playing the Random Ship Log minigame."
+    },
+    
+    "survivalSidebar": {
+      "type": "separator",
+      "separatorType": "sidebar",
+      "title": "Survival"
+    },
+    
+    "survivalTimerLength": {
+      "type": "number",
+      "value": 2.0,
+      "title": "Timer Length",
+      "tooltip": "Sets the number of minutes you need to survive for in order to win. This will use the host's time if in multiplayer."
     }
   }
 }
