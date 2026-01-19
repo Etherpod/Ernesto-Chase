@@ -6,6 +6,7 @@ using UnityEngine;
 using ErnestoChase;
 using QSB.Player;
 using System.Linq;
+using QSB.Player.TransformSync;
 
 namespace ErnestoChaseQSB;
 
@@ -33,5 +34,10 @@ public class QSBInteraction : MonoBehaviour, IQSBInteraction
     {
         var player = QSBPlayerManager.PlayerList.First(x => x.PlayerId == id);
         return player.InDreamWorld;
+    }
+
+    public bool GetLocalPlayerReady()
+    {
+        return PlayerTransformSync.LocalInstance != null;
     }
 }

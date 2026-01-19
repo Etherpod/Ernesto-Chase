@@ -162,12 +162,19 @@ public class ErnestoManager : MonoBehaviour
 
     private void OnPlayerDeath(DeathType deathType)
     {
+        if (missionComplete) return;
+        
         killVolume.gameObject.SetActive(false);
         if (state.RemoteID == 0)
         {
             StopCoroutine(ErnestoReleaseDelay());
             ernestoMovement.OnPlayerDeath();
         }
+    }
+
+    public void OnGameStopped()
+    {
+        OnPlayerDeath(DeathType.Digestion);
     }
 
     private void OnPlayerLeave(uint id)
@@ -199,6 +206,7 @@ public class ErnestoManager : MonoBehaviour
 
     public void OnPlayerDeathRemote()
     {
+        if (missionComplete) return;
         StopCoroutine(ErnestoReleaseDelay());
         ernestoMovement.OnPlayerDeathRemote();
     }

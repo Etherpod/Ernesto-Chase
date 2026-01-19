@@ -57,6 +57,8 @@ public class ErnestoChase : ModBehaviour
     private ScreenPrompt _enterSpectateModePrompt;
     private ScreenPrompt _exitSpectateModePrompt;
 
+    private CharacterDialogueTree _setupDialogue;
+
     public static uint[] Players => QSBAPI?.GetPlayerIDs().Where(id => id != QSBAPI.GetLocalPlayerID()).ToArray();
 
     public static bool InMultiplayer => QSBAPI != null && QSBAPI.GetIsInMultiplayer();
@@ -129,6 +131,11 @@ public class ErnestoChase : ModBehaviour
         {
             if (loadScene != OWScene.SolarSystem) return;
 
+            if (scene != OWScene.SolarSystem)
+            {
+                ErnestoConditionManager.Reset();
+            }
+
             playerDetectorReady = false;
             ernestos.Clear();
             camErnestos.Clear();
@@ -145,7 +152,19 @@ public class ErnestoChase : ModBehaviour
                 storedErnestoTargets.Clear();
             }
 
-            if (!InMultiplayer || scene == OWScene.SolarSystem)
+            if (ErnestoConditionManager.StartingGame)
+            {
+                ErnestoConditionManager.GameStarted = true;
+            }
+
+            var prefab = LoadPrefab("Assets/ErnestoChase/EC_SetupDialogue.prefab");
+            var obj = Instantiate(prefab, FindObjectOfType<PlayerCameraController>().transform);
+            obj.transform.localPosition = new Vector3(0f, 0f, 1.5f);
+            _setupDialogue = obj.GetComponentInChildren<CharacterDialogueTree>();
+            _setupDialogue.OnEndConversation += OnEndSetupConversation;
+            DialogueBuilder.FixCustomDialogue(obj, "ConversationZone");
+
+            if (ErnestoConditionManager.GameStarted)
             {
                 StartCoroutine(WaitForPlayer());
 
@@ -161,11 +180,6 @@ public class ErnestoChase : ModBehaviour
                         StartCoroutine(AddCamToRemotePlayer(id));
                     }
                 }
-            }
-            else
-            {
-                ModHelper.Console.WriteLine("\nSkip to the next loop when everyone has joined! Joining during the middle of the loop will break Ernesto.\n",
-                   MessageType.Warning);
             }
         };
 
@@ -198,6 +212,11 @@ public class ErnestoChase : ModBehaviour
                 storedErnestoTargets.Add(ernesto.GetComponent<ErnestoManager>().GetStoredTargets());
             }
 
+            if (_setupDialogue != null)
+            {
+                _setupDialogue.OnEndConversation -= OnEndSetupConversation;
+            }
+
             if (InMultiplayer)
             {
                 Locator.GetPromptManager().RemoveScreenPrompt(_changeSpectateTargetPrompt);
@@ -215,7 +234,24 @@ public class ErnestoChase : ModBehaviour
 
     private void Update()
     {
-        if (!InMultiplayer || LoadManager.GetCurrentScene() != OWScene.SolarSystem) return;
+        if (LoadManager.GetCurrentScene() != OWScene.SolarSystem) return;
+
+        if ((!InMultiplayer || QSBInteraction.GetLocalPlayerReady() && 
+            QSBAPI.GetPlayerReady(QSBAPI.GetLocalPlayerID()) && 
+            !QSBAPI.GetPlayerDead(QSBAPI.GetLocalPlayerID())))
+        {
+            if (OWInput.IsInputMode(InputMode.Character) && Keyboard.current.iKey.wasPressedThisFrame)
+            {
+                _setupDialogue.StartConversation();
+            }
+            else if (OWInput.IsNewlyPressed(InputLibrary.cancel, InputMode.Dialogue) &&
+                _setupDialogue.InConversation())
+            {
+                _setupDialogue.EndConversation();
+            }
+        }
+        
+        if (!InMultiplayer) return;
 
         if (EntitlementsManager.IsDlcOwned() != EntitlementsManager.AsyncOwnershipStatus.NotOwned)
         {
@@ -574,6 +610,8 @@ public class ErnestoChase : ModBehaviour
         Locator.GetPromptManager().AddScreenPrompt(_enterSpectateModePrompt, PromptPosition.BottomCenter);
         Locator.GetPromptManager().AddScreenPrompt(_exitSpectateModePrompt, PromptPosition.UpperRight);
 
+        SetUpMinigames();
+        
         ModHelper.Events.Unity.FireInNUpdates(() =>
         {
             if (ErnestoMorph)
@@ -595,6 +633,19 @@ public class ErnestoChase : ModBehaviour
 
             SpawnErnestos();
         }, 50);
+    }
+
+    private void SetUpMinigames()
+    {
+        ErnestoChase.WriteDebugMessage("Setting up");
+        if (ErnestoConditionManager.SurvivalEnabled)
+        {
+            ErnestoChase.WriteDebugMessage("Add UI");
+            GameObject ui = LoadPrefab("Assets/ErnestoChase/CountdownHUD.prefab");
+            CountdownTimer timer = Instantiate(ui).GetComponentInChildren<CountdownTimer>();
+            timer.SetTimerLength(1.25f);
+            timer.StartTimer();
+        }
     }
 
     private void SpawnErnestos()
@@ -977,6 +1028,84 @@ public class ErnestoChase : ModBehaviour
         foreach (var id in Players)
         {
             QSBCompat.SendDreamWorldRefresh(id);
+        }
+    }
+
+    private void OnEndSetupConversation()
+    {
+        if (!ErnestoConditionManager.GameStarted && 
+            DialogueConditionManager.SharedInstance.GetConditionState("EC_START_GAME"))
+        {
+            ErnestoConditionManager.StartingGame = true;
+            Locator.GetDeathManager().KillPlayer(DeathType.Meditation);
+            DialogueConditionManager.SharedInstance.SetConditionState("EC_START_GAME");
+
+            if (InMultiplayer)
+            {
+                foreach (var id in Players)
+                {
+                    QSBCompat.SendStartGame(id);
+                }
+            }
+        }
+        else if (ErnestoConditionManager.GameStarted &&
+            DialogueConditionManager.SharedInstance.GetConditionState("EC_STOP_GAME"))
+        {
+            DialogueConditionManager.SharedInstance.SetConditionState("EC_STOP_GAME");
+            ErnestoConditionManager.Reset();
+            
+            foreach (var e in ernestos)
+            {
+                e.GetComponent<ErnestoManager>().OnGameStopped();
+            }
+            
+            if (InMultiplayer)
+            {
+                foreach (var id in Players)
+                {
+                    QSBCompat.SendStopGame(id);
+                }
+            }
+        }
+    }
+
+    public void OnInputDialogueOption(CharacterDialogueTree tree)
+    {
+        if (tree != _setupDialogue) return;
+        
+        if (DialogueConditionManager.SharedInstance.GetConditionState("EC_RSSR_MODE_SELECTED"))
+        {
+            ErnestoConditionManager.RandomShipLogEnabled = true;
+            DialogueConditionManager.SharedInstance.SetConditionState("EC_RSSR_MODE_SELECTED");
+        }
+        else if (DialogueConditionManager.SharedInstance.GetConditionState("EC_SURVIVAL_MODE_SELECTED"))
+        {
+            ErnestoConditionManager.SurvivalEnabled = true;
+            DialogueConditionManager.SharedInstance.SetConditionState("EC_SURVIVAL_MODE_SELECTED");
+        }
+        else if (DialogueConditionManager.SharedInstance.GetConditionState("EC_MINIGAMES_DISABLED"))
+        {
+            ErnestoConditionManager.DeselectMinigame();
+            DialogueConditionManager.SharedInstance.SetConditionState("EC_MINIGAMES_DISABLED");
+        }
+    }
+
+    public void StopGameRemote()
+    {
+        DialogueConditionManager.SharedInstance.SetConditionState("EC_STOP_GAME");
+        ErnestoConditionManager.Reset();
+            
+        foreach (var e in ernestos)
+        {
+            e.GetComponent<ErnestoManager>().OnGameStopped();
+        }
+    }
+
+    public void OnCountdownComplete()
+    {
+        foreach (var e in ernestos)
+        {
+            e.GetComponent<ErnestoManager>().OnGameStopped();
         }
     }
 

@@ -52,6 +52,8 @@ public static class QSBCompat
         api.RegisterHandler<bool>("ring-world-state", ReceiveRingWorldUpdate);
         api.RegisterHandler<bool>("refresh-ring-world", ReceiveRingWorldRefresh);
         api.RegisterHandler<bool>("refresh-dream-world", ReceiveDreamWorldRefresh);
+        api.RegisterHandler<bool>("start-game", ReceiveStartGame);
+        api.RegisterHandler<bool>("stop-game", ReceiveStopGame);
     }
 
     private static void OnPlayerJoin(uint id)
@@ -176,5 +178,28 @@ public static class QSBCompat
         {
             ErnestoChase.Instance.SwitchToSpectatorCam(ErnestoChase.Instance.SpectateTarget);
         }
+    }
+
+    public static void SendStartGame(uint to)
+    {
+        api.SendMessage("start-game", false, to);
+    }
+
+    private static void ReceiveStartGame(uint from, bool b)
+    {
+        ErnestoConditionManager.StartingGame = true;
+        Locator.GetDeathManager().KillPlayer(DeathType.Meditation);
+        DialogueConditionManager.SharedInstance.SetConditionState("EC_START_GAME", false);
+        DialogueConditionManager.SharedInstance.SetConditionState("EC_GAME_STARTED", true);
+    }
+    
+    public static void SendStopGame(uint to)
+    {
+        api.SendMessage("stop-game", false, to);
+    }
+
+    private static void ReceiveStopGame(uint from, bool b)
+    {
+        ErnestoChase.Instance.StopGameRemote();
     }
 }

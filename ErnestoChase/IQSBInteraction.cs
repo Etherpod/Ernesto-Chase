@@ -9,4 +9,6 @@ public interface IQSBInteraction
     public bool GetPlayerInCloak(uint id);
 
     public bool GetPlayerInDream(uint id);
+
+    public bool GetLocalPlayerReady();
 }

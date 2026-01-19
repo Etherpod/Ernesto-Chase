@@ -113,7 +113,7 @@ public class ErnestoEffects : MonoBehaviour
         }
         else
         {
-            filterLerp = Mathf.MoveTowards(filterLerp, muffle ? 1f : 0f, Time.deltaTime / 2f);
+            filterLerp = Mathf.MoveTowards(filterLerp, muffle ? 1f : 0f, Time.deltaTime / 4f);
         }
         
         foreach (var filter in lowPassFilters)

@@ -79,7 +79,7 @@ public static class PatchnestoClass
     [HarmonyPatch(typeof(DeathManager), nameof(DeathManager.KillPlayer))]
     public static void OverwriteInvincibility(DeathManager __instance)
     {
-        if (caughtErnestos.Count > 0)
+        if (caughtErnestos.Count > 0 || ErnestoConditionManager.StartingGame)
         {
             __instance._invincible = false;
         }
@@ -473,8 +473,71 @@ public static class PatchnestoClass
     {
 	    return !hitObj.GetComponentInParent<SpectatorCamera>();
     }
+
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(DeathManager), nameof(DeathManager.CheckShouldWakeInDreamWorld))]
+    public static bool PreventDreamRevival(ref bool __result)
+    {
+	    if (caughtErnestos.Count > 0 || ErnestoConditionManager.StartingGame)
+	    {
+		    __result = false;
+		    return false;
+	    }
+
+	    return true;
+    }
     
-    /*[HarmonyPostfix]
-    [HarmonyPatch(typeof(OWML.ModHelper.Menus.NewMenuSystem.PauseMenuManager), "OnSceneLoadCompleted")]
-    public static void AddPauseMenuSettings() => SettingsMenu.InitializePauseMenu();*/
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(DialogueNode), nameof(DialogueNode.EntryConditionsSatisfied))]
+    public static bool DialogueEntryConditionsSatisfied(DialogueNode __instance, ref bool __result)
+    {
+	    if (ErnestoChase.Instance.ModHelper.Interaction.ModExists("JohnCorby.VanillaFix") || 
+		    ErnestoChase.Instance.ModHelper.Interaction.ModExists("Etherpod.ShipEnhancements"))
+	    {
+		    return false;
+	    }
+
+	    bool flag = true;
+	    if (__instance._listEntryCondition.Count == 0)
+	    {
+		    __result = false;
+		    return false;
+	    }
+	    DialogueConditionManager sharedInstance = DialogueConditionManager.SharedInstance;
+	    for (int i = 0; i < __instance._listEntryCondition.Count; i++)
+	    {
+		    string text = __instance._listEntryCondition[i];
+		    // CHANGED: remove the !
+		    if (PlayerData.PersistentConditionExists(text))
+		    {
+			    if (!PlayerData.GetPersistentCondition(text))
+			    {
+				    flag = false;
+			    }
+		    }
+		    else if (sharedInstance.ConditionExists(text))
+		    {
+			    if (!sharedInstance.GetConditionState(text))
+			    {
+				    flag = false;
+			    }
+		    }
+		    else
+		    {
+			    flag = false;
+		    }
+	    }
+	    __result = flag;
+	    return false;
+    }
+
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(CharacterDialogueTree), nameof(CharacterDialogueTree.InputDialogueOption))]
+    public static void UpdateConditions(CharacterDialogueTree __instance, bool __result)
+    {
+	    if (__result)
+	    {
+		    ErnestoChase.Instance.OnInputDialogueOption(__instance);
+	    }
+    }
 }
