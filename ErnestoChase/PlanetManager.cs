@@ -17,7 +17,6 @@ public class PlanetManager : MonoBehaviour
 
     private GameObject currentPlanet;
     private ForceVolume currentGravity;
-    private ForceVolume currentAlignGravity;
 
     private List<GameObject> teleportPlanets = new();
     private Queue<Vector3> teleportVelocities = new();
@@ -62,6 +61,7 @@ public class PlanetManager : MonoBehaviour
     public bool UpdatePlayerPlanetState(bool forceUpdate = false)
     {
         bool onPlanet = IsOnPlanet();
+        bool lastState = lastPlayerPlanetState;
         if (lastPlayerPlanetState != onPlanet || forceUpdate)
         {
             if (!playerRecentlyWarped)
@@ -71,6 +71,7 @@ public class PlanetManager : MonoBehaviour
 
             if (!onPlanet && !playerRecentlyWarped && !teleportedIntoSpace)
             {
+                ErnestoChase.WriteDebugMessage("clear teleport planets");
                 teleportPlanets.Clear();
                 state.FollowedPlayerToPlanet = false;
 
@@ -84,17 +85,31 @@ public class PlanetManager : MonoBehaviour
                 
                 OnUpdateTravelMode?.Invoke(true);
             }
-            else if (onPlanet && (!forceUpdate || !teleportedBeforeRelease))
+            else if (onPlanet)
             {
+                if (teleportedBeforeRelease && (teleportPlanets.Count == 0 || 
+                    teleportPlanets[0] != this.GetAttachedOWRigidbody().gameObject))
+                {
+                    ErnestoChase.WriteDebugMessage("burn teleport trigger");
+                    state.FollowedPlayerToPlanet = false;
+                }
+                
                 teleportedBeforeRelease = false;
                 
                 currentPlanet = GetCurrentPlanetBody().gameObject;
 
-                if (state.ErnestoReleased)
+                if (state.ErnestoReleased && teleportPlanets.Count == 0)
                 {
                     ErnestoChase.WriteDebugMessage("enter atmo");
                     rigidbody.SetVelocity(Vector3.zero);
                     transform.parent = currentPlanet.transform;
+                    ErnestoChase.WriteDebugMessage("parented to " + transform.parent.name);
+                }
+                else if (!lastState && !playerRecentlyWarped && teleportPlanets.Count > 0 &&
+                    teleportPlanets[teleportPlanets.Count - 1] == null)
+                {
+                    ErnestoChase.WriteDebugMessage("Set space planet to current planet");
+                    teleportPlanets[teleportPlanets.Count - 1] = currentPlanet;
                 }
                 
                 OnUpdateTravelMode?.Invoke(false);
@@ -123,15 +138,23 @@ public class PlanetManager : MonoBehaviour
             OWRigidbody planet = GetCurrentPlanetBody();
             if (planet == null)
             {
-                ErnestoChase.WriteDebugMessage("Teleported to space");
+                ErnestoChase.WriteDebugMessage($"- Teleported to space ({teleportPlanets.Count})");
                 teleportedIntoSpace = true;
                 teleportPlanets.Add(null);
                 teleportVelocities.Enqueue(Locator.GetPlayerBody().GetVelocity());
             }
             else
             {
-                ErnestoChase.WriteDebugMessage("Teleported to planet " + planet.gameObject);
-                teleportPlanets.Add(planet.gameObject);
+                if (teleportPlanets.Count > 0 && teleportPlanets[teleportPlanets.Count - 1] == null)
+                {
+                    ErnestoChase.WriteDebugMessage("Set space to planet");
+                    teleportPlanets[teleportPlanets.Count - 1] = planet.gameObject;
+                }
+                else
+                {
+                    teleportPlanets.Add(planet.gameObject);
+                }
+                ErnestoChase.WriteDebugMessage($"- Teleported to planet " + planet.gameObject + $" ({teleportPlanets.Count})");
             }
 
             OnPlayerWarpComplete?.Invoke(planet == null);
@@ -156,12 +179,14 @@ public class PlanetManager : MonoBehaviour
 
         if (!fromSpace && !toSpace)
         {
+            ErnestoChase.WriteDebugMessage("ground to ground");
             transform.parent = teleportPlanets[0].transform;
             currentPlanet = teleportPlanets[0];
             teleportPlanets.RemoveAt(0);
         }
         else if (fromSpace && !toSpace)
         {
+            ErnestoChase.WriteDebugMessage("space to ground");
             rigidbody.SetVelocity(Vector3.zero);
             transform.parent = teleportPlanets[0].transform;
             currentPlanet = teleportPlanets[0];
@@ -170,6 +195,7 @@ public class PlanetManager : MonoBehaviour
         }
         else if (!fromSpace && toSpace)
         {
+            ErnestoChase.WriteDebugMessage("ground to space");
             teleportPlanets.RemoveAt(0);
             state.FollowedPlayerToPlanet = false;
             staticTransformParent.GetComponent<OWRigidbody>().SetVelocity(Vector3.zero);
@@ -196,6 +222,7 @@ public class PlanetManager : MonoBehaviour
         }
         else if (fromSpace && toSpace)
         {
+            ErnestoChase.WriteDebugMessage("space to space");
             teleportPlanets.RemoveAt(0);
             OWRigidbody planet = GetCurrentPlanetBody();
             if (planet != null && teleportPlanets.Count == 0)
@@ -223,15 +250,6 @@ public class PlanetManager : MonoBehaviour
     public ForceVolume GetCurrentGravity()
     {
         return currentGravity;
-    }
-
-    public ForceVolume GetCurrentAlignGravity(bool refresh = false)
-    {
-        if (refresh)
-        {
-            GetCurrentPlanetBody();
-        }
-        return currentAlignGravity;
     }
 
     public Transform GetTargetParent()
@@ -315,44 +333,14 @@ public class PlanetManager : MonoBehaviour
                     {
                         body = parentBody;
                         currentGravity = theVolume;
-                        currentAlignGravity = theVolume;
                     }
                 }
             }
         }
-
-        gravVol = null;
-        zeroGVol = null;
 
         if (transform.parent != rigidbody.transform)
         {
             rigidbody.transform.position = transform.position;
-        }
-
-        Collider[] cols = Physics.OverlapSphere(transform.position, 3f, OWLayerMask.effectVolumeMask);
-        if (cols.Length > 0)
-        {
-            foreach (var col in cols)
-            {
-                if (col.TryGetComponent(out EffectVolume vol) && vol is ForceVolume volume
-                    && volume.GetAttachedOWRigidbody().IsKinematic())
-                {
-                    if (gravVol == null)
-                    {
-                        gravVol = volume;
-                    }
-                    else if (zeroGVol == null && volume is ZeroGVolume)
-                    {
-                        zeroGVol = volume;
-                    }
-                }
-            }
-
-            ForceVolume theVolume = gravVol ?? zeroGVol;
-            if (theVolume != null)
-            {
-                currentAlignGravity = theVolume;
-            }
         }
 
         if (PlayerState.InBrambleDimension())

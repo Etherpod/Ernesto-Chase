@@ -217,6 +217,7 @@ public class ErnestoMovement : MonoBehaviour
     {
         if (isSpace)
         {
+            ErnestoChase.WriteDebugMessage("Clear ground targets");
             targets.Clear();
             standingStill = false;
             spawnDelayTimer = targetSpawnDelay;
@@ -227,6 +228,7 @@ public class ErnestoMovement : MonoBehaviour
         }
         else
         {
+            ErnestoChase.WriteDebugMessage("Clear space targets");
             spaceTargets.Clear();
             spawnDelayTimer = targetSpawnDelay;
             if (!planetManager.HasRecentlyTeleported())
@@ -400,8 +402,6 @@ public class ErnestoMovement : MonoBehaviour
 
     private void Move(bool playerOnPlanet)
     {
-        ErnestoChase.WriteDebugMessage(state.FollowedPlayerToPlanet);
-        
         if (state.FollowedPlayerToPlanet)
         {
             GroundMovement();
