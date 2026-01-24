@@ -587,12 +587,19 @@ public static class ECMenuManager
 		{
 			return true;
 		}
+		
 		if (name == "spaceMovementSpeed" && (string)Instance.settings["spaceAccelerationType"].value == "Timed")
 		{
 			return true;
 		}
+		
 		if (name != "advancedSettings" && (bool)Instance.settings["advancedSettings"].value 
 			&& GetErnestoSettings().Contains(name))
+		{
+			return true;
+		}
+
+		if (name == "globalFactGoals" && !InMultiplayer)
 		{
 			return true;
 		}
@@ -636,6 +643,14 @@ public static class ECMenuManager
 			{
 				tooltip = "This changes how quickly Ernesto moves towards you in space.";
 			}
+			return true;
+		}
+
+		if (settingName == "survivalTimerLength")
+		{
+			tooltip = InMultiplayer 
+				? "Sets the number of minutes you need to survive for in order to win.\nOnly the host can change this." 
+				: "Sets the number of minutes you need to survive for in order to win.";
 			return true;
 		}
 		

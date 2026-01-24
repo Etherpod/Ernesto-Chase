@@ -54,6 +54,9 @@ public static class QSBCompat
         api.RegisterHandler<bool>("refresh-dream-world", ReceiveDreamWorldRefresh);
         api.RegisterHandler<bool>("start-game", ReceiveStartGame);
         api.RegisterHandler<bool>("stop-game", ReceiveStopGame);
+        api.RegisterHandler<float>("survival-timer-setup", ReceiveSurvivalTimerSetup);
+        api.RegisterHandler<float>("survival-timer-sync", ReceiveSurvivalTimerSync);
+        api.RegisterHandler<string>("random-fact", ReceiveRandomShipLogFact);
     }
 
     private static void OnPlayerJoin(uint id)
@@ -201,5 +204,35 @@ public static class QSBCompat
     private static void ReceiveStopGame(uint from, bool b)
     {
         ErnestoChase.Instance.StopGameRemote();
+    }
+
+    public static void SendSurvivalTimerSetup(uint to, float timerLength)
+    {
+        api.SendMessage("survival-timer-setup", timerLength, to);
+    }
+
+    private static void ReceiveSurvivalTimerSetup(uint from, float timerLength)
+    {
+        ErnestoChase.MinigameManager.SetUpSurvivalRemote(timerLength);
+    }
+    
+    public static void SendSurvivalTimerSync(uint to, float timeLeft)
+    {
+        api.SendMessage("survival-timer-sync", timeLeft, to);
+    }
+
+    private static void ReceiveSurvivalTimerSync(uint from, float timeLeft)
+    {
+        ErnestoChase.MinigameManager.SetUpSurvivalRemote(timeLeft);
+    }
+
+    public static void SendRandomShipLogFact(uint to, string factID)
+    {
+        api.SendMessage("random-fact", factID, to);
+    }
+
+    private static void ReceiveRandomShipLogFact(uint from, string factID)
+    {
+        ErnestoChase.MinigameManager.SetUpRandomShipLogRemote(factID);
     }
 }

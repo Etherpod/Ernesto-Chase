@@ -202,8 +202,6 @@ public class ErnestoMovement : MonoBehaviour
                 frameDelay = storedTargetsFrameDelay;
                 TargetData data = GenerateTargetData();
                 storedTargets.AddTarget(data);
-                
-                ErnestoChase.WriteDebugMessage("in ring world: " + data.isInRingWorld);
 
                 if (ErnestoChase.InMultiplayer)
                 {

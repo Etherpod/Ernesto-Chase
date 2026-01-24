@@ -26,6 +26,7 @@ public class ErnestoChase : ModBehaviour
     public event PlayerWarpEvent OnPlayerWarped;
 
     public static ErnestoChase Instance;
+    public static MinigameManager MinigameManager;
     public AssetBundle assetBundle;
     public GameObject ernesto;
     public bool playerDetectorReady = false;
@@ -36,6 +37,7 @@ public class ErnestoChase : ModBehaviour
     public Dictionary<uint, Dictionary<uint, GameObject>> remoteErnestos = [];
     public static IQSBAPI QSBAPI;
     public static IQSBInteraction QSBInteraction;
+    public static INHInteraction NHInteraction;
 
     private bool spectating = false;
     private bool spectatingErnesto = true;
@@ -80,6 +82,7 @@ public class ErnestoChase : ModBehaviour
     public bool ErnestoMorph => (bool)settings["ernestoMorph"].property;
     public float SurvivalTimerLength => (float)settings["survivalTimerLength"].property;
     public bool AllowShipLog => (bool)settings["allowShipLog"].property;
+    public bool GlobalFactGoals => (bool)settings["globalFactGoals"].property;
 
     public Dictionary<string, (object value, object property)> settings = new()
     {
@@ -102,7 +105,8 @@ public class ErnestoChase : ModBehaviour
         { "advancedSettings", (false, false) },
         { "ernestoMorph", (false, false) },
         { "survivalTimerLength", (1f, 1f) },
-        { "allowShipLog", (false, false) }
+        { "allowShipLog", (false, false) },
+        { "globalFactGoals", (false, false) }
     };
 
     public static readonly bool EnableDebugMode = true;
@@ -110,6 +114,7 @@ public class ErnestoChase : ModBehaviour
     private void Awake()
     {
         Instance = this;
+        MinigameManager = gameObject.AddComponent<MinigameManager>();
         HarmonyLib.Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly());
     }
 
@@ -128,6 +133,7 @@ public class ErnestoChase : ModBehaviour
         _exitSpectateModePrompt = new(InputLibrary.map, "Exit Spectator Mode");
 
         InitializeQSB();
+        InitializeNH();
         
         GlobalMessenger<DeathType>.AddListener("PlayerDeath", OnPlayerDeath);
 
@@ -190,6 +196,8 @@ public class ErnestoChase : ModBehaviour
         LoadManager.OnStartSceneLoad += (scene, loadScene) =>
         {
             if (scene != OWScene.SolarSystem || loadScene != OWScene.SolarSystem) return;
+            
+            MinigameManager.OnSceneUnloaded();
 
             ernestoSpectatorCams.Clear();
             playerSpectatorCams.Clear();
@@ -244,6 +252,7 @@ public class ErnestoChase : ModBehaviour
             QSBAPI.GetPlayerReady(QSBAPI.GetLocalPlayerID()) && 
             !QSBAPI.GetPlayerDead(QSBAPI.GetLocalPlayerID())))
         {
+            // make VR compatible (not keyboard)
             if (OWInput.IsInputMode(InputMode.Character) && Keyboard.current.iKey.wasPressedThisFrame)
             {
                 _setupDialogue.StartConversation();
@@ -493,10 +502,25 @@ public class ErnestoChase : ModBehaviour
             QSBAPI.RegisterRequiredForAllPlayers(this);
         }
     }
+    
+    private void InitializeNH()
+    {
+        bool nhEnabled = ModHelper.Interaction.ModExists("xen.NewHorizons");
+        if (nhEnabled)
+        {
+            var nhAssembly = Assembly.LoadFrom(Path.Combine(ModHelper.Manifest.ModFolderPath, "ErnestoChaseNH.dll"));
+            gameObject.AddComponent(nhAssembly.GetType("ErnestoChaseNH.NHInteraction", true));
+        }
+    }
 
     public void SetQSBInterface(IQSBInteraction i)
     {
         QSBInteraction = i;
+    }
+    
+    public void SetNHInterface(INHInteraction i)
+    {
+        NHInteraction = i;
     }
 
     private void UpdateProperties()
@@ -614,7 +638,10 @@ public class ErnestoChase : ModBehaviour
         Locator.GetPromptManager().AddScreenPrompt(_enterSpectateModePrompt, PromptPosition.BottomCenter);
         Locator.GetPromptManager().AddScreenPrompt(_exitSpectateModePrompt, PromptPosition.UpperRight);
 
-        SetUpMinigames();
+        if (!InMultiplayer || QSBAPI.GetIsHost())
+        {
+            MinigameManager.SetUpMinigames();
+        }
         
         ModHelper.Events.Unity.FireInNUpdates(() =>
         {
@@ -637,19 +664,6 @@ public class ErnestoChase : ModBehaviour
 
             SpawnErnestos();
         }, 50);
-    }
-
-    private void SetUpMinigames()
-    {
-        ErnestoChase.WriteDebugMessage("Setting up");
-        if (ErnestoConditionManager.SurvivalEnabled)
-        {
-            ErnestoChase.WriteDebugMessage("Add UI");
-            GameObject ui = LoadPrefab("Assets/ErnestoChase/CountdownHUD.prefab");
-            CountdownTimer timer = Instantiate(ui).GetComponentInChildren<CountdownTimer>();
-            timer.SetTimerLength(1.25f);
-            timer.StartTimer();
-        }
     }
 
     private void SpawnErnestos()
@@ -1057,6 +1071,8 @@ public class ErnestoChase : ModBehaviour
         {
             DialogueConditionManager.SharedInstance.SetConditionState("EC_STOP_GAME");
             ErnestoConditionManager.Reset();
+
+            MinigameManager.OnGameStopped();
             
             foreach (var e in ernestos)
             {

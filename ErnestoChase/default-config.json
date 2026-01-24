@@ -153,9 +153,15 @@
     
     "allowShipLog": {
       "type": "toggle",
-      "value": false,
+      "value": true,
       "title": "Allow Ship Log",
       "tooltip": "Lets you use your ship log while playing the Random Ship Log minigame."
+    },
+    "globalFactGoals": {
+      "type": "toggle",
+      "value": true,
+      "title": "Global Fact Goals (QSB)",
+      "tooltip": "Gives everyone the same facts. Disable this if you want everyone to hunt their own facts."
     },
     
     "survivalSidebar": {
@@ -168,7 +174,7 @@
       "type": "number",
       "value": 2.0,
       "title": "Timer Length",
-      "tooltip": "Sets the number of minutes you need to survive for in order to win. This will use the host's time if in multiplayer."
+      "tooltip": "Sets the number of minutes you need to survive for in order to win."
     }
   }
 }

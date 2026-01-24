@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ErnestoChaseQSB", "ErnestoC
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ErnestoChase", "ErnestoChase\ErnestoChase.csproj", "{608C583A-19EC-E6AC-A437-F67B8594A547}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ErnestoChaseNH", "ErnestoChaseNH\ErnestoChaseNH.csproj", "{19725756-9EA9-4B92-B164-1D392240E56D}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{608C583A-19EC-E6AC-A437-F67B8594A547}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{608C583A-19EC-E6AC-A437-F67B8594A547}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{608C583A-19EC-E6AC-A437-F67B8594A547}.Release|Any CPU.Build.0 = Release|Any CPU
+		{19725756-9EA9-4B92-B164-1D392240E56D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{19725756-9EA9-4B92-B164-1D392240E56D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{19725756-9EA9-4B92-B164-1D392240E56D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{19725756-9EA9-4B92-B164-1D392240E56D}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

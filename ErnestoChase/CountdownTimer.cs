@@ -9,6 +9,13 @@ public class CountdownTimer : MonoBehaviour
 	private Text _text;
 	private float _timerLength;
 	private float _currentTime;
+	private bool _timerEnabled;
+	
+	private bool _fading;
+	private float _fadeLength;
+	private float _fadeStartTime;
+	private float _startFade;
+	private float _targetFade;
 
 	private void Awake()
 	{
@@ -19,10 +26,16 @@ public class CountdownTimer : MonoBehaviour
 		{
 			_text.font = font;
 		}
+		
+		var color = _text.color;
+		color.a = 0f;
+		_text.color = color;
 	}
 
 	private void Update()
 	{
+		if (!_timerEnabled) return;
+		
 		_currentTime = Mathf.Max(0f, _currentTime - Time.deltaTime);
 
 		int hours = (int)(_currentTime / 3600f);
@@ -45,6 +58,22 @@ public class CountdownTimer : MonoBehaviour
 			enabled = false;
 		}
 	}
+
+	private void LateUpdate()
+	{
+		if (_fading)
+		{
+			float lerp = Mathf.InverseLerp(_fadeStartTime, _fadeStartTime + _fadeLength, Time.time);
+			var color = _text.color;
+			color.a = Mathf.Lerp(_startFade, _targetFade, lerp * lerp);
+			_text.color = color;
+
+			if (lerp >= 1f)
+			{
+				_fading = false;
+			}
+		}
+	}
 	
 	public void SetTimerLength(float minutes)
 	{
@@ -56,11 +85,33 @@ public class CountdownTimer : MonoBehaviour
 	{
 		if (_timerLength <= 0f) return;
 		
-		enabled = true;
+		_timerEnabled = true;
 	}
 
 	public void StopTimer()
 	{
-		enabled = false;
+		_timerEnabled = false;
 	}
+
+	public void FadeIn(float time)
+	{
+		_fadeLength = time;
+		_fadeStartTime = Time.time;
+		_startFade = _text.color.a;
+		_targetFade = 1f;
+		_fading = true;
+	}
+	
+	public void FadeOut(float time)
+	{
+		_fadeLength = time;
+		_fadeStartTime = Time.time;
+		_startFade = _text.color.a;
+		_targetFade = 0f;
+		_fading = true;
+	}
+
+	public float GetCurrentTime() => _currentTime;
+
+	public void SetCurrentTime(float time) => _currentTime = time;
 }

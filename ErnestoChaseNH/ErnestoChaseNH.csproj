@@ -1,0 +1,33 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+    <PropertyGroup>
+        <TargetFramework>net48</TargetFramework>
+        <LangVersion>latest</LangVersion>
+        <Copyright>Copyright © 2026 Etherpod</Copyright>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+        <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+        <CopyLocalLockFileAssemblies>false</CopyLocalLockFileAssemblies>
+        <NoWarn>MSB3270</NoWarn>
+        <DebugType>portable</DebugType>
+    </PropertyGroup>
+    
+    <ItemGroup>
+        <PackageReference Include="OWML" Version="2.15.4"/>
+        <PackageReference Include="OuterWildsGameLibs" Version="1.1.16.1372"/>
+    </ItemGroup>
+    
+    <ItemGroup>
+        <Content Include="ErnestoChaseNH.csproj.user"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\ErnestoChase\ErnestoChase.csproj"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <Reference Include="NH">
+            <HintPath>$(OuterWildsModsDirectory)\xen.NewHorizons\NewHorizons.dll</HintPath>
+            <Private>False</Private>
+        </Reference>
+    </ItemGroup>
+</Project>
