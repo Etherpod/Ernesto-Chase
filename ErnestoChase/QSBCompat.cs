@@ -57,6 +57,7 @@ public static class QSBCompat
         api.RegisterHandler<float>("survival-timer-setup", ReceiveSurvivalTimerSetup);
         api.RegisterHandler<float>("survival-timer-sync", ReceiveSurvivalTimerSync);
         api.RegisterHandler<string>("random-fact", ReceiveRandomShipLogFact);
+        api.RegisterHandler<bool>("generate-random-fact", ReceiveRandomFactGenerate);
     }
 
     private static void OnPlayerJoin(uint id)
@@ -234,5 +235,15 @@ public static class QSBCompat
     private static void ReceiveRandomShipLogFact(uint from, string factID)
     {
         ErnestoChase.MinigameManager.SetUpRandomShipLogRemote(factID);
+    }
+    
+    public static void SendRandomFactGenerate(uint to)
+    {
+        api.SendMessage("generate-random-fact", false, to);
+    }
+
+    private static void ReceiveRandomFactGenerate(uint from, bool b)
+    {
+        ErnestoChase.MinigameManager.SetUpRandomShipLog();
     }
 }

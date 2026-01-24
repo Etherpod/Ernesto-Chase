@@ -638,10 +638,7 @@ public class ErnestoChase : ModBehaviour
         Locator.GetPromptManager().AddScreenPrompt(_enterSpectateModePrompt, PromptPosition.BottomCenter);
         Locator.GetPromptManager().AddScreenPrompt(_exitSpectateModePrompt, PromptPosition.UpperRight);
 
-        if (!InMultiplayer || QSBAPI.GetIsHost())
-        {
-            MinigameManager.SetUpMinigames();
-        }
+        MinigameManager.SetUpMinigames();
         
         ModHelper.Events.Unity.FireInNUpdates(() =>
         {

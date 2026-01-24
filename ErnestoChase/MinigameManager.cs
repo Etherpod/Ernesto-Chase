@@ -40,14 +40,12 @@ public class MinigameManager : MonoBehaviour
 	{
 		Instance.ModHelper.Events.Unity.FireInNUpdates(() =>
 		{
-			WriteDebugMessage("woke up");
 			if (_countdownTimer != null)
 			{
 				_countdownTimer.FadeIn(5f);
 			}
 			else if (_factInfo != null)
 			{
-				WriteDebugMessage("fade in");
 				_factInfo.FadeIn(5f);
 			}
 		}, 10);
@@ -69,7 +67,7 @@ public class MinigameManager : MonoBehaviour
 	public void SetUpMinigames()
 	{
 		if (ErnestoConditionManager.RandomShipLogEnabled &&
-			(!InMultiplayer || !Instance.GlobalFactGoals || QSBAPI.GetIsHost()))
+			(!InMultiplayer || QSBAPI.GetIsHost()))
 		{
 			SetUpRandomShipLog();
 		}
@@ -80,7 +78,7 @@ public class MinigameManager : MonoBehaviour
 		}
 	}
 
-	private void SetUpSurvival()
+	public void SetUpSurvival()
 	{
 		GameObject ui = LoadPrefab("Assets/ErnestoChase/CountdownHUD.prefab");
 		_countdownTimer = Instantiate(ui).GetComponentInChildren<CountdownTimer>();
@@ -111,7 +109,7 @@ public class MinigameManager : MonoBehaviour
 		_countdownTimer?.SetCurrentTime(timeLeft);
 	}
 	
-	private void SetUpRandomShipLog()
+	public void SetUpRandomShipLog()
 	{
 		WriteDebugMessage("Setting up facts");
 		var facts = Locator.GetShipLogManager()._factList
@@ -134,11 +132,18 @@ public class MinigameManager : MonoBehaviour
 			Locator.GetShipBody().GetComponentInChildren<ShipLogController>().SetDamaged(true);
 		}
 
-		if (InMultiplayer && Instance.GlobalFactGoals)
+		if (InMultiplayer && QSBAPI.GetIsHost())
 		{
 			foreach (var id in Players)
 			{
-				QSBCompat.SendRandomShipLogFact(id, _selectedFact.GetID());
+				if (Instance.GlobalFactGoals)
+				{
+					QSBCompat.SendRandomShipLogFact(id, _selectedFact.GetID());
+				}
+				else
+				{
+					QSBCompat.SendRandomFactGenerate(id);
+				}
 			}
 		}
 	}
