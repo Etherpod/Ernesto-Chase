@@ -110,7 +110,7 @@ public class ErnestoManager : MonoBehaviour
 
         if (state.AIEnabled)
         {
-            if (planetManager.UpdatePlayerPlanetState(!ernestoMovement.IsNextSpaceTargetTeleport()))
+            if (planetManager.UpdatePlayerPlanetState())
             {
                 state.LastPlayerPos = planetManager.GetPlayerParent().InverseTransformPoint(state.LastPlayerPos);
             }
@@ -213,7 +213,10 @@ public class ErnestoManager : MonoBehaviour
 
     private void OnSpaceWarp()
     {
-        ernestoEffects.SetTravelMode(true);
+        if (!planetManager.IsOnPlanet())
+        {
+            ernestoEffects.SetTravelMode(true);
+        }
     }
 
     private IEnumerator ErnestoReleaseDelay()
@@ -234,7 +237,7 @@ public class ErnestoManager : MonoBehaviour
             state.KillVolumeEnabled = true;
             if (!state.UsingStoredTargets)
             {
-                planetManager.UpdatePlayerPlanetState(true, true);
+                planetManager.UpdatePlayerPlanetState(true);
             }
         }
         else if (!state.UsingStoredTargets)

@@ -52,35 +52,49 @@
     },
 
     "groundMovementSpeed": {
-      "title": "Ground Movement Speed",
+      "title": "Ground Movement Speed Multiplier",
       "tooltip": "This changes how quickly Ernesto traces your path when you are in a gravity field, like on a planet.",
-      "type": "slider",
-      "min": 0.0,
-      "max": 1.0,
-      "value": 0.5
+      "type": "number",
+      "value": 1
+    },
+    "speedAccumulationType": {
+      "title": "Ground Speed Accumulation",
+      "tooltip": "Controls the way that Ernesto gains speed over time.",
+      "type": "selector",
+      "options": [
+        "None",
+        "Linear",
+        "Squared",
+        "Exponential"
+      ],
+      "value": "None"
+    },
+    "speedAccumulationRate": {
+      "title": "Ground Speed Accumulation Rate",
+      "tooltip": "Controls how fast Ernesto gains speed over time.",
+      "type": "number",
+      "value": 1
     },
     "spaceAccelerationType": {
-      "title": "Space Acceleration Type",
+      "title": "Space Movement Type",
       "tooltip": "Changes Ernesto's mode of transportation in space.",
       "type": "selector",
       "options": [
         "Linear",
-        "Cumulative",
+        "Physics-Based",
         "Timed"
       ],
       "value": "Linear"
     },
     "spaceMovementSpeed": {
-      "title": "Space Acceleration Speed",
-      "tooltip": "This changes how quickly Ernesto accelerates towards you in space.",
-      "type": "slider",
-      "min": 0.0,
-      "max": 1.0,
-      "value": 0.5
+      "title": "Space Movement Speed Multiplier",
+      "tooltip": "Changes how quickly Ernesto accelerates towards you in space.",
+      "type": "number",
+      "value": 1
     },
     "spaceTimer": {
       "title": "Interception Time",
-      "tooltip": "This determines how many seconds it will take for Ernesto to catch up to you in space.",
+      "tooltip": "Determines how many seconds it will take for Ernesto to catch up to you in space.",
       "type": "number",
       "value": 30
     },

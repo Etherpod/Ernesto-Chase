@@ -59,7 +59,7 @@ public class PlanetManager : MonoBehaviour
         lastPlayerPlanetState = body != null;
     }
 
-    public bool UpdatePlayerPlanetState(bool noSpaceTeleportTarget, bool forceUpdate = false)
+    public bool UpdatePlayerPlanetState(bool forceUpdate = false)
     {
         bool onPlanet = IsOnPlanet();
         if (lastPlayerPlanetState != onPlanet || forceUpdate)
@@ -90,7 +90,7 @@ public class PlanetManager : MonoBehaviour
                 
                 currentPlanet = GetCurrentPlanetBody().gameObject;
 
-                if (noSpaceTeleportTarget && state.ErnestoReleased)
+                if (state.ErnestoReleased)
                 {
                     ErnestoChase.WriteDebugMessage("enter atmo");
                     rigidbody.SetVelocity(Vector3.zero);

@@ -85,8 +85,8 @@ public class ErnestoController : MonoBehaviour
         GameObject targetsParent = ErnestoChase.LoadPrefab("Assets/ErnestoChase/SpaceTargetsParent.prefab");
         staticTransformParent = Instantiate(targetsParent).transform;
         spawnDelayTimer = targetSpawnDelay;
-        ErnestoChase.WriteDebugMessage(Mathf.InverseLerp(1, 10, ErnestoChase.Instance.MovementSpeed));
-        float num = Mathf.InverseLerp(1, 10, ErnestoChase.Instance.MovementSpeed);
+        ErnestoChase.WriteDebugMessage(Mathf.InverseLerp(1, 10, ErnestoChase.Instance.MovementSpeedMultiplier));
+        float num = Mathf.InverseLerp(1, 10, ErnestoChase.Instance.MovementSpeedMultiplier);
         float num2;
         if (ErnestoChase.Instance.QuantumMode)
         {
@@ -417,7 +417,7 @@ public class ErnestoController : MonoBehaviour
                     -currentGravity.CalculateForceAccelerationAtPoint(transform.position));
                 transform.rotation = Quaternion.Lerp(lastRotation, nextRotation, num);
 
-                float num2 = Mathf.InverseLerp(1, 10, ErnestoChase.Instance.MovementSpeed);
+                float num2 = Mathf.InverseLerp(1, 10, ErnestoChase.Instance.MovementSpeedMultiplier);
                 Vector3 toPlayerVector = Locator.GetPlayerTransform().position - transform.position;
 
                 if (!hasTakenShortcut && targets.Count > 20 && Vector3.Distance(Locator.GetPlayerTransform().position, transform.position)
@@ -563,7 +563,7 @@ public class ErnestoController : MonoBehaviour
                 else
                 {
                     ErnestoChase.WriteDebugMessage(spaceTimedStartDistance);
-                    if (ErnestoChase.Instance.SpaceAccelerationType == "Cumulative")
+                    if (ErnestoChase.Instance.SpaceAccelerationType == "Physics-Based")
                     {
                         transform.LookAt(Locator.GetPlayerTransform());
                         rigidbody.AddForce(rigidbody.transform.TransformDirection(transform.forward * currentSpaceSpeed));
@@ -580,13 +580,13 @@ public class ErnestoController : MonoBehaviour
             // Increase space travel speed to outrun player
             bool travelingToAtmoEnterPos = playerOnPlanet && targets.Count > 0 && !reachedAtmoEnterPos && !(spaceTargets.Count > 0 && spaceTargets.Peek().Item2);
 
-            if (travelingToAtmoEnterPos || ErnestoChase.Instance.SpaceAccelerationType == "Cumulative")
+            if (travelingToAtmoEnterPos || ErnestoChase.Instance.SpaceAccelerationType == "Physics-Based")
             {
-                currentSpaceSpeed += Time.deltaTime * 5f * (Mathf.InverseLerp(1, 10, ErnestoChase.Instance.SpaceSpeed) + 0.5f);
+                currentSpaceSpeed += Time.deltaTime * 5f * (Mathf.InverseLerp(1, 10, ErnestoChase.Instance.SpaceSpeedMultiplier) + 0.5f);
             }
             else if (ErnestoChase.Instance.SpaceAccelerationType == "Linear")
             {
-                currentSpaceSpeed += Time.deltaTime * 5f * Mathf.InverseLerp(1, 10, ErnestoChase.Instance.SpaceSpeed);
+                currentSpaceSpeed += Time.deltaTime * 5f * Mathf.InverseLerp(1, 10, ErnestoChase.Instance.SpaceSpeedMultiplier);
             }
             else
             {

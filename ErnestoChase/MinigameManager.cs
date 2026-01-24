@@ -111,7 +111,6 @@ public class MinigameManager : MonoBehaviour
 	
 	public void SetUpRandomShipLog()
 	{
-		WriteDebugMessage("Setting up facts");
 		var facts = Locator.GetShipLogManager()._factList
 			.Where(fact => !fact.IsRevealed() && !fact.IsRumor()).ToArray();
 		if (facts.Length == 0)

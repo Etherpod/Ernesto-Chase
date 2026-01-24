@@ -28,6 +28,7 @@ public class ErnestoMovement : MonoBehaviour
 
     private float baseSpeed = 8f;
     private float currentSpeed;
+    private float timeAtRelease;
 
     private float baseSpaceSpeed;
     private float currentSpaceSpeed;
@@ -70,23 +71,13 @@ public class ErnestoMovement : MonoBehaviour
     private bool wasInRingWorld = false;
 
     private List<uint> observers = [];
-    private bool warpOutOnTargetComplete = false;
 
     private void Awake()
     {
         state = GetComponent<ErnestoState>();
         planetManager = GetComponent<PlanetManager>();
 
-        float speedMultiplier;
-        float speedLerp = state.MovementSpeed;
-        if (speedLerp < 0.5f)
-        {
-            speedMultiplier = Mathf.Lerp(0.2f, 1f, speedLerp * 2);
-        }
-        else
-        {
-            speedMultiplier = Mathf.Lerp(1f, 4f, (speedLerp - 0.5f) * 2);
-        }
+        float speedMultiplier = ErnestoChase.Instance.MovementSpeedMultiplier;
 
         if (state.QuantumMode)
         {
@@ -236,6 +227,7 @@ public class ErnestoMovement : MonoBehaviour
         }
         else
         {
+            spaceTargets.Clear();
             spawnDelayTimer = targetSpawnDelay;
             if (!planetManager.HasRecentlyTeleported())
             {
@@ -246,6 +238,8 @@ public class ErnestoMovement : MonoBehaviour
 
     public void OnErnestoRelease()
     {
+        timeAtRelease = Time.time;
+        
         if (usingStoredTargets && state.RemoteID == 0)
         {
             storedTargets.PeekCurrentTarget(out var data);
@@ -254,7 +248,7 @@ public class ErnestoMovement : MonoBehaviour
         else if (targets.Count == 0)
         {
             spawnDelayTimer = targetSpawnDelay;
-            planetManager.UpdatePlayerPlanetState(true);
+            planetManager.UpdatePlayerPlanetState();
             SpawnTarget(planetManager.GetTargetParent(), Locator.GetPlayerTransform().position);
         }
     }
@@ -406,13 +400,15 @@ public class ErnestoMovement : MonoBehaviour
 
     private void Move(bool playerOnPlanet)
     {
-        if ((targets.Count > 0 || standingStill) && state.FollowedPlayerToPlanet)
+        ErnestoChase.WriteDebugMessage(state.FollowedPlayerToPlanet);
+        
+        if (state.FollowedPlayerToPlanet)
         {
             GroundMovement();
         }
         else
         {
-            if (playerOnPlanet && targets.Count > 0 && !state.FollowedPlayerToPlanet && !IsNextSpaceTargetTeleport())
+            if (playerOnPlanet && targets.Count > 0 && !state.FollowedPlayerToPlanet)
             {
                 FollowPlayerToPlanet();
                 return;
@@ -470,9 +466,27 @@ public class ErnestoMovement : MonoBehaviour
 
     private void GroundMovement()
     {
-        Vector3 targetPos = targets.Count > 0 ? targets.Peek().pos : Locator.GetPlayerTransform().position;
+        Vector3 targetPos = targets.Count > 0
+            ? targets.Peek().pos
+            : planetManager.GetTargetParent().InverseTransformPoint(Locator.GetPlayerTransform().position);
         float dist = (targetPos - lastPosition).magnitude;
         float speed = currentSpeed;
+        float time = Time.time - timeAtRelease;
+        
+        if (state.SpeedAccumulationType == "Linear")
+        {
+            speed = currentSpeed + time * state.SpeedAccumulationRate;
+        }
+        else if (state.SpeedAccumulationType == "Squared")
+        {
+            speed = currentSpeed + (time * time * state.SpeedAccumulationRate);
+        }
+        else if (state.SpeedAccumulationType == "Exponential")
+        {
+            speed = currentSpeed + Mathf.Pow(state.SpeedAccumulationRate, time);
+        }
+        
+        //ErnestoChase.WriteDebugMessage(speed);
 
         if (targets.Count > 1)
         {
@@ -557,7 +571,7 @@ public class ErnestoMovement : MonoBehaviour
 
         float speedLerp = state.SpaceSpeed;
 
-        if (state.SpaceAccelerationType == "Cumulative")
+        if (state.SpaceAccelerationType == "Physics-Based")
         {
             planetManager.GetErnestoBody().AddForce(transform.forward * currentSpaceSpeed);
             currentSpaceSpeed += Time.fixedDeltaTime * 5f * (speedLerp + 0.5f);

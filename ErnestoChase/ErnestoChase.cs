@@ -65,8 +65,8 @@ public class ErnestoChase : ModBehaviour
 
     public static bool InMultiplayer => QSBAPI != null && QSBAPI.GetIsInMultiplayer();
 
-    public float MovementSpeed => (float)settings["groundMovementSpeed"].property;
-    public float SpaceSpeed => (float)settings["spaceMovementSpeed"].property;
+    public float MovementSpeedMultiplier => (float)settings["groundMovementSpeed"].property;
+    public float SpaceSpeedMultiplier => (float)settings["spaceMovementSpeed"].property;
     public float BrambleSpeedMultiplier => (float)settings["brambleSpeedMultiplier"].property;
     public float DreamWorldSpeedMultiplier => (float)settings["dreamWorldSpeedMultiplier"].property;
     public float StartDelay => (float)settings["startDelay"].property;
@@ -106,7 +106,9 @@ public class ErnestoChase : ModBehaviour
         { "ernestoMorph", (false, false) },
         { "survivalTimerLength", (1f, 1f) },
         { "allowShipLog", (false, false) },
-        { "globalFactGoals", (false, false) }
+        { "globalFactGoals", (false, false) },
+        { "speedAccumulationType", ("", "") },
+        { "speedAccumulationRate", (1f, 1f) },
     };
 
     public static readonly bool EnableDebugMode = true;
@@ -651,7 +653,10 @@ public class ErnestoChase : ModBehaviour
 
                 if (InMultiplayer)
                 {
-                    ErnestoData fakeData = new(QSBAPI.GetLocalPlayerID(), 0, Time.fixedTime, 1f, "Linear", 1f, 1f, 1f, 1f, 5f, StealthMode, QuantumMode, ErnestoCam, false);
+                    ErnestoData fakeData = new(QSBAPI.GetLocalPlayerID(), 0, Time.fixedTime, 1f, 
+                        "None", 1f, "Linear", 1f, 
+                        1f, 1f, 1f, 5f, StealthMode, QuantumMode, 
+                        ErnestoCam, false);
                     foreach (var id in Players)
                     {
                         QSBCompat.SendControlledErnestoData(id, fakeData);

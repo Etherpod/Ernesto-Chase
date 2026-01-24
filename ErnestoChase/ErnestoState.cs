@@ -11,6 +11,8 @@ public class ErnestoState : MonoBehaviour
 
     // Stats
     public float MovementSpeed { get; set; }
+    public string SpeedAccumulationType { get; set; }
+    public float SpeedAccumulationRate { get; set; }
     public string SpaceAccelerationType { get; set; }
     public float SpaceSpeed { get; set; }
     public float SpaceTimer { get; set; }
@@ -35,6 +37,8 @@ public class ErnestoState : MonoBehaviour
     public void InitializeStats(Dictionary<string, (object value, object property)> settings)
     {
         MovementSpeed = (float)settings["groundMovementSpeed"].property;
+        SpeedAccumulationType = (string)settings["speedAccumulationType"].property;
+        SpeedAccumulationRate = (float)settings["speedAccumulationRate"].property;
         SpaceAccelerationType = (string)settings["spaceAccelerationType"].property;
         SpaceSpeed = (float)settings["spaceMovementSpeed"].property;
         SpaceTimer = (float)settings["spaceTimer"].property;
@@ -51,13 +55,16 @@ public class ErnestoState : MonoBehaviour
     public ErnestoData GetData()
     {
         uint id = ErnestoChase.QSBAPI != null ? ErnestoChase.QSBAPI.GetLocalPlayerID() : 0;
-        return new ErnestoData(id, LocalID, Time.fixedTime, MovementSpeed, SpaceAccelerationType, SpaceSpeed, SpaceTimer, BrambleSpeedMultiplier, 
+        return new ErnestoData(id, LocalID, Time.fixedTime, MovementSpeed, SpeedAccumulationType, SpeedAccumulationRate,
+            SpaceAccelerationType, SpaceSpeed, SpaceTimer, BrambleSpeedMultiplier, 
             DreamWorldSpeedMultiplier, StartDelay, StealthMode, QuantumMode, ErnestoCam, ErnestoMusic);
     }
 
     public void SetData(ErnestoData data)
     {
         MovementSpeed = data.MovementSpeed;
+        SpeedAccumulationType = data.SpeedAccumulationType;
+        SpeedAccumulationRate = data.SpeedAccumulationRate;
         SpaceAccelerationType = data.SpaceAccelerationType;
         SpaceSpeed = data.SpaceSpeed;
         SpaceTimer = data.SpaceTimer;

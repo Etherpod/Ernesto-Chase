@@ -58,6 +58,25 @@ public static class ECMenuManager
 			}
 		}
 
+		if (name == "speedAccumulationType" && valueChanged)
+		{
+			if ((string)newValue != "None" && (string)oldValue == "None")
+			{
+				RedrawSettingsMenu("speedAccumulationType", "speedAccumulationRate",
+					"speedAccumulationType", "speedAccumulationType");
+			}
+			else if ((string)newValue == "None" && (string)oldValue != "None")
+			{
+				RedrawSettingsMenu("speedAccumulationType", "speedAccumulationType",
+					"speedAccumulationType", "speedAccumulationRate");
+			}
+			else
+			{
+				RedrawSettingsMenu("speedAccumulationType", "speedAccumulationRate",
+					"speedAccumulationType", "speedAccumulationRate");
+			}
+		}
+
 		if (name == "advancedSettings" && valueChanged)
 		{
 			if ((bool)newValue)
@@ -604,6 +623,12 @@ public static class ECMenuManager
 			return true;
 		}
 
+		if (name == "speedAccumulationRate" &&
+			(string)Instance.settings["speedAccumulationType"].value == "None")
+		{
+			return true;
+		}
+
 		return false;
 	}
 
@@ -618,9 +643,9 @@ public static class ECMenuManager
 		if (settingName == "spaceAccelerationType")
 		{
 			string value = (string)Instance.settings["spaceAccelerationType"].value;
-			if (value == "Cumulative")
+			if (value == "Physics-Based")
 			{
-				tooltip = "Cumulative means Ernesto will accelerate towards you faster and faster as time goes on. You can sometimes outrun him, and he may frequently miss his target.";
+				tooltip = "Physics-Based means Ernesto will accelerate towards you faster and faster as time goes on. You can sometimes outrun him, and he may frequently miss his target.";
 			}
 			else if (value == "Linear")
 			{
@@ -635,22 +660,68 @@ public static class ECMenuManager
 		if (settingName == "spaceSpeed")
 		{
 			string value = (string)Instance.settings["spaceAccelerationType"].value;
-			if (value == "Cumulative")
+			if (value == "Physics-Based")
 			{
-				tooltip = "This changes how quickly Ernesto accelerates towards you in space.";
+				tooltip = "Changes how quickly Ernesto accelerates towards you in space.";
 			}
 			else
 			{
-				tooltip = "This changes how quickly Ernesto moves towards you in space.";
+				tooltip = "Changes how quickly Ernesto moves towards you in space.";
 			}
 			return true;
 		}
 
 		if (settingName == "survivalTimerLength")
 		{
-			tooltip = InMultiplayer 
-				? "Sets the number of minutes you need to survive for in order to win.\nOnly the host can change this." 
-				: "Sets the number of minutes you need to survive for in order to win.";
+			if (!InMultiplayer) return false;
+			tooltip = "Sets the number of minutes you need to survive for in order to win.\nOnly the host can change this.";
+			return true;
+		}
+
+		if (settingName == "speedAccumulationType")
+		{
+			string value = (string)Instance.settings["speedAccumulationType"].value;
+
+			if (value == "None") return false;
+
+			if (value == "Linear")
+			{
+				tooltip = "Ernesto will gain speed at a constant rate.";
+			}
+			else if (value == "Squared")
+			{
+				tooltip = "Ernesto will gain speed in the shape of a parabola.";
+			}
+			else
+			{
+				tooltip = "Ernesto's speed will slowly increase, then he will suddenly become very fast.";
+			}
+
+			return true;
+		}
+
+		if (settingName == "speedAccumulationRate")
+		{
+			string value = (string)Instance.settings["speedAccumulationType"].value;
+
+			if (value == "None") return false;
+			
+			if (value == "Linear")
+			{
+				tooltip =
+					"Controls how fast Ernesto gains speed over time.\nA value of 1 will make him about 12% faster every second.";
+			}
+			else if (value == "Squared")
+			{
+				tooltip =
+					"Controls how fast Ernesto gains speed over time.\nUse smaller values to make him gain speed slower.";
+			}
+			else
+			{
+				tooltip =
+					"Controls how fast Ernesto gains speed over time.\nValues closer to 1 will make him gain speed slower (1.1, 1.05, 1.002, etc).";
+			}
+
 			return true;
 		}
 		
