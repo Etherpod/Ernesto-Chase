@@ -77,7 +77,7 @@ public class ErnestoMovement : MonoBehaviour
         state = GetComponent<ErnestoState>();
         planetManager = GetComponent<PlanetManager>();
 
-        float speedMultiplier = ErnestoChase.Instance.MovementSpeedMultiplier;
+        float speedMultiplier = Mathf.Max(0f, state.MovementSpeedMultiplier);
 
         if (state.QuantumMode)
         {
@@ -475,15 +475,25 @@ public class ErnestoMovement : MonoBehaviour
         
         if (state.SpeedAccumulationType == "Linear")
         {
-            speed = currentSpeed + time * state.SpeedAccumulationRate;
+            speed = currentSpeed + time * Mathf.Max(state.SpeedAccumulationRate, 0f);
         }
         else if (state.SpeedAccumulationType == "Squared")
         {
-            speed = currentSpeed + (time * time * state.SpeedAccumulationRate);
+            speed = currentSpeed + (time * time * Mathf.Max(state.SpeedAccumulationRate, 0f));
         }
         else if (state.SpeedAccumulationType == "Exponential")
         {
-            speed = currentSpeed + Mathf.Pow(state.SpeedAccumulationRate, time);
+            speed = currentSpeed + Mathf.Pow(Mathf.Max(state.SpeedAccumulationRate, 0f), time);
+        }
+
+        if (state.DistanceSpeedMultiplier != 1f)
+        {
+            var tempLerp = 1 - Mathf.InverseLerp(lastTime, lastTime + (dist / speed), Time.time);
+            var numTargets = targets.Count + tempLerp - 1;
+            ErnestoChase.WriteDebugMessage(numTargets);
+            var speedLerp = Mathf.LerpUnclamped(1f, state.DistanceSpeedMultiplier, 
+                Mathf.Max(0f, (numTargets - 3f) / 17f));
+            speed *= speedLerp;
         }
         
         //ErnestoChase.WriteDebugMessage(speed);
@@ -546,7 +556,7 @@ public class ErnestoMovement : MonoBehaviour
 
     private void TryShortcut()
     {
-        float speedLerp = state.MovementSpeed;
+        float speedLerp = state.MovementSpeedMultiplier;
         Vector3 toPlayer = Locator.GetPlayerTransform().position - transform.position;
 
         if (!hasTakenShortcut && targets.Count > 20
@@ -569,17 +579,17 @@ public class ErnestoMovement : MonoBehaviour
     {
         transform.LookAt(Locator.GetPlayerTransform(), Locator.GetPlayerTransform().up);
 
-        float speedLerp = state.SpaceSpeed;
+        float speedMult = Mathf.Max(0f, state.SpaceSpeedMultiplier);
 
         if (state.SpaceAccelerationType == "Physics-Based")
         {
             planetManager.GetErnestoBody().AddForce(transform.forward * currentSpaceSpeed);
-            currentSpaceSpeed += Time.fixedDeltaTime * 5f * (speedLerp + 0.5f);
+            currentSpaceSpeed += Time.fixedDeltaTime * 2f * speedMult;
         }
         else if (state.SpaceAccelerationType == "Linear")
         {
             planetManager.GetErnestoBody().SetVelocity((transform.forward * currentSpaceSpeed) + Locator.GetPlayerBody().GetVelocity());
-            currentSpaceSpeed += Time.fixedDeltaTime * 5f * speedLerp;
+            currentSpaceSpeed += Time.fixedDeltaTime * 2f * speedMult;
         }
         else
         {
@@ -718,7 +728,7 @@ public class ErnestoMovement : MonoBehaviour
 
     private void TryProximityRoar()
     {
-        float speedLerp = state.MovementSpeed;
+        float speedLerp = state.MovementSpeedMultiplier;
         float proximityCutoff = Mathf.Lerp(20f * 20f, 40f * 40f, speedLerp);
 
         if (!proximityRoar && targets.Count < 20

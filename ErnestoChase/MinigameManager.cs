@@ -167,6 +167,10 @@ public class MinigameManager : MonoBehaviour
 		if (_selectedFact == null) return;
 		
 		_factInfo.DisplayWinText(_numHintsUsed);
+		foreach (var e in Instance.ernestos)
+		{
+			e.GetComponent<ErnestoManager>().OnGameStopped();
+		}
 		_selectedFact.OnFactRevealed -= OnFactRevealed;
 		_selectedFact = null;
 	}

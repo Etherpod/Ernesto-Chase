@@ -8,6 +8,7 @@ public record ErnestoData(
     float MovementSpeed,
     string SpeedAccumulationType,
     float SpeedAccumulationRate,
+    float DistanceSpeedMultiplier,
     string SpaceAccelerationType,
     float SpaceSpeed,
     float SpaceTimer,

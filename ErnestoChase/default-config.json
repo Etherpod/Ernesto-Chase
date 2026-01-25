@@ -75,6 +75,12 @@
       "type": "number",
       "value": 1
     },
+    "distanceSpeedMultiplier": {
+      "title": "Distance Speed Multiplier",
+      "tooltip": "Changes Ernesto's speed based on how far away he is from you. Numbers above 1 make him faster as he gets farther, and numbers below 1 make him slower as he gets farther.",
+      "type": "number",
+      "value": 1
+    },
     "spaceAccelerationType": {
       "title": "Space Movement Type",
       "tooltip": "Changes Ernesto's mode of transportation in space.",

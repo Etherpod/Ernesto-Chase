@@ -55,7 +55,7 @@ public class CountdownTimer : MonoBehaviour
 		if (_currentTime == 0f)
 		{
 			ErnestoChase.Instance.OnCountdownComplete();
-			FadeOut(5f);
+			_timerEnabled = false;
 		}
 	}
 
@@ -71,7 +71,7 @@ public class CountdownTimer : MonoBehaviour
 			if (lerp >= 1f)
 			{
 				_fading = false;
-				if (_currentTime == 0f) enabled = false;
+				if (!_timerEnabled && _currentTime == 0f) enabled = false;
 			}
 		}
 	}

@@ -10,11 +10,12 @@ public class ErnestoState : MonoBehaviour
     public float TimeOffset { get; set; }
 
     // Stats
-    public float MovementSpeed { get; set; }
+    public float MovementSpeedMultiplier { get; set; }
     public string SpeedAccumulationType { get; set; }
     public float SpeedAccumulationRate { get; set; }
+    public float DistanceSpeedMultiplier { get; set; }
     public string SpaceAccelerationType { get; set; }
-    public float SpaceSpeed { get; set; }
+    public float SpaceSpeedMultiplier { get; set; }
     public float SpaceTimer { get; set; }
     public float BrambleSpeedMultiplier { get; set; }
     public float DreamWorldSpeedMultiplier { get; set; }
@@ -36,11 +37,12 @@ public class ErnestoState : MonoBehaviour
 
     public void InitializeStats(Dictionary<string, (object value, object property)> settings)
     {
-        MovementSpeed = (float)settings["groundMovementSpeed"].property;
+        MovementSpeedMultiplier = (float)settings["groundMovementSpeed"].property;
         SpeedAccumulationType = (string)settings["speedAccumulationType"].property;
         SpeedAccumulationRate = (float)settings["speedAccumulationRate"].property;
+        DistanceSpeedMultiplier = (float)settings["distanceSpeedMultiplier"].property;
         SpaceAccelerationType = (string)settings["spaceAccelerationType"].property;
-        SpaceSpeed = (float)settings["spaceMovementSpeed"].property;
+        SpaceSpeedMultiplier = (float)settings["spaceMovementSpeed"].property;
         SpaceTimer = (float)settings["spaceTimer"].property;
         BrambleSpeedMultiplier = (float)settings["brambleSpeedMultiplier"].property;
         DreamWorldSpeedMultiplier = (float)settings["dreamWorldSpeedMultiplier"].property;
@@ -55,18 +57,19 @@ public class ErnestoState : MonoBehaviour
     public ErnestoData GetData()
     {
         uint id = ErnestoChase.QSBAPI != null ? ErnestoChase.QSBAPI.GetLocalPlayerID() : 0;
-        return new ErnestoData(id, LocalID, Time.fixedTime, MovementSpeed, SpeedAccumulationType, SpeedAccumulationRate,
-            SpaceAccelerationType, SpaceSpeed, SpaceTimer, BrambleSpeedMultiplier, 
+        return new ErnestoData(id, LocalID, Time.fixedTime, MovementSpeedMultiplier, SpeedAccumulationType, SpeedAccumulationRate, 
+            DistanceSpeedMultiplier, SpaceAccelerationType, SpaceSpeedMultiplier, SpaceTimer, BrambleSpeedMultiplier, 
             DreamWorldSpeedMultiplier, StartDelay, StealthMode, QuantumMode, ErnestoCam, ErnestoMusic);
     }
 
     public void SetData(ErnestoData data)
     {
-        MovementSpeed = data.MovementSpeed;
+        MovementSpeedMultiplier = data.MovementSpeed;
         SpeedAccumulationType = data.SpeedAccumulationType;
         SpeedAccumulationRate = data.SpeedAccumulationRate;
+        DistanceSpeedMultiplier = data.DistanceSpeedMultiplier;
         SpaceAccelerationType = data.SpaceAccelerationType;
-        SpaceSpeed = data.SpaceSpeed;
+        SpaceSpeedMultiplier = data.SpaceSpeed;
         SpaceTimer = data.SpaceTimer;
         BrambleSpeedMultiplier = data.BrambleSpeedMultiplier;
         DreamWorldSpeedMultiplier = data.DreamWorldSpeedMultiplier;

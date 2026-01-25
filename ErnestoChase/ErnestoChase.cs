@@ -109,6 +109,7 @@ public class ErnestoChase : ModBehaviour
         { "globalFactGoals", (false, false) },
         { "speedAccumulationType", ("", "") },
         { "speedAccumulationRate", (1f, 1f) },
+        { "distanceSpeedMultiplier", (1f, 1f) },
     };
 
     public static readonly bool EnableDebugMode = true;
@@ -654,7 +655,7 @@ public class ErnestoChase : ModBehaviour
                 if (InMultiplayer)
                 {
                     ErnestoData fakeData = new(QSBAPI.GetLocalPlayerID(), 0, Time.fixedTime, 1f, 
-                        "None", 1f, "Linear", 1f, 
+                        "None", 1f, 1f, "Linear", 1f, 
                         1f, 1f, 1f, 5f, StealthMode, QuantumMode, 
                         ErnestoCam, false);
                     foreach (var id in Players)
@@ -1125,6 +1126,7 @@ public class ErnestoChase : ModBehaviour
 
     public void OnCountdownComplete()
     {
+        MinigameManager.OnGameStopped();
         foreach (var e in ernestos)
         {
             e.GetComponent<ErnestoManager>().OnGameStopped();
