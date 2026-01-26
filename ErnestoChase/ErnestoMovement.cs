@@ -77,6 +77,16 @@ public class ErnestoMovement : MonoBehaviour
         state = GetComponent<ErnestoState>();
         planetManager = GetComponent<PlanetManager>();
 
+        state.OnDataChanged += OnDataChanged;
+
+        spawnDelayTimer = targetSpawnDelay;
+        frameDelay = 0;
+
+        enabled = false;
+    }
+
+    private void Start()
+    {
         float speedMultiplier = Mathf.Max(0f, state.MovementSpeedMultiplier);
 
         if (state.QuantumMode)
@@ -85,16 +95,9 @@ public class ErnestoMovement : MonoBehaviour
             ernestoFrozen = false;
         }
 
-        baseSpeed *= speedMultiplier;
-        currentSpeed = baseSpeed;
-
+        currentSpeed = baseSpeed * speedMultiplier;
         baseSpaceSpeed = baseSpeed / 10f;
         currentSpaceSpeed = baseSpaceSpeed;
-
-        spawnDelayTimer = targetSpawnDelay;
-        frameDelay = 0;
-
-        enabled = false;
     }
 
     public void Initialize()
@@ -136,6 +139,26 @@ public class ErnestoMovement : MonoBehaviour
     public void SetSpeedMultiplier(float multiplier)
     {
         baseSpeed *= multiplier;
+    }
+
+    private void OnDataChanged(uint lastData)
+    {
+        float speedMultiplier = Mathf.Max(0f, state.MovementSpeedMultiplier);
+        
+        if (state.QuantumMode)
+        {
+            speedMultiplier *= 5f;
+            UpdateErnestoVisibility();
+        }
+        else if (ernestoFrozen)
+        {
+            ernestoFrozen = false;
+            OnUpdateVisibility?.Invoke(false);
+        }
+
+        currentSpeed = baseSpeed * speedMultiplier;
+        baseSpaceSpeed = baseSpeed / 10f;
+        currentSpaceSpeed = baseSpaceSpeed;
     }
 
     private void FixedUpdate()
@@ -490,9 +513,10 @@ public class ErnestoMovement : MonoBehaviour
         {
             var tempLerp = 1 - Mathf.InverseLerp(lastTime, lastTime + (dist / speed), Time.time);
             var numTargets = targets.Count + tempLerp - 1;
-            ErnestoChase.WriteDebugMessage(numTargets);
+            float cutoff = 10f;
+            float scalar = 25f;
             var speedLerp = Mathf.LerpUnclamped(1f, state.DistanceSpeedMultiplier, 
-                Mathf.Max(0f, (numTargets - 3f) / 17f));
+                Mathf.Max(0f, (numTargets - cutoff) / (scalar - cutoff)));
             speed *= speedLerp;
         }
         
@@ -560,7 +584,7 @@ public class ErnestoMovement : MonoBehaviour
         Vector3 toPlayer = Locator.GetPlayerTransform().position - transform.position;
 
         if (!hasTakenShortcut && targets.Count > 20
-            && (Locator.GetPlayerTransform().position - transform.position).sqrMagnitude < Mathf.Lerp(15f * 15f, 25f * 25f, speedLerp)
+            && (Locator.GetPlayerTransform().position - transform.position).sqrMagnitude < Mathf.LerpUnclamped(10f * 10f, 15f * 15f, speedLerp)
             && !Physics.Raycast(transform.position, toPlayer, toPlayer.magnitude - 1f, 
                 OWLayerMask.physicalMask))
         {
@@ -729,7 +753,7 @@ public class ErnestoMovement : MonoBehaviour
     private void TryProximityRoar()
     {
         float speedLerp = state.MovementSpeedMultiplier;
-        float proximityCutoff = Mathf.Lerp(20f * 20f, 40f * 40f, speedLerp);
+        float proximityCutoff = Mathf.LerpUnclamped(20f, 30f * 30f, speedLerp);
 
         if (!proximityRoar && targets.Count < 20
             && (Locator.GetPlayerTransform().position - transform.position).sqrMagnitude 
@@ -951,5 +975,10 @@ public class ErnestoMovement : MonoBehaviour
         }
 
         return false;
+    }
+
+    private void OnDestroy()
+    {
+        state.OnDataChanged -= OnDataChanged;
     }
 }

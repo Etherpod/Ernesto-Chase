@@ -1,6 +1,8 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
+using UnityEngine.InputSystem;
 
 namespace ErnestoChase;
 
@@ -23,6 +25,10 @@ public class ErnestoManager : MonoBehaviour
     private bool playerCollided = false;
     private bool missionComplete = false;
 
+    private readonly float switchTimeMin = 8f;
+    private readonly float switchTimeMax = 30f;
+    private float switchDelay;
+
     private void Awake()
     {
         state = GetComponent<ErnestoState>();
@@ -32,6 +38,7 @@ public class ErnestoManager : MonoBehaviour
 
         killVolume.OnEntry += OnEntry;
         killVolume.OnExit += OnExit;
+        state.OnDataChanged += OnDataChanged;
 
         planetManager.OnUpdateTravelMode += OnUpdateTravelMode;
         planetManager.OnTeleportStarted += OnTeleportStarted;
@@ -59,10 +66,34 @@ public class ErnestoManager : MonoBehaviour
         }
 
         releaseDelay = state.StartDelay;
+        switchDelay = Random.Range(switchTimeMin, switchTimeMax);
 
         if (!state.ErnestoCam)
         {
             GetComponentInChildren<ErnestoCamera>().gameObject.SetActive(false);
+        }
+    }
+
+    private void OnDataChanged(uint lastData)
+    {
+        GetComponentInChildren<ErnestoCamera>(true).gameObject.SetActive(state.ErnestoCam);
+    }
+
+    private void Update()
+    {
+        if (!state.ErnestoReleased || state.DataStates.Keys.Count <= 1) return;
+
+        if (switchDelay <= 0f)
+        {
+            var keys = state.DataStates.Keys.Where(key => key != state.ActiveStateID).ToArray();
+            var randKey = keys[Random.Range(0, keys.Length)];
+            state.SetActiveStateID(randKey);
+
+            switchDelay = Random.Range(switchTimeMin, switchTimeMax);
+        }
+        else
+        {
+            switchDelay -= Time.deltaTime;
         }
     }
 
@@ -267,6 +298,7 @@ public class ErnestoManager : MonoBehaviour
     {
         killVolume.OnEntry -= OnEntry;
         killVolume.OnExit -= OnExit;
+        state.OnDataChanged -= OnDataChanged;
 
         planetManager.OnUpdateTravelMode -= OnUpdateTravelMode;
         planetManager.OnTeleportStarted -= OnTeleportStarted;

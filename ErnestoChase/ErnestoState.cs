@@ -5,26 +5,36 @@ namespace ErnestoChase;
 
 public class ErnestoState : MonoBehaviour
 {
-    public uint RemoteID { get; set; } = 0;
-    public uint LocalID { get; set; }
-    public float TimeOffset { get; set; }
+    public delegate void DataChangedEvent(uint lastData);
+    public event DataChangedEvent OnDataChanged;
+    
+    public uint RemoteID => DataStates[ActiveStateID].id;
+    public uint LocalID => DataStates[ActiveStateID].localid;
+    public float TimeOffset
+    {
+        get => DataStates[ActiveStateID].time;
+        set => DataStates[ActiveStateID].time = value;
+    }
+
+    public readonly Dictionary<uint, ErnestoData> DataStates = [];
+    public uint ActiveStateID { get; set; } = 1;
 
     // Stats
-    public float MovementSpeedMultiplier { get; set; }
-    public string SpeedAccumulationType { get; set; }
-    public float SpeedAccumulationRate { get; set; }
-    public float DistanceSpeedMultiplier { get; set; }
-    public string SpaceAccelerationType { get; set; }
-    public float SpaceSpeedMultiplier { get; set; }
-    public float SpaceTimer { get; set; }
-    public float BrambleSpeedMultiplier { get; set; }
-    public float DreamWorldSpeedMultiplier { get; set; }
-    public float StartDelay { get; set; }
-    public bool StealthMode { get; set; }
-    public bool QuantumMode { get; set; }
-    public bool ErnestoCam { get; set; }
-    public bool ErnestoMusic { get; set; }
-    public bool DisableLight { get; set; }
+    public float MovementSpeedMultiplier => DataStates[ActiveStateID].MovementSpeed;
+    public string SpeedAccumulationType => DataStates[ActiveStateID].SpeedAccumulationType;
+    public float SpeedAccumulationRate => DataStates[ActiveStateID].SpeedAccumulationRate;
+    public float DistanceSpeedMultiplier => DataStates[ActiveStateID].DistanceSpeedMultiplier;
+    public string SpaceAccelerationType => DataStates[ActiveStateID].SpaceAccelerationType;
+    public float SpaceSpeedMultiplier => DataStates[ActiveStateID].SpaceSpeed;
+    public float SpaceTimer => DataStates[ActiveStateID].SpaceTimer;
+    public float BrambleSpeedMultiplier => DataStates[ActiveStateID].BrambleSpeedMultiplier;
+    public float DreamWorldSpeedMultiplier => DataStates[ActiveStateID].DreamWorldSpeedMultiplier;
+    public float StartDelay => DataStates[ActiveStateID].StartDelay;
+    public bool StealthMode => DataStates[ActiveStateID].StealthMode;
+    public bool QuantumMode => DataStates[ActiveStateID].QuantumMode;
+    public bool ErnestoCam => DataStates[ActiveStateID].ErnestoCam;
+    public bool ErnestoMusic => DataStates[ActiveStateID].ErnestoMusic;
+    public bool DisableLight => DataStates[ActiveStateID].DisableLight;
 
     // Data
     public bool ErnestoReleased { get; set; } = false;
@@ -35,36 +45,42 @@ public class ErnestoState : MonoBehaviour
     public bool KillVolumeEnabled { get; set; } = false;
     public bool CaughtPlayer { get; set; } = false;
 
-    public void InitializeStats(Dictionary<string, (object value, object property)> settings)
+    public void InitializeStats(uint stateID, Dictionary<string, (object value, object property)> settings)
     {
-        MovementSpeedMultiplier = (float)settings["groundMovementSpeed"].property;
-        SpeedAccumulationType = (string)settings["speedAccumulationType"].property;
-        SpeedAccumulationRate = (float)settings["speedAccumulationRate"].property;
-        DistanceSpeedMultiplier = (float)settings["distanceSpeedMultiplier"].property;
-        SpaceAccelerationType = (string)settings["spaceAccelerationType"].property;
-        SpaceSpeedMultiplier = (float)settings["spaceMovementSpeed"].property;
-        SpaceTimer = (float)settings["spaceTimer"].property;
-        BrambleSpeedMultiplier = (float)settings["brambleSpeedMultiplier"].property;
-        DreamWorldSpeedMultiplier = (float)settings["dreamWorldSpeedMultiplier"].property;
-        StartDelay = (float)settings["startDelay"].property;
-        StealthMode = (bool)settings["enableStealthMode"].property;
-        QuantumMode = (bool)settings["enableQuantumMode"].property;
-        ErnestoCam = (bool)settings["ernestoCam"].property;
-        ErnestoMusic = (bool)settings["ernestoMusic"].property;
-        DisableLight = (bool)settings["disableLight"].property;
+        var data = new ErnestoData();
+        
+        data.id = ErnestoChase.QSBAPI != null ? ErnestoChase.QSBAPI.GetLocalPlayerID() : 0;
+        data.time = Time.fixedTime;
+        data.MovementSpeed = (float)settings["groundMovementSpeed"].property;
+        data.SpeedAccumulationType = (string)settings["speedAccumulationType"].property;
+        data.SpeedAccumulationRate = (float)settings["speedAccumulationRate"].property;
+        data.DistanceSpeedMultiplier = (float)settings["distanceSpeedMultiplier"].property;
+        data.SpaceAccelerationType = (string)settings["spaceAccelerationType"].property;
+        data.SpaceSpeed = (float)settings["spaceMovementSpeed"].property;
+        data.SpaceTimer = (float)settings["spaceTimer"].property;
+        data.BrambleSpeedMultiplier = (float)settings["brambleSpeedMultiplier"].property;
+        data.DreamWorldSpeedMultiplier = (float)settings["dreamWorldSpeedMultiplier"].property;
+        data.StartDelay = (float)settings["startDelay"].property;
+        data.StealthMode = (bool)settings["enableStealthMode"].property;
+        data.QuantumMode = (bool)settings["enableQuantumMode"].property;
+        data.ErnestoCam = (bool)settings["ernestoCam"].property;
+        data.ErnestoMusic = (bool)settings["ernestoMusic"].property;
+        data.DisableLight = (bool)settings["disableLight"].property;
+        
+        DataStates[stateID] = data;
     }
 
-    public ErnestoData GetData()
+    public ErnestoData GetData(uint stateID)
     {
-        uint id = ErnestoChase.QSBAPI != null ? ErnestoChase.QSBAPI.GetLocalPlayerID() : 0;
-        return new ErnestoData(id, LocalID, Time.fixedTime, MovementSpeedMultiplier, SpeedAccumulationType, SpeedAccumulationRate, 
+        /*return new ErnestoData(id, LocalID, Time.fixedTime, MovementSpeedMultiplier, SpeedAccumulationType, SpeedAccumulationRate, 
             DistanceSpeedMultiplier, SpaceAccelerationType, SpaceSpeedMultiplier, SpaceTimer, BrambleSpeedMultiplier, 
-            DreamWorldSpeedMultiplier, StartDelay, StealthMode, QuantumMode, ErnestoCam, ErnestoMusic);
+            DreamWorldSpeedMultiplier, StartDelay, StealthMode, QuantumMode, ErnestoCam, ErnestoMusic);*/
+        return DataStates.ContainsKey(stateID) ? DataStates[stateID] : null;
     }
 
-    public void SetData(ErnestoData data)
+    public void SetData(uint stateID, ErnestoData data)
     {
-        MovementSpeedMultiplier = data.MovementSpeed;
+        /*MovementSpeedMultiplier = data.MovementSpeed;
         SpeedAccumulationType = data.SpeedAccumulationType;
         SpeedAccumulationRate = data.SpeedAccumulationRate;
         DistanceSpeedMultiplier = data.DistanceSpeedMultiplier;
@@ -78,9 +94,28 @@ public class ErnestoState : MonoBehaviour
         QuantumMode = data.QuantumMode;
         ErnestoCam = data.ErnestoCam;
         ErnestoMusic = data.ErnestoMusic;
+        DisableLight = data.DisableLight;
 
         RemoteID = data.id;
-        LocalID = data.localid;
-        TimeOffset = data.time - Time.fixedTime;
+        LocalID = data.localid;*/
+
+        data.time -= Time.fixedTime;
+        DataStates[stateID] = data;
+    }
+
+    public void SetData(Dictionary<uint, ErnestoData> dataStates)
+    {
+        foreach (var (id, state) in dataStates)
+        {
+            state.time -= Time.fixedTime;
+            DataStates[id] = state;
+        }
+    }
+
+    public void SetActiveStateID(uint stateID)
+    {
+        uint lastData = ActiveStateID;
+        ActiveStateID = stateID;
+        OnDataChanged?.Invoke(lastData);
     }
 }

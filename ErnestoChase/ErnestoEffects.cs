@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.Networking;
 
@@ -40,14 +41,18 @@ public class ErnestoEffects : MonoBehaviour
     private SingularityWarpEffect blackHole;
     private SingularityWarpEffect whiteHole;
     private float baseLightRange;
+    private float baseLightIntensity;
+    private Texture bulbTex;
     private float baseMeshScale;
 
+    private readonly Dictionary<uint, (AudioClip clip, float lastTime)[]> musicFiles = [];
     private Coroutine audioTransition;
     private float baseLoopingAudioVolume;
     private float baseMusicVolume;
 
     private bool cachedFromSpace;
     private bool cachedToSpace;
+    private bool isFrozen;
     
     private float filterLerp = 1f;
 
@@ -61,8 +66,12 @@ public class ErnestoEffects : MonoBehaviour
         ernestoRenderer = GetComponentInChildren<SkinnedMeshRenderer>();
         baseMeshScale = ernestoMesh.transform.localScale.magnitude;
         baseLightRange = anglerLight.range;
+        baseLightIntensity = anglerLight.intensity;
+        bulbTex = ernestoRenderer.material.GetTexture("_EmissionMap");
         baseLoopingAudioVolume = loopingAudio.GetMaxVolume();
         baseMusicVolume = musicAudio.GetMaxVolume();
+
+        state.OnDataChanged += OnDataChanged;
 
         AssetBundleUtilities.ReplaceShaders(blackHolePrefab.gameObject);
         AssetBundleUtilities.ReplaceShaders(whiteHolePrefab.gameObject);
@@ -73,16 +82,63 @@ public class ErnestoEffects : MonoBehaviour
 
         ernestoMesh.transform.localScale = Vector3.zero;
         anglerLight.range = baseLightRange * (ernestoMesh.transform.localScale.magnitude / baseMeshScale);
+    }
 
+    private void Start()
+    {
         if (state.DisableLight)
         {
             anglerLight.intensity = 0f;
             ernestoRenderer.material.SetTexture("_EmissionMap", noBulbTex);
-            //enabled = false;
         }
+        
+        StartCoroutine(InitAudioFiles(state.DataStates.Keys.ToArray()));
+    }
+
+    private void OnDataChanged(uint lastData)
+    {
+        if (state.DisableLight)
+        {
+            anglerLight.intensity = 0f;
+            ernestoRenderer.material.SetTexture("_EmissionMap", noBulbTex);
+        }
+        else
+        {
+            anglerLight.intensity = baseLightIntensity;
+            ernestoRenderer.material.SetTexture("_EmissionMap", bulbTex);
+        }
+
+        if (!state.QuantumMode)
+        {
+            isFrozen = false;
+        }
+
+        if (state.DataStates[lastData].ErnestoMusic)
+        {
+            for (int i = 0; i < musicFiles[lastData].Length; i++)
+            {
+                if (musicFiles[lastData][i].clip == musicAudio.clip)
+                {
+                    musicFiles[lastData][i].lastTime = musicAudio.time;
+                    break;
+                }
+            }
+        }
+        
         if (state.ErnestoMusic && state.RemoteID == 0)
         {
-            StartCoroutine(ReadAudioFiles());
+            SelectRandomMusicClip(state.ActiveStateID);
+        }
+        
+        if (state.ErnestoReleased && !state.StealthMode && !isFrozen)
+        {
+            loopingAudio.FadeIn(1f);
+            musicAudio.FadeIn(0.1f);
+        }
+        else
+        {
+            loopingAudio.FadeOut(3f);
+            musicAudio.Pause();
         }
     }
 
@@ -122,36 +178,58 @@ public class ErnestoEffects : MonoBehaviour
         }
     }
 
-    private IEnumerator ReadAudioFiles()
+    private IEnumerator InitAudioFiles(uint[] ids)
     {
-        AudioClip clip = null;
-
-        List<string> files = [];
-        files.AddRange(Directory.GetFiles(Path.Combine(ErnestoChase.Instance.ModHelper.Manifest.ModFolderPath, "ErnestoMusic"),
-            "*.mp3", SearchOption.AllDirectories));
-        files.AddRange(Directory.GetFiles(Path.Combine(ErnestoChase.Instance.ModHelper.Manifest.ModFolderPath, "ErnestoMusic"),
-            "*.ogg", SearchOption.AllDirectories));
-        files.AddRange(Directory.GetFiles(Path.Combine(ErnestoChase.Instance.ModHelper.Manifest.ModFolderPath, "ErnestoMusic"),
-            "*.wav", SearchOption.AllDirectories));
-
-        if (files.Count > 0)
+        string filePath = Path.Combine(ErnestoChase.Instance.ModHelper.Manifest.ModFolderPath, "ErnestoMusic");
+        string[] fileTypes = [".mp3", ".ogg", ".wav"];
+        
+        foreach (var id in ids)
         {
-            int index = Random.Range(0, files.Count);
-
-            var request = UnityWebRequestMultimedia.GetAudioClip("file:///" + files[index], UnityEngine.AudioType.UNKNOWN);
-            yield return request.SendWebRequest();
-
-            if (request.isDone && !request.isNetworkError)
+            List<string> files = [];
+            
+            foreach (var type in fileTypes)
             {
-                clip = DownloadHandlerAudioClip.GetContent(request);
-                ErnestoChase.WriteDebugMessage(clip);
+                if (id > 0)
+                {
+                    var foundFiles = Directory.GetFiles(filePath, $"{id}_*{type}", SearchOption.AllDirectories);
+                    if (foundFiles.Length > 0)
+                    {
+                        files.AddRange(foundFiles);
+                        continue;
+                    }
+                }
+            
+                files.AddRange(Directory.GetFiles(filePath, $"*{type}", SearchOption.AllDirectories));
+            }
+
+            musicFiles[id] = new(AudioClip, float)[files.Count];
+            
+            for (int i = 0; i < files.Count; i++)
+            {
+                var request = UnityWebRequestMultimedia.GetAudioClip("file:///" + files[i], UnityEngine.AudioType.UNKNOWN);
+                yield return request.SendWebRequest();
+
+                if (request.isDone && !request.isNetworkError)
+                {
+                    musicFiles[id][i] = (DownloadHandlerAudioClip.GetContent(request), 0f);
+                }
             }
         }
-
-        if (clip != null)
+        
+        if (state.ErnestoMusic && state.RemoteID == 0)
         {
-            musicAudio.clip = clip;
+            SelectRandomMusicClip(state.ActiveStateID);
         }
+    }
+
+    private void SelectRandomMusicClip(uint stateID)
+    {
+        var rand = new System.Random();
+        int index = rand.Next(0, musicFiles[stateID].Length);
+        var file = musicFiles[stateID][index];
+        
+        musicAudio.clip = file.clip;
+        musicAudio.time = file.lastTime;
     }
 
     public void CreateWhiteHole()
@@ -223,6 +301,7 @@ public class ErnestoEffects : MonoBehaviour
 
     public void OnUpdateVisibility(bool visible)
     {
+        isFrozen = visible;
         if (!visible)
         {
             if (loopingAudio.GetLocalVolume() == 0f)
@@ -374,5 +453,10 @@ public class ErnestoEffects : MonoBehaviour
         }
             
         UpdateMuffle(true);
+    }
+
+    private void OnDestroy()
+    {
+        state.OnDataChanged += OnDataChanged;
     }
 }

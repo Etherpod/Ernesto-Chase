@@ -17,6 +17,7 @@ using UnityEngine.UI;
 using Newtonsoft.Json;
 using UnityEngine.PostProcessing;
 using CSharpFunctionalExtensions;
+using MonoMod.Utils;
 
 namespace ErnestoChase;
 
@@ -529,18 +530,9 @@ public class ErnestoChase : ModBehaviour
     private void UpdateProperties()
     {
         var keys = settings.Keys.ToArray();
-        bool randomMode = (bool)settings["randomMode"].value;
-
-        if (randomMode)
+        for (int i = 0; i < keys.Length; i++)
         {
-            settings = GenerateRandomSettings();
-        }
-        else
-        {
-            for (int i = 0; i < keys.Length; i++)
-            {
-                settings[keys[i]] = (settings[keys[i]].value, settings[keys[i]].value);
-            }
+            settings[keys[i]] = (settings[keys[i]].value, settings[keys[i]].value);
         }
     }
 
@@ -592,8 +584,10 @@ public class ErnestoChase : ModBehaviour
                 try
                 {
                     var boolData = JsonConvert.DeserializeObject<RandomBool>(data[setting].ToString());
+                    ErnestoChase.WriteDebugMessage("Processing " + boolData);
 
                     output[setting] = (output[setting].value, UnityEngine.Random.value < boolData.Chance);
+                    ErnestoChase.WriteDebugMessage("Set to " + output[setting].property + "\n");
                     continue;
                 }
                 catch (JsonSerializationException) { }
@@ -654,10 +648,7 @@ public class ErnestoChase : ModBehaviour
 
                 if (InMultiplayer)
                 {
-                    ErnestoData fakeData = new(QSBAPI.GetLocalPlayerID(), 0, Time.fixedTime, 1f, 
-                        "None", 1f, 1f, "Linear", 1f, 
-                        1f, 1f, 1f, 5f, StealthMode, QuantumMode, 
-                        ErnestoCam, false);
+                    ErnestoData fakeData = new();
                     foreach (var id in Players)
                     {
                         QSBCompat.SendControlledErnestoData(id, fakeData);
@@ -677,13 +668,32 @@ public class ErnestoChase : ModBehaviour
             ErnestoManager manager = ernestoObj.GetComponent<ErnestoManager>();
             ErnestoState state = ernestoObj.GetComponent<ErnestoState>();
 
-            if (RandomMode)
+            for (uint s = 1; s <= 2; s++)
             {
-                state.InitializeStats(GenerateRandomSettings());
-            }
-            else
-            {
-                state.InitializeStats(settings);
+                if (RandomMode)
+                {
+                    state.InitializeStats(s, GenerateRandomSettings());
+                }
+                else
+                {
+                    Dictionary<string, (object value, object property)> customSettings = [];
+                    customSettings.AddRange(settings);
+                    if (s == 1)
+                    {
+                        customSettings["enableQuantumMode"] = (true, true);
+                        customSettings["ernestoMusic"] = (true, true);
+                        customSettings["groundMovementSpeed"] = (0.4f, 0.4f);
+                        customSettings["distanceSpeedMultiplier"] = (5f, 5f);
+                    }
+                    if (s == 2)
+                    {
+                        customSettings["groundMovementSpeed"] = (2f, 2f);
+                        customSettings["distanceSpeedMultiplier"] = (0.8f, 0.8f);
+                        customSettings["enableQuantumMode"] = (false, false);
+                        customSettings["ernestoMusic"] = (true, true);
+                    }
+                    state.InitializeStats(s, customSettings);
+                }
             }
 
             ernestoObj.SetActive(true);
@@ -714,18 +724,22 @@ public class ErnestoChase : ModBehaviour
                     numErnestos++;
                 }
                 uint localID = Convert.ToUInt32(numErnestos);
-                state.LocalID = localID;
                 remoteErnestos[0].Add(localID, ernestoObj);
 
+                for (uint k = 1; k <= state.DataStates.Count; k++)
+                {
+                    state.DataStates[k].localid = localID;
+                }
+                
                 foreach (var id in Players)
                 {
-                    QSBCompat.SendErnestoData(id, state.GetData());
+                    QSBCompat.SendErnestoData(id, state.DataStates);
                 }
             }
         }
     }
 
-    public IEnumerator SpawnErnestoRemote(ErnestoData data)
+    public IEnumerator SpawnErnestoRemote(Dictionary<uint, ErnestoData> dataStates)
     {
         yield return new WaitUntil(() => QSBAPI.GetPlayerReady(QSBAPI.GetLocalPlayerID()));
 
@@ -735,7 +749,7 @@ public class ErnestoChase : ModBehaviour
         ErnestoManager manager = ernestoObj.GetComponent<ErnestoManager>();
         ErnestoState state = ernestoObj.GetComponent<ErnestoState>();
 
-        state.SetData(data);
+        state.SetData(dataStates);
 
         ernestoObj.SetActive(true);
         ernestos.Add(ernestoObj);
@@ -745,12 +759,13 @@ public class ErnestoChase : ModBehaviour
             camErnestos.Add(ernestoObj);
         }
 
-        if (!remoteErnestos.ContainsKey(data.id))
+        var firstState = dataStates[dataStates.Keys.First()];
+        if (!remoteErnestos.ContainsKey(firstState.id))
         {
-            remoteErnestos.Add(data.id, []);
+            remoteErnestos.Add(firstState.id, []);
         }
 
-        remoteErnestos[data.id].Add(data.localid, ernestoObj);
+        remoteErnestos[firstState.id].Add(firstState.localid, ernestoObj);
         manager.SetStoredTargets(new TargetDataQueue());
 
         /*if (ErnestoStacking && storedErnestoTargets.Count > i)
@@ -772,7 +787,7 @@ public class ErnestoChase : ModBehaviour
         ErnestoState state = ernestoObj.GetComponent<ErnestoState>();
         ernestoObj.AddComponent<RemoteSizeChanger>();
 
-        state.SetData(data);
+        state.SetData(1, data);
         state.AIEnabled = false;
 
         ernestoObj.SetActive(true);

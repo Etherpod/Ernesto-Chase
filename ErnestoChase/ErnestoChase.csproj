@@ -1,57 +1,58 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-  <PropertyGroup>
-    <TargetFramework>net48</TargetFramework>
-    <LangVersion>latest</LangVersion>
-    <Copyright>Copyright © 2024 Etherpod</Copyright>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
-    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
-    <NoWarn>MSB3270</NoWarn>
-  </PropertyGroup>
-  
-  <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
-    <DebugType>none</DebugType>
-  </PropertyGroup>
-  <Target Name="CopyDLLs" AfterTargets="Build" Condition=" '$(Configuration)' == 'Debug' And '$(UnityProjectDir)' != '' ">
-    <Message Text="Copying DLL and dialogue to Unity project" Importance="High" />
+    <PropertyGroup>
+        <TargetFramework>net48</TargetFramework>
+        <LangVersion>latest</LangVersion>
+        <Copyright>Copyright © 2024 Etherpod</Copyright>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+        <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+        <CopyLocalLockFileAssemblies>true</CopyLocalLockFileAssemblies>
+        <NoWarn>MSB3270</NoWarn>
+    </PropertyGroup>
 
-    <Copy SourceFiles="$(TargetDir)$(ProjectName).dll" DestinationFolder="$(UnityProjectModDir)" />
-    <Copy SourceFiles="@(CopyItems)" DestinationFolder="$(UnityProjectModDir)" />
+    <PropertyGroup Condition=" '$(Configuration)' == 'Release' ">
+        <DebugType>none</DebugType>
+    </PropertyGroup>
+    <Target Name="CopyDLLs" AfterTargets="Build" Condition=" '$(Configuration)' == 'Debug' And '$(UnityProjectDir)' != '' ">
+        <Message Text="Copying DLL and dialogue to Unity project" Importance="High"/>
 
-    <Message Text="Copy complete" Importance="High" />
-  </Target>
+        <Copy SourceFiles="$(TargetDir)$(ProjectName).dll" DestinationFolder="$(UnityProjectModDir)"/>
+        <Copy SourceFiles="@(CopyItems)" DestinationFolder="$(UnityProjectModDir)"/>
 
-  <ItemGroup>
-      <PackageReference Include="OWML" Version="2.15.4"/>
-      <PackageReference Include="OuterWildsGameLibs" Version="1.1.16.1372"/>
-    <PackageReference Include="CSharpFunctionalExtensions" Version="3.6.0" />
-  </ItemGroup>
-  
-  <ItemGroup>
-    <None Include="default-config.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="manifest.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="RandomizerSettings.json">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="assets/**/*.*">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-    <None Include="ErnestoMusic/*.*">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
-  
-  <ItemGroup>
-    <Content Include="ErnestoChase.csproj.user" />
-  </ItemGroup>
+        <Message Text="Copy complete" Importance="High"/>
+    </Target>
 
-  <ProjectExtensions>
-    <VisualStudio>
-      <UserProperties default-config_1json__JsonSchema="" />
-    </VisualStudio>
-  </ProjectExtensions>
+    <ItemGroup>
+        <PackageReference Include="OWML" Version="2.15.4" IncludeAssets="compile"/>
+        <PackageReference Include="OuterWildsGameLibs" Version="1.1.16.1372" IncludeAssets="compile"/>
+        <PackageReference Include="CSharpFunctionalExtensions" Version="3.6.0"/>
+    </ItemGroup>
+
+    <ItemGroup>
+        <None Include="default-config.json">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None Include="manifest.json">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None Include="RandomizerSettings.json">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None Include="assets/**/*.*">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+        <None Include="ErnestoMusic/*.*">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
+    </ItemGroup>
+
+    <ItemGroup>
+        <Content Include="ErnestoChase.csproj.user"/>
+    </ItemGroup>
+
+    <ProjectExtensions>
+        <VisualStudio>
+            <UserProperties default-config_1json__JsonSchema=""/>
+        </VisualStudio>
+    </ProjectExtensions>
 </Project>

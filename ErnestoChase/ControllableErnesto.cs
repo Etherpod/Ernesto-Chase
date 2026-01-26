@@ -65,6 +65,28 @@ public class ControllableErnesto : MonoBehaviour
         manualAngularVelocity = Vector3.zero;
     }
 
+    private void Update()
+    {
+        bool downPressed = OWInput.IsNewlyPressed(InputLibrary.toolOptionDown);
+        bool upPressed = OWInput.IsNewlyPressed(InputLibrary.toolOptionUp);
+
+        if (!changingSize && (downPressed || upPressed))
+        {
+            shrinked = downPressed;
+            lastSize = scaleRoot.localScale.x;
+            sizeStartTime = Time.fixedTime;
+            changingSize = true;
+
+            if (ErnestoChase.InMultiplayer)
+            {
+                foreach (var id in ErnestoChase.Players)
+                {
+                    QSBCompat.SendErnestoSizeChange(id, 0, shrinked);
+                }
+            }
+        }
+    }
+
     private void FixedUpdate()
     {
         if (OWTime.IsPaused()) return;
@@ -72,26 +94,6 @@ public class ControllableErnesto : MonoBehaviour
         UpdateMovement();
         UpdateRotation();
         UpdateSize();
-
-        /*if (frameDelay > 0)
-        {
-            frameDelay--;
-        }
-        else
-        {
-            frameDelay = storedTargetsFrameDelay;
-            TargetData data = GenerateTargetData();
-            storedTargets.AddTarget(data);
-            ErnestoChase.WriteDebugMessage("Host: " + data.time);
-
-            if (ErnestoChase.InMultiplayer)
-            {
-                foreach (var id in ErnestoChase.Players)
-                {
-                    QSBCompat.SendTargetData(id, 0, data);
-                }
-            }
-        }*/
     }
 
     private void UpdateMovement()
@@ -150,25 +152,6 @@ public class ControllableErnesto : MonoBehaviour
 
     private void UpdateSize()
     {
-        bool downPressed = OWInput.IsNewlyPressed(InputLibrary.toolOptionDown);
-        bool upPressed = OWInput.IsNewlyPressed(InputLibrary.toolOptionUp);
-
-        if (!changingSize && (downPressed || upPressed))
-        {
-            shrinked = downPressed;
-            lastSize = scaleRoot.localScale.x;
-            sizeStartTime = Time.fixedTime;
-            changingSize = true;
-
-            if (ErnestoChase.InMultiplayer)
-            {
-                foreach (var id in ErnestoChase.Players)
-                {
-                    QSBCompat.SendErnestoSizeChange(id, 0, shrinked);
-                }
-            }
-        }
-
         if (changingSize)
         {
             float timeLerp = Mathf.InverseLerp(sizeStartTime, sizeStartTime + sizeChangeLength, Time.fixedTime);

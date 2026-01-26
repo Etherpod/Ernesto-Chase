@@ -1,5 +1,7 @@
 ﻿using Newtonsoft.Json;
 using System;
+using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using static ErnestoChase.TargetDataQueue;
 
@@ -65,18 +67,20 @@ public static class QSBCompat
         //ErnestoChase.Instance.StartCoroutine(ErnestoChase.Instance.AddCamToRemotePlayer(id));
     }
 
-    public static void SendErnestoData(uint to, ErnestoData data)
+    public static void SendErnestoData(uint to, Dictionary<uint, ErnestoData> dataStates)
     {
-        string json = JsonConvert.SerializeObject(data);
+        string json = JsonConvert.SerializeObject(dataStates);
+        ErnestoChase.WriteDebugMessage("sending data:\n" + json);
         api.SendMessage("ernesto-data", json, to, false);
     }
 
     private static void ReceiveErnestoData(uint from, string json)
     {
-        ErnestoData data = JsonConvert.DeserializeObject<ErnestoData>(json);
+        Dictionary<uint, ErnestoData> data = JsonConvert.DeserializeObject<Dictionary<uint, ErnestoData>>(json);
         if (data != null)
         {
-            ErnestoChase.WriteDebugMessage("Receive Ernesto on " + api.GetLocalPlayerID() + " - " + data.id);
+            ErnestoChase.WriteDebugMessage("Receive Ernesto on " + 
+                api.GetLocalPlayerID() + " - " + data[data.Keys.First()].id);
             ErnestoChase.Instance.StartCoroutine(ErnestoChase.Instance.SpawnErnestoRemote(data));
         }
     }
