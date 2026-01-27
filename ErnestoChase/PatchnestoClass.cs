@@ -534,14 +534,67 @@ public static class PatchnestoClass
 		return false;
 	}
 
-	[HarmonyPostfix]
-	[HarmonyPatch(typeof(CharacterDialogueTree), nameof(CharacterDialogueTree.InputDialogueOption))]
-	public static void UpdateConditions(CharacterDialogueTree __instance, bool __result)
+	private static int lastSelectedOption = -1;
+	
+	[HarmonyPrefix]
+	[HarmonyPatch(typeof(CharacterDialogueTree), nameof(CharacterDialogueTree.ContinueToNextNode), typeof(DialogueOption))]
+	public static void ForceConditionChange(CharacterDialogueTree __instance, DialogueOption selectedOption)
 	{
-		if (__result)
+		if (selectedOption._textID.Contains("EC_RSSR_Configure"))
 		{
-			ErnestoChase.Instance.OnInputDialogueOption(__instance);
+			string text = selectedOption._text;
+			if (text.Contains("Rumor Mode"))
+			{
+				ErnestoConditionManager.ShipLogRumorMode = !ErnestoConditionManager.ShipLogRumorMode;
+			}
+			else if (text.Contains("Planet Mode"))
+			{
+				ErnestoConditionManager.ShipLogPlanetMode = !ErnestoConditionManager.ShipLogPlanetMode;
+			}
+			else if (text.Contains("Entry Mode"))
+			{
+				ErnestoConditionManager.ShipLogEntryMode = !ErnestoConditionManager.ShipLogEntryMode;
+			}
+			else if (text.Contains("Fact Mode"))
+			{
+				ErnestoConditionManager.ShipLogFactMode = !ErnestoConditionManager.ShipLogFactMode;
+			}
+			else
+			{
+				return;
+			}
+
+			lastSelectedOption = __instance._currentDialogueBox._selectedOption;
 		}
+		else
+		{
+			lastSelectedOption = -1;
+		}
+	}
+
+	[HarmonyPrefix]
+	[HarmonyPatch(typeof(DialogueBoxVer2), nameof(DialogueBoxVer2.CompleteOptionsReveal))]
+	public static bool ChangeInitialSelectedOption(DialogueBoxVer2 __instance)
+	{
+		if (lastSelectedOption < 0) return true;
+		
+		__instance._timeOnLastOptionReveal = 0f;
+		__instance._revealingOptions = false;
+		if (__instance._optionsUIElements.Count > 0)
+		{
+			__instance._selectedOption = lastSelectedOption;
+			__instance.HighlightSelectedOption(-1);
+			lastSelectedOption = -1;
+		}
+
+		return false;
+	}
+
+	[HarmonyPostfix]
+	[HarmonyPatch(typeof(CharacterDialogueTree), nameof(CharacterDialogueTree.ContinueToNextNode), typeof(DialogueOption))]
+	public static void UpdateConditions(CharacterDialogueTree __instance)
+	{
+		ErnestoChase.Instance.OnInputDialogueOption(__instance);
 	}
 
 	[HarmonyPrefix]
@@ -550,5 +603,55 @@ public static class PatchnestoClass
 	{
 		return !ErnestoConditionManager.RandomShipLogEnabled || 
 			damaged || ErnestoChase.Instance.AllowShipLog;
+	}
+
+	[HarmonyPostfix]
+	[HarmonyPatch(typeof(TextTranslation), nameof(TextTranslation.Translate))]
+	public static void TextTranslation_Translate(TextTranslation __instance, string key, ref string __result)
+	{
+		if (key.Contains("EC_SelectMinigame") || key.Contains("EC_SelectMinigame_Selected"))
+		{
+			string minigame;
+			if (ErnestoConditionManager.RandomShipLogEnabled)
+			{
+				minigame = "Random Ship Log";
+			}
+			else if (ErnestoConditionManager.SurvivalEnabled)
+			{
+				minigame = "Survival";
+			}
+			else
+			{
+				minigame = "NONE";
+			}
+
+			__result = __result.Replace("CURRENT_MINIGAME", minigame);
+		}
+		else if (key.Contains("EC_RSSR_Configure"))
+		{
+			bool state;
+			if (__result.Contains("Rumor Mode"))
+			{
+				state = ErnestoConditionManager.ShipLogRumorMode;
+			}
+			else if (__result.Contains("Planet Mode"))
+			{
+				state = ErnestoConditionManager.ShipLogPlanetMode;
+			}
+			else if (__result.Contains("Entry Mode"))
+			{
+				state = ErnestoConditionManager.ShipLogEntryMode;
+			}
+			else if (__result.Contains("Fact Mode"))
+			{
+				state = ErnestoConditionManager.ShipLogFactMode;
+			}
+			else
+			{
+				return;
+			}
+
+			__result = __result.Replace("STATE", state ? "Enabled" : "Disabled");
+		}
 	}
 }

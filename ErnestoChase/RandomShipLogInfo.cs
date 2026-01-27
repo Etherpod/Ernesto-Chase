@@ -86,6 +86,13 @@ public class RandomShipLogInfo : MonoBehaviour
 
 	public void AssignShipLogFact(ShipLogFact fact)
 	{
+		if (_assignedFact != null)
+		{
+			_originRevealed = false;
+			_locationRevealed = false;
+			_textHidden = false;
+		}
+		
 		_assignedFact = fact;
 		UpdateText();
 	}

@@ -3,6 +3,7 @@ using System.Collections;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using OWML.Common;
 using UnityEngine;
 using UnityEngine.Networking;
 
@@ -137,7 +138,7 @@ public class ErnestoEffects : MonoBehaviour
         }
         else
         {
-            loopingAudio.FadeOut(3f);
+            loopingAudio.Stop();
             musicAudio.Pause();
         }
     }
@@ -248,7 +249,7 @@ public class ErnestoEffects : MonoBehaviour
             animator.SetTrigger("Impulse");
             oneShotAudio.PlayOneShot(AudioType.DBAnglerfishDetectTarget, 0.8f);
             loopingAudio.AssignAudioLibraryClip(AudioType.DBAnglerfishChasing_LP);
-            if (!state.StealthMode)
+            if (!state.QuantumMode && !state.StealthMode)
             {
                 loopingAudio.FadeIn(1f);
                 musicAudio.Play();
@@ -269,7 +270,7 @@ public class ErnestoEffects : MonoBehaviour
                 {
                     StopCoroutine(audioTransition);
                 }
-                audioTransition = state.StealthMode ? null : StartCoroutine(SpaceAudioTransition());
+                audioTransition = StartCoroutine(SpaceAudioTransition());
             }
         }
         else
@@ -278,7 +279,7 @@ public class ErnestoEffects : MonoBehaviour
             {
                 StopCoroutine(audioTransition);
             }
-            audioTransition = state.StealthMode ? null : StartCoroutine(AtmosphereAudioTransition());
+            audioTransition = StartCoroutine(AtmosphereAudioTransition());
         }
     }
 
@@ -395,17 +396,29 @@ public class ErnestoEffects : MonoBehaviour
         loopingAudio.SetMaxVolume(1f);
         loopingAudio.spatialBlend = 0f;
         loopingAudio.SetTrack(OWAudioMixer.TrackName.Environment_Unfiltered);
-        loopingAudio.FadeIn(state.SpaceTimer, true);
 
         musicAudio.SetMaxVolume(1f);
         musicAudio.spatialBlend = 0f;
         musicAudio.SetTrack(OWAudioMixer.TrackName.Environment_Unfiltered);
-        musicAudio.FadeIn(state.SpaceTimer, true);
+
+        if (!state.StealthMode && !isFrozen)
+        {
+            loopingAudio.FadeIn(state.SpaceTimer, true);
+            musicAudio.FadeIn(state.SpaceTimer, true);
+        }
 
         yield return new WaitForSeconds(state.SpaceTimer > 12f 
             ? state.SpaceTimer - 7f : state.SpaceTimer * 0.8f);
-
-        loopingAudio.PlayOneShot(AudioType.DBAnglerfishDetectTarget, 1f);
+        
+        if (state.StealthMode)
+        {
+            OnProximityRoar(true);
+        }
+        else
+        {
+            loopingAudio.PlayOneShot(AudioType.DBAnglerfishDetectTarget, 1f);
+        }
+        
         audioTransition = null;
     }
 
@@ -419,12 +432,16 @@ public class ErnestoEffects : MonoBehaviour
         loopingAudio.SetMaxVolume(baseLoopingAudioVolume);
         loopingAudio.spatialBlend = 1f;
         loopingAudio.SetTrack(OWAudioMixer.TrackName.Environment);
-        loopingAudio.FadeIn(1f);
 
         musicAudio.SetMaxVolume(baseMusicVolume);
         musicAudio.spatialBlend = 1f;
         musicAudio.SetTrack(OWAudioMixer.TrackName.Environment);
-        musicAudio.FadeIn(1f);
+
+        if (!state.StealthMode && !isFrozen)
+        {
+            loopingAudio.FadeIn(1f);
+            musicAudio.FadeIn(1f);
+        }
 
         audioTransition = null;
     }
@@ -432,7 +449,6 @@ public class ErnestoEffects : MonoBehaviour
     public void OnCaughtPlayer()
     {
         loopingAudio.FadeOut(2f);
-        animator.SetTrigger("Stop");
     }
 
     public void OnFakeWarpEntry()

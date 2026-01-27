@@ -15,6 +15,7 @@ public class MinigameManager : MonoBehaviour
 	private ShipLogFact _selectedFact;
 	private RandomShipLogInfo _factInfo;
 	private int _numHintsUsed;
+	private int _currentRound = 0;
 
 	private void Awake()
 	{
@@ -34,6 +35,7 @@ public class MinigameManager : MonoBehaviour
 		}
 		_factInfo = null;
 		_numHintsUsed = 0;
+		_currentRound = 0;
 	}
 
 	private void OnWakeUp()
@@ -121,15 +123,21 @@ public class MinigameManager : MonoBehaviour
 		
 		_selectedFact = facts[Random.Range(0, facts.Length)];
 		_selectedFact.OnFactRevealed += OnFactRevealed;
+
+		if (!_factInfo)
+		{
+			GameObject ui = LoadPrefab("Assets/ErnestoChase/RandomShipLogHUD.prefab");
+			_factInfo = Instantiate(ui).GetComponentInChildren<RandomShipLogInfo>();
+		}
 		
-		GameObject ui = LoadPrefab("Assets/ErnestoChase/RandomShipLogHUD.prefab");
-		_factInfo = Instantiate(ui).GetComponentInChildren<RandomShipLogInfo>();
 		_factInfo.AssignShipLogFact(_selectedFact);
 		
 		if (!Instance.AllowShipLog)
 		{
 			Locator.GetShipBody().GetComponentInChildren<ShipLogController>().SetDamaged(true);
 		}
+
+		_currentRound++;
 
 		if (InMultiplayer && QSBAPI.GetIsHost())
 		{
@@ -150,10 +158,14 @@ public class MinigameManager : MonoBehaviour
 	public void SetUpRandomShipLogRemote(string factID)
 	{
 		_selectedFact = Locator.GetShipLogManager().GetFact(factID);
-		_selectedFact.OnFactRevealed += OnFactRevealed;
+		//_selectedFact.OnFactRevealed += OnFactRevealed;
+
+		if (!_factInfo)
+		{
+			GameObject ui = LoadPrefab("Assets/ErnestoChase/RandomShipLogHUD.prefab");
+			_factInfo = Instantiate(ui).GetComponentInChildren<RandomShipLogInfo>();
+		}
 		
-		GameObject ui = LoadPrefab("Assets/ErnestoChase/RandomShipLogHUD.prefab");
-		_factInfo = Instantiate(ui).GetComponentInChildren<RandomShipLogInfo>();
 		_factInfo.AssignShipLogFact(_selectedFact);
 		
 		if (!Instance.AllowShipLog)
@@ -162,17 +174,47 @@ public class MinigameManager : MonoBehaviour
 		}
 	}
 
-	public void OnFactRevealed()
+	public void WinRandomShipLogRemote()
 	{
 		if (_selectedFact == null) return;
+		
+		_selectedFact.OnFactRevealed -= OnFactRevealed;
+		_selectedFact = null;
 		
 		_factInfo.DisplayWinText(_numHintsUsed);
 		foreach (var e in Instance.ernestos)
 		{
 			e.GetComponent<ErnestoManager>().OnGameStopped();
 		}
+	}
+
+	public void OnFactRevealed()
+	{
+		if (_selectedFact == null) return;
+		
 		_selectedFact.OnFactRevealed -= OnFactRevealed;
 		_selectedFact = null;
+
+		if (_currentRound >= Instance.ShipLogRounds)
+		{
+			_factInfo.DisplayWinText(_numHintsUsed);
+			foreach (var e in Instance.ernestos)
+			{
+				e.GetComponent<ErnestoManager>().OnGameStopped();
+			}
+
+			if (InMultiplayer && QSBAPI.GetIsHost() && Instance.GlobalFactGoals)
+			{
+				foreach (var id in Players)
+				{
+					QSBCompat.SendShipLogWin(id);
+				}
+			}
+		}
+		else
+		{
+			SetUpRandomShipLog();
+		}
 	}
 
 	public void OnGameStopped()

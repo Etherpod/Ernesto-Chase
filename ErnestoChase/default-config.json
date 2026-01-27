@@ -177,6 +177,12 @@
       "title": "Allow Ship Log",
       "tooltip": "Lets you use your ship log while playing the Random Ship Log minigame."
     },
+    "shipLogRounds": {
+      "type": "number",
+      "value": 1.0,
+      "title": "Number of Rounds",
+      "tooltip": "The number of times to play before winning."
+    },
     "globalFactGoals": {
       "type": "toggle",
       "value": true,

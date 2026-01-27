@@ -84,6 +84,7 @@ public class ErnestoChase : ModBehaviour
     public float SurvivalTimerLength => (float)settings["survivalTimerLength"].property;
     public bool AllowShipLog => (bool)settings["allowShipLog"].property;
     public bool GlobalFactGoals => (bool)settings["globalFactGoals"].property;
+    public int ShipLogRounds => Mathf.Max(1, Mathf.FloorToInt((float)settings["shipLogRounds"].property));
 
     public Dictionary<string, (object value, object property)> settings = new()
     {
@@ -111,6 +112,7 @@ public class ErnestoChase : ModBehaviour
         { "speedAccumulationType", ("", "") },
         { "speedAccumulationRate", (1f, 1f) },
         { "distanceSpeedMultiplier", (1f, 1f) },
+        { "shipLogRounds", (1f, 1f) },
     };
 
     public static readonly bool EnableDebugMode = true;
@@ -682,13 +684,13 @@ public class ErnestoChase : ModBehaviour
                     {
                         customSettings["enableQuantumMode"] = (true, true);
                         customSettings["ernestoMusic"] = (true, true);
-                        customSettings["groundMovementSpeed"] = (0.4f, 0.4f);
+                        customSettings["groundMovementSpeed"] = (0.1f, 0.1f);
                         customSettings["distanceSpeedMultiplier"] = (5f, 5f);
                     }
                     if (s == 2)
                     {
-                        customSettings["groundMovementSpeed"] = (2f, 2f);
-                        customSettings["distanceSpeedMultiplier"] = (0.8f, 0.8f);
+                        customSettings["groundMovementSpeed"] = (1.5f, 1.5f);
+                        customSettings["distanceSpeedMultiplier"] = (1.5f, 1.5f);
                         customSettings["enableQuantumMode"] = (false, false);
                         customSettings["ernestoMusic"] = (true, true);
                     }
@@ -1069,6 +1071,8 @@ public class ErnestoChase : ModBehaviour
 
     private void OnEndSetupConversation()
     {
+        GameObject.FindWithTag("DialogueGui").GetRequiredComponent<DialogueBoxVer2>()._revealingOptions = false;
+        
         if (!ErnestoConditionManager.GameStarted && 
             DialogueConditionManager.SharedInstance.GetConditionState("EC_START_GAME"))
         {

@@ -148,7 +148,7 @@ public class ErnestoMovement : MonoBehaviour
         if (state.QuantumMode)
         {
             speedMultiplier *= 5f;
-            UpdateErnestoVisibility();
+            UpdateErnestoVisibility(forceUpdate: true);
         }
         else if (ernestoFrozen)
         {
@@ -276,6 +276,11 @@ public class ErnestoMovement : MonoBehaviour
             planetManager.UpdatePlayerPlanetState();
             SpawnTarget(planetManager.GetTargetParent(), Locator.GetPlayerTransform().position);
         }
+
+        if (state.QuantumMode)
+        {
+            UpdateErnestoVisibility(forceUpdate: true);
+        }
     }
 
     public void OnPlayerDeath()
@@ -360,7 +365,7 @@ public class ErnestoMovement : MonoBehaviour
             Time.fixedTime, isTeleportEnter, isTeleportExit, isFinalTarget, inRingWorld);
     }
 
-    private void UpdateErnestoVisibility()
+    private void UpdateErnestoVisibility(bool forceUpdate = false)
     {
         // Add event to ErnestoEffects that toggles audio/animation for everyone when visibility changes
 
@@ -394,7 +399,7 @@ public class ErnestoMovement : MonoBehaviour
             observers.Remove(0);
         }
 
-        if ((observers.Count != 0) != ernestoFrozen)
+        if ((observers.Count != 0) != ernestoFrozen || forceUpdate)
         {
             ernestoFrozen = observers.Count != 0;
 
