@@ -49,29 +49,29 @@ public static class ErnestoConditionManager
 		}
 	}
 
-	public static bool ShipLogFactMode
+	/*public static bool ShipLogFactMode
 	{
-		get => GetCondition(ShipLogModes[0]);
+		get => GetCondition(NameToShipLogMode[0]);
 		set => SetShipLogMode(0, value);
 	}
 	
 	public static bool ShipLogEntryMode
 	{
-		get => GetCondition(ShipLogModes[1]);
+		get => GetCondition(NameToShipLogMode[1]);
 		set => SetShipLogMode(1, value);
 	}
 	
 	public static bool ShipLogPlanetMode
 	{
-		get => GetCondition(ShipLogModes[2]);
+		get => GetCondition(NameToShipLogMode[2]);
 		set => SetShipLogMode(2, value);
 	}
 	
 	public static bool ShipLogRumorMode
 	{
-		get => GetCondition(ShipLogModes[3]);
+		get => GetCondition(NameToShipLogMode[3]);
 		set => SetShipLogMode(3, value);
-	}
+	}*/
 
 	public static readonly string[] Minigames =
 	[
@@ -79,13 +79,13 @@ public static class ErnestoConditionManager
 		"EC_SURVIVAL_MODE"
 	];
 
-	public static readonly string[] ShipLogModes =
-	[
-		"EC_RSSR_FACT_MODE",
-		"EC_RSSR_ENTRY_MODE",
-		"EC_RSSR_PLANET_MODE",
-		"EC_RSSR_RUMOR_MODE"
-	];
+	public static readonly Dictionary<string, string> NameToShipLogMode = new()
+	{ 
+		{ "Fact Mode", "EC_RSSR_FACT_MODE" },
+		{ "Entry Mode", "EC_RSSR_ENTRY_MODE"},
+		{ "Planet Mode", "EC_RSSR_PLANET_MODE" },
+		{ "Rumor Mode", "EC_RSSR_RUMOR_MODE" }
+	};
 
 	private static bool GetCondition(string name) => PlayerData.PersistentConditionExists(name) &&
 		PlayerData.GetPersistentCondition(name);
@@ -108,27 +108,47 @@ public static class ErnestoConditionManager
 		}
 	}
 
-	private static void SetShipLogMode(int mode, bool state)
+	public static bool GetShipLogMode(string name)
 	{
-		SetShipLogMode(ShipLogModes[mode], state);
+		if (NameToShipLogMode.ContainsKey(name))
+		{
+			return GetCondition(NameToShipLogMode[name]);
+		}
+
+		return false;
+	}
+
+	public static void SetShipLogMode(string name, bool value)
+	{
+		if (NameToShipLogMode.ContainsKey(name))
+		{
+			PlayerData.SetPersistentCondition(NameToShipLogMode[name], value);
+		}
+	}
+
+	/*private static void SetShipLogMode(int mode, bool state)
+	{
+		SetShipLogMode(NameToShipLogMode[mode], state);
 	}
 
 	public static void SetShipLogMode(string mode, bool state)
 	{
-		if (state || ShipLogModes.Where(name => name != mode).Any(GetCondition))
+		PlayerData.SetPersistentCondition(mode, state);
+		return;
+		if (state || NameToShipLogMode.Where(name => name != mode).Any(GetCondition))
 		{
 			PlayerData.SetPersistentCondition(mode, state);
 		}
-	}
+	}*/
 
 	public static void Reset()
 	{
 		StartingGame = false;
 		GameStarted = false;
 
-		if (ShipLogModes.All(mode => !GetCondition(mode)))
+		/*if (NameToShipLogMode.All(mode => !GetCondition(mode)))
 		{
 			SetShipLogMode(0, true);
-		}
+		}*/
 	}
 }

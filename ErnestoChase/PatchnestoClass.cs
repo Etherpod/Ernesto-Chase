@@ -536,7 +536,7 @@ public static class PatchnestoClass
 
 	private static int lastSelectedOption = -1;
 	
-	[HarmonyPrefix]
+	/*[HarmonyPrefix]
 	[HarmonyPatch(typeof(CharacterDialogueTree), nameof(CharacterDialogueTree.ContinueToNextNode), typeof(DialogueOption))]
 	public static void ForceConditionChange(CharacterDialogueTree __instance, DialogueOption selectedOption)
 	{
@@ -570,9 +570,9 @@ public static class PatchnestoClass
 		{
 			lastSelectedOption = -1;
 		}
-	}
+	}*/
 
-	[HarmonyPrefix]
+	/*[HarmonyPrefix]
 	[HarmonyPatch(typeof(DialogueBoxVer2), nameof(DialogueBoxVer2.CompleteOptionsReveal))]
 	public static bool ChangeInitialSelectedOption(DialogueBoxVer2 __instance)
 	{
@@ -588,6 +588,29 @@ public static class PatchnestoClass
 		}
 
 		return false;
+	}*/
+
+	[HarmonyPrefix]
+	[HarmonyPatch(typeof(CharacterDialogueTree), nameof(CharacterDialogueTree.InputDialogueOption))]
+	public static bool ForceConditionChange(CharacterDialogueTree __instance, int optionIndex, ref bool __result)
+	{
+		if (optionIndex < 0) return true;
+		
+		var option = __instance._currentDialogueBox.OptionFromUIIndex(optionIndex);
+		if (option._textID.Contains("SetupEC_RSSR_Configure") && option._textID.Contains(" - "))
+		{
+			string text = option._textID.Replace("SetupEC_RSSR_Configure", "");
+			string name = text.Substring(0, text.IndexOf(" - "));
+			bool state = ErnestoConditionManager.GetShipLogMode(name);
+			ErnestoConditionManager.SetShipLogMode(name, !state);
+
+			__instance._currentDialogueBox._optionsUIElements[optionIndex]
+				.textElement.text = option.Text;
+			__result = true;
+			return false;
+		}
+
+		return true;
 	}
 
 	[HarmonyPostfix]
@@ -601,7 +624,7 @@ public static class PatchnestoClass
 	[HarmonyPatch(typeof(ShipLogController), nameof(ShipLogController.SetDamaged))]
 	public static bool PreventShipLogEnable(bool damaged)
 	{
-		return !ErnestoConditionManager.RandomShipLogEnabled || 
+		return !ErnestoConditionManager.RandomShipLogEnabled ||
 			damaged || ErnestoChase.Instance.AllowShipLog;
 	}
 
@@ -629,27 +652,9 @@ public static class PatchnestoClass
 		}
 		else if (key.Contains("EC_RSSR_Configure"))
 		{
-			bool state;
-			if (__result.Contains("Rumor Mode"))
-			{
-				state = ErnestoConditionManager.ShipLogRumorMode;
-			}
-			else if (__result.Contains("Planet Mode"))
-			{
-				state = ErnestoConditionManager.ShipLogPlanetMode;
-			}
-			else if (__result.Contains("Entry Mode"))
-			{
-				state = ErnestoConditionManager.ShipLogEntryMode;
-			}
-			else if (__result.Contains("Fact Mode"))
-			{
-				state = ErnestoConditionManager.ShipLogFactMode;
-			}
-			else
-			{
-				return;
-			}
+			string text = key.Replace("SetupEC_RSSR_Configure", "");
+			if (key.IndexOf(" - ") < 0) return;
+			bool state = ErnestoConditionManager.GetShipLogMode(text.Substring(0, text.IndexOf(" - ")));
 
 			__result = __result.Replace("STATE", state ? "Enabled" : "Disabled");
 		}

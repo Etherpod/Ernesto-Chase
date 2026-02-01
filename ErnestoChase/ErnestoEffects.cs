@@ -221,6 +221,8 @@ public class ErnestoEffects : MonoBehaviour
         {
             SelectRandomMusicClip(state.ActiveStateID);
         }
+
+        yield return null;
     }
 
     private void SelectRandomMusicClip(uint stateID)

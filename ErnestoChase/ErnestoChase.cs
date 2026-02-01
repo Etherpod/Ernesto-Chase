@@ -682,16 +682,16 @@ public class ErnestoChase : ModBehaviour
                     customSettings.AddRange(settings);
                     if (s == 1)
                     {
-                        customSettings["enableQuantumMode"] = (true, true);
+                        customSettings["enableStealthMode"] = (true, true);
                         customSettings["ernestoMusic"] = (true, true);
                         customSettings["groundMovementSpeed"] = (0.1f, 0.1f);
                         customSettings["distanceSpeedMultiplier"] = (5f, 5f);
                     }
                     if (s == 2)
                     {
-                        customSettings["groundMovementSpeed"] = (1.5f, 1.5f);
+                        customSettings["groundMovementSpeed"] = (2f, 2f);
                         customSettings["distanceSpeedMultiplier"] = (1.5f, 1.5f);
-                        customSettings["enableQuantumMode"] = (false, false);
+                        customSettings["enableStealthMode"] = (false, false);
                         customSettings["ernestoMusic"] = (true, true);
                     }
                     state.InitializeStats(s, customSettings);
@@ -1170,6 +1170,7 @@ public class ErnestoChase : ModBehaviour
     {
         if (EnableDebugMode)
         {
+            message ??= "null";
             Instance.ModHelper.Console.WriteLine(message.ToString());
         }
     }

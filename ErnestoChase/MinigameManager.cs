@@ -1,7 +1,10 @@
-﻿using System.Linq;
+﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using static ErnestoChase.ErnestoChase;
+using Random = UnityEngine.Random;
 
 namespace ErnestoChase;
 
@@ -12,10 +15,21 @@ public class MinigameManager : MonoBehaviour
 	private CountdownTimer _countdownTimer;
 	private bool _syncingTimer;
 
+	private ShipLogGameMode _currentShipLogMode;
 	private ShipLogFact _selectedFact;
-	private RandomShipLogInfo _factInfo;
+	private ShipLogEntry _selectedEntry;
+	private ShipLogAstroObject _selectedPlanet;
+	private RandomShipLogInfo _shipLogInfo;
 	private int _numHintsUsed;
 	private int _currentRound = 0;
+
+	public enum ShipLogGameMode
+	{
+		Fact,
+		Entry,
+		Planet,
+		Rumor
+	}
 
 	private void Awake()
 	{
@@ -30,10 +44,25 @@ public class MinigameManager : MonoBehaviour
 
 		if (_selectedFact != null)
 		{
-			_selectedFact.OnFactRevealed += OnFactRevealed;
+			_selectedFact.OnFactRevealed -= OnFactRevealed;
 			_selectedFact = null;
 		}
-		_factInfo = null;
+
+		if (_selectedEntry != null)
+		{
+			_selectedEntry.GetExploreFacts()
+				.ForEach(fact => fact.OnFactRevealed -= OnFactRevealed);
+			_selectedEntry = null;
+		}
+
+		if (_selectedPlanet != null)
+		{
+			Locator.GetShipLogManager().GetEntriesByAstroBody(_selectedPlanet.GetID())
+				.ForEach(entry => entry.GetExploreFacts()
+					.ForEach(fact => fact.OnFactRevealed -= OnFactRevealed));
+		}
+		
+		_shipLogInfo = null;
 		_numHintsUsed = 0;
 		_currentRound = 0;
 	}
@@ -42,13 +71,15 @@ public class MinigameManager : MonoBehaviour
 	{
 		Instance.ModHelper.Events.Unity.FireInNUpdates(() =>
 		{
+			WriteDebugMessage("WAKE UP WAKE UP");
 			if (_countdownTimer != null)
 			{
 				_countdownTimer.FadeIn(5f);
 			}
-			else if (_factInfo != null)
+			else if (_shipLogInfo != null)
 			{
-				_factInfo.FadeIn(5f);
+				WriteDebugMessage("gaba");
+				_shipLogInfo.FadeIn(5f);
 			}
 		}, 10);
 	}
@@ -60,9 +91,9 @@ public class MinigameManager : MonoBehaviour
 			_countdownTimer.StopTimer();
 			_countdownTimer.FadeOut(5f);
 		}
-		else if (_factInfo != null)
+		else if (_shipLogInfo != null)
 		{
-			_factInfo.FadeOut(5f);
+			_shipLogInfo.FadeOut(5f);
 		}
 	}
 	
@@ -113,24 +144,39 @@ public class MinigameManager : MonoBehaviour
 	
 	public void SetUpRandomShipLog()
 	{
-		var facts = Locator.GetShipLogManager()._factList
-			.Where(fact => !fact.IsRevealed() && !fact.IsRumor()).ToArray();
-		if (facts.Length == 0)
-		{
-			WriteDebugMessage("AAAH THERE'S NO FACTS TO FIND");
-			return;
-		}
-		
-		_selectedFact = facts[Random.Range(0, facts.Length)];
-		_selectedFact.OnFactRevealed += OnFactRevealed;
-
-		if (!_factInfo)
+		if (!_shipLogInfo)
 		{
 			GameObject ui = LoadPrefab("Assets/ErnestoChase/RandomShipLogHUD.prefab");
-			_factInfo = Instantiate(ui).GetComponentInChildren<RandomShipLogInfo>();
+			_shipLogInfo = Instantiate(ui).GetComponentInChildren<RandomShipLogInfo>();
+		}
+
+		List<Action> actionPool = [];
+
+		if (ErnestoConditionManager.GetShipLogMode("Fact Mode"))
+		{
+			actionPool.Add(SetRandomFact);
 		}
 		
-		_factInfo.AssignShipLogFact(_selectedFact);
+		if (ErnestoConditionManager.GetShipLogMode("Entry Mode"))
+		{
+			actionPool.Add(SetRandomEntry);
+		}
+
+		if (ErnestoConditionManager.GetShipLogMode("Planet Mode"))
+		{
+			actionPool.Add(SetRandomPlanet);
+		}
+
+		if (actionPool.Count > 0)
+		{
+			ErnestoChase.WriteDebugMessage("pick rand");
+			var rand = new System.Random();
+			actionPool[rand.Next(0, actionPool.Count)].Invoke();
+		}
+		else
+		{
+			WriteDebugMessage("No gamemode selected!");
+		}
 		
 		if (!Instance.AllowShipLog)
 		{
@@ -155,18 +201,105 @@ public class MinigameManager : MonoBehaviour
 		}
 	}
 
+	private void SetRandomFact()
+	{
+		var facts = Locator.GetShipLogManager()._factList
+			.Where(fact => !fact.IsRevealed() && !fact.IsRumor()).ToArray();
+		
+		if (facts.Length == 0)
+		{
+			WriteDebugMessage("AAAH THERE'S NO FACTS TO FIND");
+			return;
+		}
+		
+		_selectedFact = facts[Random.Range(0, facts.Length)];
+		_selectedFact.OnFactRevealed += OnFactRevealed;
+
+		_currentShipLogMode = ShipLogGameMode.Fact;
+		_shipLogInfo.AssignShipLogFact(_selectedFact);
+	}
+
+	private void SetRandomEntry()
+	{
+		var entries = Locator.GetShipLogManager()._entryList
+			.Where(entry => entry.GetExploreFacts().Any(fact => !fact.IsRevealed())).ToArray();
+		
+		if (entries.Length == 0)
+		{
+			WriteDebugMessage("AAAH THERE'S NO ENTRIES TO FIND");
+			return;
+		}
+		
+		_selectedEntry = entries[Random.Range(0, entries.Length)];
+		_selectedEntry.GetExploreFacts()
+			.Where(fact => !fact.IsRevealed())
+			.ToList()
+			.ForEach(fact => fact.OnFactRevealed += OnFactRevealed);
+		
+		_currentShipLogMode = ShipLogGameMode.Entry;
+		_shipLogInfo.AssignShipLogEntry(_selectedEntry);
+	}
+
+	private void SetRandomPlanet()
+	{
+		ShipLogMapMode mapMode = Locator.GetShipTransform().GetComponentInChildren<ShipLogMapMode>(true);
+		WriteDebugMessage("map mode: " + mapMode);
+		Instance.ModHelper.Events.Unity.RunWhen(
+			() => mapMode._listItems != null,
+			() =>
+			{
+				List<ShipLogAstroObject> planets = [];
+				foreach (var list in mapMode._astroObjects)
+				{
+					foreach (var astro in list)
+					{
+						WriteDebugMessage("\nCHECK PLANET " + astro.name);
+						var entries = Locator.GetShipLogManager()
+							.GetEntriesByAstroBody(astro.GetID());
+						foreach (var entry in entries)
+						{
+							WriteDebugMessage("checking entry " + entry._name);
+							if (entry.GetExploreFacts().Any(fact => !fact.IsRevealed()))
+							{
+								WriteDebugMessage("has empty log");
+								planets.Add(astro);
+								break;
+							}
+						}
+					}
+				}
+		
+				if (planets.Count == 0)
+				{
+					WriteDebugMessage("AAAH THERE'S NO PLANETS TO FIND");
+					return;
+				}
+		
+				_selectedPlanet = planets[Random.Range(0, planets.Count)];
+				Locator.GetShipLogManager().GetEntriesByAstroBody(_selectedPlanet.GetID())
+					.ForEach(entry => entry.GetExploreFacts()
+						.Where(fact => !fact.IsRevealed())
+						.ToList()
+						.ForEach(fact => fact.OnFactRevealed += OnFactRevealed));
+		
+				_currentShipLogMode = ShipLogGameMode.Planet;
+				_shipLogInfo.AssignShipLogPlanet(_selectedPlanet);
+			});
+	}
+
+	// MAKE THIS WORK
 	public void SetUpRandomShipLogRemote(string factID)
 	{
 		_selectedFact = Locator.GetShipLogManager().GetFact(factID);
 		//_selectedFact.OnFactRevealed += OnFactRevealed;
 
-		if (!_factInfo)
+		if (!_shipLogInfo)
 		{
 			GameObject ui = LoadPrefab("Assets/ErnestoChase/RandomShipLogHUD.prefab");
-			_factInfo = Instantiate(ui).GetComponentInChildren<RandomShipLogInfo>();
+			_shipLogInfo = Instantiate(ui).GetComponentInChildren<RandomShipLogInfo>();
 		}
 		
-		_factInfo.AssignShipLogFact(_selectedFact);
+		_shipLogInfo.AssignShipLogFact(_selectedFact);
 		
 		if (!Instance.AllowShipLog)
 		{
@@ -174,14 +307,39 @@ public class MinigameManager : MonoBehaviour
 		}
 	}
 
+	public ShipLogGameMode GetShipLogGameMode()
+	{
+		return _currentShipLogMode;
+	}
+
 	public void WinRandomShipLogRemote()
 	{
-		if (_selectedFact == null) return;
+		if (!_shipLogInfo)
+		{
+			return;
+		}
 		
-		_selectedFact.OnFactRevealed -= OnFactRevealed;
-		_selectedFact = null;
+		if (_selectedFact != null)
+		{
+			_selectedFact.OnFactRevealed -= OnFactRevealed;
+			_selectedFact = null;
+		}
+
+		if (_selectedEntry != null)
+		{
+			_selectedEntry.GetExploreFacts()
+				.ForEach(fact => fact.OnFactRevealed -= OnFactRevealed);
+			_selectedEntry = null;
+		}
+
+		if (_selectedPlanet != null)
+		{
+			Locator.GetShipLogManager().GetEntriesByAstroBody(_selectedPlanet.GetID())
+				.ForEach(entry => entry.GetExploreFacts()
+					.ForEach(fact => fact.OnFactRevealed -= OnFactRevealed));
+		}
 		
-		_factInfo.DisplayWinText(_numHintsUsed);
+		_shipLogInfo.DisplayWinText(_numHintsUsed);
 		foreach (var e in Instance.ernestos)
 		{
 			e.GetComponent<ErnestoManager>().OnGameStopped();
@@ -190,14 +348,34 @@ public class MinigameManager : MonoBehaviour
 
 	public void OnFactRevealed()
 	{
-		if (_selectedFact == null) return;
+		if (!_shipLogInfo)
+		{
+			return;
+		}
 		
-		_selectedFact.OnFactRevealed -= OnFactRevealed;
-		_selectedFact = null;
+		if (_selectedFact != null)
+		{
+			_selectedFact.OnFactRevealed -= OnFactRevealed;
+			_selectedFact = null;
+		}
+
+		if (_selectedEntry != null)
+		{
+			_selectedEntry.GetExploreFacts()
+				.ForEach(fact => fact.OnFactRevealed -= OnFactRevealed);
+			_selectedEntry = null;
+		}
+
+		if (_selectedPlanet != null)
+		{
+			Locator.GetShipLogManager().GetEntriesByAstroBody(_selectedPlanet.GetID())
+				.ForEach(entry => entry.GetExploreFacts()
+					.ForEach(fact => fact.OnFactRevealed -= OnFactRevealed));
+		}
 
 		if (_currentRound >= Instance.ShipLogRounds)
 		{
-			_factInfo.DisplayWinText(_numHintsUsed);
+			_shipLogInfo.DisplayWinText(_numHintsUsed);
 			foreach (var e in Instance.ernestos)
 			{
 				e.GetComponent<ErnestoManager>().OnGameStopped();
@@ -224,25 +402,17 @@ public class MinigameManager : MonoBehaviour
 	
 	private void Update()
 	{
-		if (_selectedFact != null)
+		if (_shipLogInfo)
 		{
-			if (Keyboard.current.hKey.wasPressedThisFrame)
+			if (Keyboard.current.hKey.wasPressedThisFrame &&
+				_shipLogInfo.AdvanceHint())
 			{
-				if (_numHintsUsed == 0)
-				{
-					_factInfo.RevealFactOrigin();
-				}
-				else if (_numHintsUsed == 1)
-				{
-					_factInfo.RevealFactLocation();
-				}
-
-				_numHintsUsed = Mathf.Min(2, _numHintsUsed + 1);
+				_numHintsUsed++;
 			}
 
 			if (Keyboard.current.pKey.wasPressedThisFrame)
 			{
-				_factInfo.ToggleTextHidden();
+				_shipLogInfo.ToggleTextHidden();
 			}
 		}
 	}
