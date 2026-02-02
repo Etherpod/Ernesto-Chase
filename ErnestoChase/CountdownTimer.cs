@@ -3,34 +3,11 @@ using UnityEngine.UI;
 
 namespace ErnestoChase;
 
-[RequireComponent(typeof(Text))]
-public class CountdownTimer : MonoBehaviour
+public class CountdownTimer : MinigameUIText
 {
-	private Text _text;
 	private float _timerLength;
 	private float _currentTime;
 	private bool _timerEnabled;
-	
-	private bool _fading;
-	private float _fadeLength;
-	private float _fadeStartTime;
-	private float _startFade;
-	private float _targetFade;
-
-	private void Awake()
-	{
-		_text = gameObject.GetRequiredComponent<Text>();
-		
-		var font = (Font)Resources.Load(@"fonts\english - latin\HVD Fonts - BrandonGrotesque-Bold_Dynamic");
-		if (font != null)
-		{
-			_text.font = font;
-		}
-		
-		var color = _text.color;
-		color.a = 0f;
-		_text.color = color;
-	}
 
 	private void Update()
 	{
@@ -50,7 +27,8 @@ public class CountdownTimer : MonoBehaviour
 
 		result += $"{minutes:00}:{seconds:00}";
 
-		_text.text = result;
+		_currentText = result;
+		UpdateText();
 
 		if (_currentTime == 0f)
 		{
@@ -59,23 +37,6 @@ public class CountdownTimer : MonoBehaviour
 		}
 	}
 
-	private void LateUpdate()
-	{
-		if (_fading)
-		{
-			float lerp = Mathf.InverseLerp(_fadeStartTime, _fadeStartTime + _fadeLength, Time.time);
-			var color = _text.color;
-			color.a = Mathf.Lerp(_startFade, _targetFade, lerp * lerp);
-			_text.color = color;
-
-			if (lerp >= 1f)
-			{
-				_fading = false;
-				if (!_timerEnabled && _currentTime == 0f) enabled = false;
-			}
-		}
-	}
-	
 	public void SetTimerLength(float minutes)
 	{
 		_timerLength = minutes * 60f;
@@ -92,26 +53,6 @@ public class CountdownTimer : MonoBehaviour
 	public void StopTimer()
 	{
 		_timerEnabled = false;
-	}
-
-	public void FadeIn(float time)
-	{
-		_fadeLength = time;
-		_fadeStartTime = Time.time;
-		_startFade = _text.color.a;
-		_targetFade = 1f;
-		_fading = true;
-		enabled = true;
-	}
-	
-	public void FadeOut(float time)
-	{
-		_fadeLength = time;
-		_fadeStartTime = Time.time;
-		_startFade = _text.color.a;
-		_targetFade = 0f;
-		_fading = true;
-		enabled = true;
 	}
 
 	public float GetCurrentTime() => _currentTime;

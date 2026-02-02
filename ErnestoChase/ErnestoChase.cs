@@ -85,6 +85,8 @@ public class ErnestoChase : ModBehaviour
     public bool AllowShipLog => (bool)settings["allowShipLog"].property;
     public bool GlobalFactGoals => (bool)settings["globalFactGoals"].property;
     public int ShipLogRounds => Mathf.Max(1, Mathf.FloorToInt((float)settings["shipLogRounds"].property));
+    public bool EnableDLCLogs => (bool)settings["enableDLCLogs"].property;
+    public int MaxRumorChain => Mathf.Max(1, Mathf.FloorToInt((float)settings["maxRumorChain"].property));
 
     public Dictionary<string, (object value, object property)> settings = new()
     {
@@ -113,6 +115,8 @@ public class ErnestoChase : ModBehaviour
         { "speedAccumulationRate", (1f, 1f) },
         { "distanceSpeedMultiplier", (1f, 1f) },
         { "shipLogRounds", (1f, 1f) },
+        { "enableDLCLogs", (false, false) },
+        { "maxRumorChain", (1f, 1f) },
     };
 
     public static readonly bool EnableDebugMode = true;

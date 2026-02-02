@@ -22,6 +22,7 @@ public class MinigameManager : MonoBehaviour
 	private RandomShipLogInfo _shipLogInfo;
 	private int _numHintsUsed;
 	private int _currentRound = 0;
+	private int _currentRumorChain = 0;
 
 	public enum ShipLogGameMode
 	{
@@ -65,6 +66,7 @@ public class MinigameManager : MonoBehaviour
 		_shipLogInfo = null;
 		_numHintsUsed = 0;
 		_currentRound = 0;
+		_currentRumorChain = 0;
 	}
 
 	private void OnWakeUp()
@@ -166,6 +168,11 @@ public class MinigameManager : MonoBehaviour
 		{
 			actionPool.Add(SetRandomPlanet);
 		}
+		
+		if (ErnestoConditionManager.GetShipLogMode("Rumor Mode"))
+		{
+			actionPool.Add(SetRandomRumor);
+		}
 
 		if (actionPool.Count > 0)
 		{
@@ -204,7 +211,12 @@ public class MinigameManager : MonoBehaviour
 	private void SetRandomFact()
 	{
 		var facts = Locator.GetShipLogManager()._factList
-			.Where(fact => !fact.IsRevealed() && !fact.IsRumor()).ToArray();
+			.Where(fact => !fact.IsRevealed() && !fact.IsRumor() &&
+				(Instance.EnableDLCLogs || 
+					Locator.GetShipLogManager()
+						.GetEntry(fact.GetEntryID())
+						.GetAstroObjectID() != "INVISIBLE_PLANET")
+			).ToArray();
 		
 		if (facts.Length == 0)
 		{
@@ -222,7 +234,9 @@ public class MinigameManager : MonoBehaviour
 	private void SetRandomEntry()
 	{
 		var entries = Locator.GetShipLogManager()._entryList
-			.Where(entry => entry.GetExploreFacts().Any(fact => !fact.IsRevealed())).ToArray();
+			.Where(entry => entry.GetExploreFacts().Any(fact => !fact.IsRevealed()) &&
+				(Instance.EnableDLCLogs || entry.GetAstroObjectID() != "INVISIBLE_PLANET")
+			).ToArray();
 		
 		if (entries.Length == 0)
 		{
@@ -253,6 +267,8 @@ public class MinigameManager : MonoBehaviour
 				{
 					foreach (var astro in list)
 					{
+						if (!Instance.EnableDLCLogs && astro.GetID() == "INVISIBLE_PLANET") continue;
+						
 						WriteDebugMessage("\nCHECK PLANET " + astro.name);
 						var entries = Locator.GetShipLogManager()
 							.GetEntriesByAstroBody(astro.GetID());
@@ -285,6 +301,59 @@ public class MinigameManager : MonoBehaviour
 				_currentShipLogMode = ShipLogGameMode.Planet;
 				_shipLogInfo.AssignShipLogPlanet(_selectedPlanet);
 			});
+	}
+	
+	private void SetRandomRumor()
+	{
+		var rumors = Locator.GetShipLogManager()._factList
+			.Where(fact => !fact.IsRevealed() && fact.IsRumor() &&
+				(Instance.EnableDLCLogs ||
+					Locator.GetShipLogManager()
+						.GetEntry(fact.GetEntryID())
+						.GetAstroObjectID() != "INVISIBLE_PLANET")
+			).ToArray();
+		
+		if (rumors.Length == 0)
+		{
+			WriteDebugMessage("AAAH THERE'S NO RUMORS TO FIND");
+			return;
+		}
+		
+		_selectedFact = rumors[Random.Range(0, rumors.Length)];
+		_selectedFact.OnFactRevealed += OnFactRevealed;
+
+		_currentShipLogMode = ShipLogGameMode.Rumor;
+		_currentRumorChain = 1;
+		_shipLogInfo.AssignShipLogFact(_selectedFact);
+	}
+
+	private bool CanBranchRumor(ShipLogFact rumor)
+	{
+		if (!rumor.HasSource()) return false;
+
+		var entry = Locator.GetShipLogManager().GetEntry(rumor.GetSourceID());
+		return entry.GetRumorFacts().Count > 0 && 
+			entry.GetRumorFacts().Any(fact => !fact.IsRevealed());
+	}
+	
+	private void SetBranchingRumor(ShipLogFact baseRumor)
+	{
+		var entry = Locator.GetShipLogManager().GetEntry(baseRumor.GetSourceID());
+		var rumors = entry.GetRumorFacts()
+			.Where(fact => !fact.IsRevealed()).ToArray();
+		
+		if (rumors.Length == 0)
+		{
+			WriteDebugMessage("AAAH THERE'S NO RUMORS TO BRANCH TO");
+			return;
+		}
+		
+		_selectedFact = rumors[Random.Range(0, rumors.Length)];
+		_selectedFact.OnFactRevealed += OnFactRevealed;
+
+		_currentShipLogMode = ShipLogGameMode.Rumor;
+		_currentRumorChain++;
+		_shipLogInfo.AssignShipLogFact(_selectedFact);
 	}
 
 	// MAKE THIS WORK
@@ -352,6 +421,10 @@ public class MinigameManager : MonoBehaviour
 		{
 			return;
 		}
+
+		var lastFact = _selectedFact;
+		bool canBranch = _currentShipLogMode == ShipLogGameMode.Rumor &&
+			_currentRumorChain < Instance.MaxRumorChain && CanBranchRumor(_selectedFact);
 		
 		if (_selectedFact != null)
 		{
@@ -373,6 +446,15 @@ public class MinigameManager : MonoBehaviour
 					.ForEach(fact => fact.OnFactRevealed -= OnFactRevealed));
 		}
 
+		if (canBranch)
+		{
+			_shipLogInfo.OnBranchRumor();
+			SetBranchingRumor(lastFact);
+			return;
+		}
+		
+		_shipLogInfo.OnObjectiveCompleted();
+		
 		if (_currentRound >= Instance.ShipLogRounds)
 		{
 			_shipLogInfo.DisplayWinText(_numHintsUsed);
@@ -410,9 +492,14 @@ public class MinigameManager : MonoBehaviour
 				_numHintsUsed++;
 			}
 
-			if (Keyboard.current.pKey.wasPressedThisFrame)
+			if (Keyboard.current.oKey.wasPressedThisFrame)
 			{
 				_shipLogInfo.ToggleTextHidden();
+			}
+
+			if (Keyboard.current.lKey.wasPressedThisFrame)
+			{
+				_shipLogInfo.ToggleTextExpanded();
 			}
 		}
 	}

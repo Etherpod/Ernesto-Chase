@@ -181,13 +181,26 @@
       "type": "number",
       "value": 1.0,
       "title": "Number of Rounds",
-      "tooltip": "The number of times to play before winning."
+      "tooltip": "The number of objectives that need to be completed before winning."
+    },
+    "enableDLCLogs": {
+      "type": "toggle",
+      "value": false,
+      "title": "Enable DLC Ship Logs",
+      "tooltip": "Makes it possible for ship logs from the DLC to appear.",
+      "dlcOnly": true
+    },
+    "maxRumorChain": {
+      "type": "number",
+      "value": 1.0,
+      "title": "Max Rumor Chain Length",
+      "tooltip": "The number of times a new rumor can be selected that branches off of the current location."
     },
     "globalFactGoals": {
       "type": "toggle",
       "value": true,
       "title": "Global Fact Goals (QSB)",
-      "tooltip": "Gives everyone the same facts. Disable this if you want everyone to hunt their own facts."
+      "tooltip": "Gives everyone the same objectives. Disable this if you want everyone to hunt their own ship logs."
     },
     
     "survivalSidebar": {

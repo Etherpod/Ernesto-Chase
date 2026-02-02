@@ -495,7 +495,7 @@ public static class PatchnestoClass
 		if (ErnestoChase.Instance.ModHelper.Interaction.ModExists("JohnCorby.VanillaFix") ||
 			ErnestoChase.Instance.ModHelper.Interaction.ModExists("Etherpod.ShipEnhancements"))
 		{
-			return false;
+			return true;
 		}
 
 		bool flag = true;
