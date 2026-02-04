@@ -62,7 +62,10 @@ public class ErnestoChase : ModBehaviour
 
     private CharacterDialogueTree _setupDialogue;
 
-    public static uint[] Players => QSBAPI?.GetPlayerIDs().Where(id => id != QSBAPI.GetLocalPlayerID()).ToArray();
+    public static uint[] Players => QSBAPI?.GetPlayerIDs().Where(id => 
+        id != QSBAPI.GetLocalPlayerID()).ToArray();
+    public static uint[] AlivePlayers => QSBAPI?.GetPlayerIDs().Where(id => 
+        id != QSBAPI.GetLocalPlayerID() && !QSBAPI.GetPlayerDead(id)).ToArray();
 
     public static bool InMultiplayer => QSBAPI != null && QSBAPI.GetIsInMultiplayer();
 

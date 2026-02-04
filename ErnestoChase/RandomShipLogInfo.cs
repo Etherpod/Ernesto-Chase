@@ -29,6 +29,8 @@ public class RandomShipLogInfo : MinigameUIText
 
 	public override void UpdateText()
 	{
+		string roundText = $"- Round {_minigameManager.GetShipLogRound()} -";
+		
 		if (_minigameManager.GetShipLogGameMode() == ShipLogGameMode.Fact && _assignedFact != null)
 		{
 			if (_textExpanded && _assignedFact.GetText().Length > _characterLimit)
@@ -50,7 +52,7 @@ public class RandomShipLogInfo : MinigameUIText
 			{
 				factText = "FACT: " + _assignedFact.GetText();
 			}
-			string origin = "ORIGIN: [HIDDEN]";
+			string origin = "PLANET: [HIDDEN]";
 			string location = "LOCATION: [HIDDEN]";
 		
 			if (_originRevealed)
@@ -61,11 +63,11 @@ public class RandomShipLogInfo : MinigameUIText
 				if (text.Length <= 0 && ErnestoChase.NHInteraction != null)
 				{
 					string nhName = ErnestoChase.NHInteraction.GetNameFromAstroID(entry.GetAstroObjectID());
-					origin = "ORIGIN: " + (nhName.Length <= 0 ? "Unknown" : nhName);
+					origin = "PLANET: " + (nhName.Length <= 0 ? "Unknown" : nhName);
 				}
 				else
 				{
-					origin = "ORIGIN: " + (text.Length <= 0 ? "Unknown" : text);
+					origin = "PLANET: " + (text.Length <= 0 ? "Unknown" : text);
 				}
 			}
 
@@ -75,13 +77,13 @@ public class RandomShipLogInfo : MinigameUIText
 				location = "LOCATION: " + entry.GetName(false);
 			}
 
-			_currentText = $"{goalText}\n\n{factText}\n\n{origin}\n\n{location}";
+			_currentText = $"{roundText}\n{goalText}\n\n{factText}\n\n{origin}\n\n{location}";
 		}
 		else if (_minigameManager.GetShipLogGameMode() == ShipLogGameMode.Entry && _assignedEntry != null)
 		{
 			string goalText = "OBJECTIVE: Learn any fact at the specified location.";
 			string entryText = "LOCATION: " + _assignedEntry.GetName(false);
-			string origin = "ORIGIN: [HIDDEN]";
+			string origin = "PLANET: [HIDDEN]";
 			
 			if (_originRevealed)
 			{
@@ -90,29 +92,29 @@ public class RandomShipLogInfo : MinigameUIText
 				if (text.Length <= 0 && ErnestoChase.NHInteraction != null)
 				{
 					string nhName = ErnestoChase.NHInteraction.GetNameFromAstroID(_assignedEntry.GetAstroObjectID());
-					origin = "ORIGIN: " + (nhName.Length <= 0 ? "Unknown" : nhName);
+					origin = "PLANET: " + (nhName.Length <= 0 ? "Unknown" : nhName);
 				}
 				else
 				{
-					origin = "ORIGIN: " + (text.Length <= 0 ? "Unknown" : text);
+					origin = "PLANET: " + (text.Length <= 0 ? "Unknown" : text);
 				}
 			}
 			
-			_currentText = $"{goalText}\n\n{entryText}\n\n{origin}";
+			_currentText = $"{roundText}\n{goalText}\n\n{entryText}\n\n{origin}";
 		}
 		else if (_minigameManager.GetShipLogGameMode() == ShipLogGameMode.Planet && _assignedPlanet != null)
 		{
-			string goalText = "OBJECTIVE: Learn any fact that belongs to the specified place.";
+			string goalText = "OBJECTIVE: Learn any fact that belongs to the specified planet.";
 			string text = AstroObject.AstroObjectNameToString(
 				AstroObject.StringIDToAstroObjectName(_assignedPlanet.GetID()));
 			if (text.Length <= 0 && ErnestoChase.NHInteraction != null)
 			{
 				string nhName = ErnestoChase.NHInteraction.GetNameFromAstroID(_assignedPlanet.GetID());
-				_currentText = $"{goalText}\n\nORIGIN: " + (nhName.Length <= 0 ? "Unknown" : nhName);
+				_currentText = $"{roundText}\n{goalText}\n\nPLANET: " + (nhName.Length <= 0 ? "Unknown" : nhName);
 			}
 			else
 			{
-				_currentText = $"{goalText}\n\nORIGIN: " + (text.Length <= 0 ? "Unknown" : text);
+				_currentText = $"{roundText}\n{goalText}\n\nPLANET: " + (text.Length <= 0 ? "Unknown" : text);
 			}
 		}
 		else if (_minigameManager.GetShipLogGameMode() == ShipLogGameMode.Rumor && _assignedFact != null)
@@ -136,15 +138,15 @@ public class RandomShipLogInfo : MinigameUIText
 			{
 				rumorText = "RUMOR: " + _assignedFact.GetText();
 			}
-			string location = "LOCATION: [HIDDEN]";
-			string origin = "SOURCE ORIGIN: [HIDDEN]";
-			string source = "SOURCE: [HIDDEN]";
+			string location = "SUBJECT: [HIDDEN]";
+			string origin = "PLANET: [HIDDEN]";
+			string source = "LOCATION: [HIDDEN]";
 			
 			// rumor reveals location first instead of origin
 			if (_originRevealed)
 			{
 				var entry = Locator.GetShipLogManager().GetEntry(_assignedFact.GetEntryID());
-				location = "LOCATION: " + entry.GetName(false);
+				location = "SUBJECT: " + entry.GetName(false);
 			}
 
 			if (_assignedFact.HasSource())
@@ -157,27 +159,32 @@ public class RandomShipLogInfo : MinigameUIText
 					if (text.Length <= 0 && ErnestoChase.NHInteraction != null)
 					{
 						string nhName = ErnestoChase.NHInteraction.GetNameFromAstroID(entry.GetAstroObjectID());
-						origin = "SOURCE ORIGIN: " + (nhName.Length <= 0 ? "Unknown" : nhName);
+						origin = "PLANET: " + (nhName.Length <= 0 ? "Unknown" : nhName);
 					}
 					else
 					{
-						origin = "SOURCE ORIGIN: " + (text.Length <= 0 ? "Unknown" : text);
+						origin = "PLANET: " + (text.Length <= 0 ? "Unknown" : text);
 					}
 				}
 
 				if (_sourceRevealed)
 				{
 					var entry = Locator.GetShipLogManager().GetEntry(_assignedFact.GetSourceID());
-					source = "SOURCE: " + entry.GetName(false);
+					source = "LOCATION: " + entry.GetName(false);
 				}
 			}
 			else
 			{
-				origin = "SOURCE ORIGIN: Unknown";
-				source = "SOURCE: Unknown";
+				origin = "PLANET: Unknown or self";
+				source = "LOCATION: Unknown or self";
+			}
+
+			if (ErnestoChase.Instance.MaxRumorChain > 1)
+			{
+				roundText += $" Chain #{_minigameManager.GetShipLogRumorChain()} -";
 			}
 			
-			_currentText = $"{goalText}\n\n{rumorText}\n\n{location}\n\n{origin}\n\n{source}";
+			_currentText = $"{roundText}\n{goalText}\n\n{rumorText}\n\n{location}\n\n{origin}\n\n{source}";
 		}
 		
 		base.UpdateText();
@@ -221,8 +228,8 @@ public class RandomShipLogInfo : MinigameUIText
 
 	public bool AdvanceHint()
 	{
-		bool hasSourceRumor = (_minigameManager.GetShipLogGameMode() == ShipLogGameMode.Rumor &&
-			_assignedFact.HasSource());
+		bool hasSourceRumor = _minigameManager.GetShipLogGameMode() == ShipLogGameMode.Rumor &&
+			_assignedFact.HasSource();
 		
 		if (!_originRevealed && _minigameManager.GetShipLogGameMode() is
 			ShipLogGameMode.Fact or ShipLogGameMode.Entry or ShipLogGameMode.Rumor)
@@ -250,6 +257,19 @@ public class RandomShipLogInfo : MinigameUIText
 		return false;
 	}
 
+	public void SetCurrentHints(bool origin, bool location, bool source)
+	{
+		_originRevealed = origin;
+		_locationRevealed = location;
+		_sourceRevealed = source;
+		UpdateText();
+	}
+
+	public (bool origin, bool location, bool source) GetCurrentHints()
+	{
+		return (_originRevealed, _locationRevealed, _sourceRevealed);
+	}
+
 	public void ToggleTextExpanded() => SetTextExpanded(!_textExpanded);
 
 	public void SetTextExpanded(bool expand)
@@ -260,13 +280,13 @@ public class RandomShipLogInfo : MinigameUIText
 
 	public void OnObjectiveCompleted()
 	{
-		Locator.GetPlayerAudioController()._notificationAudio.PlayOneShot(_notificationAudio1, 1f);
+		Locator.GetPlayerAudioController()._oneShotExternalSource.PlayOneShot(_notificationAudio1, 1f);
 		_notification.ShowNotification("Objective Completed!");
 	}
 	
 	public void OnBranchRumor()
 	{
-		Locator.GetPlayerAudioController()._notificationAudio.PlayOneShot(_notificationAudio2, 1f);
+		Locator.GetPlayerAudioController()._oneShotExternalSource.PlayOneShot(_notificationAudio2, 1f);
 		_notification.ShowNotification("Choosing Next Rumor...");
 	}
 
@@ -275,5 +295,7 @@ public class RandomShipLogInfo : MinigameUIText
 		_currentText = $"YOU WON!!!!!\nHints used: {hintsUsed}";
 		_text.text = _currentText;
 		_assignedFact = null;
+		_assignedEntry = null;
+		_assignedPlanet = null;
 	}
 }

@@ -58,9 +58,12 @@ public static class QSBCompat
         api.RegisterHandler<bool>("stop-game", ReceiveStopGame);
         api.RegisterHandler<float>("survival-timer-setup", ReceiveSurvivalTimerSetup);
         api.RegisterHandler<float>("survival-timer-sync", ReceiveSurvivalTimerSync);
-        api.RegisterHandler<string>("random-fact", ReceiveRandomShipLogFact);
+        api.RegisterHandler<(MinigameManager.ShipLogGameMode, string, int)>("random-ship-log-data", ReceiveRandomShipLogData);
         api.RegisterHandler<bool>("generate-random-fact", ReceiveRandomFactGenerate);
         api.RegisterHandler<bool>("win-random-ship-log", ReceiveShipLogWin);
+        api.RegisterHandler<bool>("random-ship-log-objective", ReceiveShipLogObjectiveComplete);
+        api.RegisterHandler<(string, int)>("random-ship-log-branch-rumor", ReceiveBranchRumor);
+        api.RegisterHandler<(bool, bool, bool, int)>("random-ship-log-hint", ReceiveShipLogHint);
     }
 
     private static void OnPlayerJoin(uint id)
@@ -232,14 +235,16 @@ public static class QSBCompat
         ErnestoChase.MinigameManager.SetUpSurvivalRemote(timeLeft);
     }
 
-    public static void SendRandomShipLogFact(uint to, string factID)
+    public static void SendRandomShipLogData(uint to, 
+        MinigameManager.ShipLogGameMode gamemode, string id, int round)
     {
-        api.SendMessage("random-fact", factID, to);
+        api.SendMessage("random-ship-log-data", (gamemode, id, round), to);
     }
 
-    private static void ReceiveRandomShipLogFact(uint from, string factID)
+    private static void ReceiveRandomShipLogData(uint from, 
+        (MinigameManager.ShipLogGameMode gamemode, string id, int round) data)
     {
-        ErnestoChase.MinigameManager.SetUpRandomShipLogRemote(factID);
+        ErnestoChase.MinigameManager.SetUpRandomShipLogRemote(data.gamemode, data.id, data.round);
     }
     
     public static void SendRandomFactGenerate(uint to)
@@ -260,5 +265,39 @@ public static class QSBCompat
     private static void ReceiveShipLogWin(uint from, bool b)
     {
         ErnestoChase.MinigameManager.WinRandomShipLogRemote();
+    }
+
+    public static void SendShipLogObjectiveComplete(uint to)
+    {
+        api.SendMessage("random-ship-log-objective", false, to);
+    }
+
+    private static void ReceiveShipLogObjectiveComplete(uint from, bool data)
+    {
+        ErnestoChase.MinigameManager.CompleteObjectiveRemote();
+    }
+
+    public static void SendBranchRumor(uint to, string id, int currentChain)
+    {
+        api.SendMessage("random-ship-log-branch-rumor", (id, currentChain), to);
+    }
+
+    private static void ReceiveBranchRumor(uint from, (string id, int currentChain) data)
+    {
+        ErnestoChase.MinigameManager.SetBranchingRumorRemote(data.id, data.currentChain);
+    }
+
+    public static void SendShipLogHint(uint to, (bool origin, bool location, 
+        bool source) data, int numHints)
+    {
+        api.SendMessage("random-ship-log-hint", (data.origin, data.location, 
+            data.source, numHints), to);
+    }
+
+    private static void ReceiveShipLogHint(uint from, (bool origin, bool location, 
+        bool source, int numHints) data)
+    {
+        ErnestoChase.MinigameManager.SetShipLogHintsRemote(data.origin, data.location, 
+            data.source, data.numHints);
     }
 }
