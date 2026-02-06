@@ -180,6 +180,9 @@ public class ErnestoChase : ModBehaviour
                 ErnestoConditionManager.GameStarted = true;
             }
 
+            DialogueConditionManager.SharedInstance.SetConditionState("EC_NON_HOST",
+                InMultiplayer && !QSBAPI.GetIsHost());
+            
             var prefab = LoadPrefab("Assets/ErnestoChase/EC_SetupDialogue.prefab");
             var obj = Instantiate(prefab, FindObjectOfType<PlayerCameraController>().transform);
             obj.transform.localPosition = new Vector3(0f, 0f, 1.5f);

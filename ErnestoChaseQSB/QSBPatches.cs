@@ -8,6 +8,12 @@ using QSB.Player.TransformSync;
 using QSB.ShipSync;
 using QSB.Localization;
 using System.Linq;
+using ErnestoChase;
+using OWML.Common;
+using QSB;
+using QSB.Messaging;
+using QSB.Player.Messages;
+using QSB.Utility;
 
 namespace ErnestoChaseQSB;
 
@@ -121,5 +127,21 @@ public class QSBPatches
         }
 
         return false;
+    }
+
+    [HarmonyPrefix]
+    [HarmonyPatch(typeof(PlayerJoinMessage), nameof(PlayerJoinMessage.OnReceiveRemote))]
+    public static bool PreventJoinIfGameStarted(PlayerJoinMessage __instance)
+    {
+        if (QSBCore.IsHost && ErnestoConditionManager.GameStarted)
+        {
+            DebugLog.ToConsole($"Error - Ernesto Chase game has started already!", MessageType.Error);
+            new PlayerKickMessage(__instance.From,
+                    "A game of Ernesto Chase has already started!\nPlease wait for the game to end before joining.")
+                .Send();
+            return false;
+        }
+
+        return true;
     }
 }

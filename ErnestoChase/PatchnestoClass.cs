@@ -534,7 +534,19 @@ public static class PatchnestoClass
 		return false;
 	}
 
-	private static int lastSelectedOption = -1;
+	[HarmonyPostfix]
+	[HarmonyPatch(typeof(DialogueConditionManager), nameof(DialogueConditionManager.ReadPlayerData))]
+	public static void SetNonHostCondition(DialogueConditionManager __instance)
+	{
+		bool state = ErnestoChase.InMultiplayer && !ErnestoChase.QSBAPI.GetIsHost();
+		ErnestoChase.WriteDebugMessage("non host: " + state);
+		if (!__instance.AddCondition("EC_NON_HOST", state))
+		{
+			__instance.SetConditionState("EC_NON_HOST", state);
+		}
+	}
+
+	//private static int lastSelectedOption = -1;
 	
 	/*[HarmonyPrefix]
 	[HarmonyPatch(typeof(CharacterDialogueTree), nameof(CharacterDialogueTree.ContinueToNextNode), typeof(DialogueOption))]
@@ -597,9 +609,13 @@ public static class PatchnestoClass
 		if (optionIndex < 0) return true;
 		
 		var option = __instance._currentDialogueBox.OptionFromUIIndex(optionIndex);
-		if (option._textID.Contains("SetupEC_RSSR_Configure") && option._textID.Contains(" - "))
+		var stem = option._textID.Contains("SetupEC_RSSR_Configure_Remote")
+			? "SetupEC_RSSR_Configure_Remote"
+			: "SetupEC_RSSR_Configure";
+		
+		if (option._textID.Contains(stem) && option._textID.Contains(" - "))
 		{
-			string text = option._textID.Replace("SetupEC_RSSR_Configure", "");
+			string text = option._textID.Replace(stem, "");
 			string name = text.Substring(0, text.IndexOf(" - "));
 			bool state = ErnestoConditionManager.GetShipLogMode(name);
 			ErnestoConditionManager.SetShipLogMode(name, !state);
@@ -632,6 +648,20 @@ public static class PatchnestoClass
 	[HarmonyPatch(typeof(TextTranslation), nameof(TextTranslation.Translate))]
 	public static void TextTranslation_Translate(TextTranslation __instance, string key, ref string __result)
 	{
+		var stem = key.Contains("SetupEC_RSSR_Configure_Remote")
+			? "SetupEC_RSSR_Configure_Remote"
+			: "SetupEC_RSSR_Configure";
+		
+		if (key.Contains(stem))
+		{
+			string text = key.Replace(stem, "");
+			if (key.IndexOf(" - ") < 0) return;
+			bool state = ErnestoConditionManager.GetShipLogMode(text.Substring(0, text.IndexOf(" - ")));
+
+			__result = __result.Replace("STATE", state ? "Enabled" : "Disabled");
+			return;
+		}
+		
 		if (key.Contains("EC_SelectMinigame") || key.Contains("EC_SelectMinigame_Selected"))
 		{
 			string minigame;
@@ -649,14 +679,6 @@ public static class PatchnestoClass
 			}
 
 			__result = __result.Replace("CURRENT_MINIGAME", minigame);
-		}
-		else if (key.Contains("EC_RSSR_Configure"))
-		{
-			string text = key.Replace("SetupEC_RSSR_Configure", "");
-			if (key.IndexOf(" - ") < 0) return;
-			bool state = ErnestoConditionManager.GetShipLogMode(text.Substring(0, text.IndexOf(" - ")));
-
-			__result = __result.Replace("STATE", state ? "Enabled" : "Disabled");
 		}
 	}
 }

@@ -618,7 +618,7 @@ public static class ECMenuManager
 			return true;
 		}
 
-		if (name == "globalFactGoals" && !InMultiplayer)
+		if (name == "globalFactGoals" && (!InMultiplayer || !QSBAPI.GetIsHost()))
 		{
 			return true;
 		}

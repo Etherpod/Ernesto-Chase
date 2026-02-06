@@ -24,7 +24,7 @@ public class ControllableErnesto : MonoBehaviour
     private bool changingSize = false;
     private float sizeStartTime;
     private float lastSize;
-    private readonly float sizeChangeLength = 2f;
+    private readonly float sizeChangeLength = 1.5f;
 
     private float baseMass;
     private float baseFOV;
@@ -34,7 +34,7 @@ public class ControllableErnesto : MonoBehaviour
 
     private readonly float angularDrag = 0.95f;
     private readonly float movementMultiplier = 30f;
-    private readonly float rotationMultiplier = 2f;
+    private readonly float rotationMultiplier = 2.2f;
     private readonly float forceMultiplier = 0.8f;
 
     private void Awake()
@@ -57,7 +57,7 @@ public class ControllableErnesto : MonoBehaviour
     private void Start()
     {
         adjustedManualDrag = Mathf.Pow(angularDrag, OWTime.GetFixedTimestep() / 0.01666666f);
-        storedTargets = new();
+        storedTargets = new TargetDataQueue();
     }
 
     private void OnDisable()
@@ -143,11 +143,13 @@ public class ControllableErnesto : MonoBehaviour
         }
 
         rotation.x -= OWInput.GetValue(InputLibrary.pitch);
+        rigidbody.AddLocalAngularAcceleration(rotation);
 
-        manualAngularVelocity += transform.TransformDirection(rotation * rotationMultiplier * Time.fixedDeltaTime);
+        /*manualAngularVelocity += transform.TransformDirection(rotation * (rotationMultiplier * Time.fixedDeltaTime));
         manualAngularVelocity *= adjustedManualDrag;
-        Quaternion quaternion = Quaternion.AngleAxis(manualAngularVelocity.magnitude * 180f / 3.1415927f * Time.fixedDeltaTime, manualAngularVelocity.normalized);
-        rigidbody.AddRotation(quaternion);
+        Quaternion quaternion = Quaternion.AngleAxis(manualAngularVelocity.magnitude * 
+            180f / Mathf.PI * Time.fixedDeltaTime, manualAngularVelocity.normalized);
+        rigidbody.AddRotation(quaternion);*/
     }
 
     private void UpdateSize()
@@ -155,16 +157,7 @@ public class ControllableErnesto : MonoBehaviour
         if (changingSize)
         {
             float timeLerp = Mathf.InverseLerp(sizeStartTime, sizeStartTime + sizeChangeLength, Time.fixedTime);
-            float scale;
-
-            if (shrinked)
-            {
-                scale = Mathf.SmoothStep(lastSize, 0.1f, timeLerp);
-            }
-            else
-            {
-                scale = Mathf.SmoothStep(lastSize, 1f, timeLerp);
-            }
+            float scale = Mathf.SmoothStep(lastSize, shrinked ? 0.1f : 1f, timeLerp);
 
             scaleRoot.localScale = Vector3.one * scale;
             owCamera.fieldOfView = Mathf.Lerp(baseFOV + 10f, baseFOV, scale);

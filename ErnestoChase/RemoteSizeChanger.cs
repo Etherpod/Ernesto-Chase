@@ -9,7 +9,7 @@ public class RemoteSizeChanger : MonoBehaviour
     private bool changingSize = false;
     private float sizeStartTime;
     private float lastSize;
-    private readonly float sizeChangeLength = 2f;
+    private readonly float sizeChangeLength = 1.5f;
 
     private void Awake()
     {
@@ -39,6 +39,11 @@ public class RemoteSizeChanger : MonoBehaviour
             {
                 changingSize = false;
                 enabled = false;
+
+                if (!shrinked)
+                {
+                    state.KillVolumeEnabled = true;
+                }
             }
         }
     }
@@ -53,6 +58,12 @@ public class RemoteSizeChanger : MonoBehaviour
         lastSize = transform.localScale.x;
         sizeStartTime = Time.fixedTime;
         changingSize = true;
+
+        if (shrinked)
+        {
+            state.KillVolumeEnabled = false;
+        }
+        
         enabled = true;
     }
 }
