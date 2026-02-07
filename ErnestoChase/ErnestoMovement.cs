@@ -33,8 +33,8 @@ public class ErnestoMovement : MonoBehaviour
     private float baseSpaceSpeed;
     private float currentSpaceSpeed;
 
-    private Queue<(Vector3 pos, bool isTeleport, bool isInRingWorld)> targets = new();
-    private Queue<(Vector3 pos, bool isTeleport, bool isInRingWorld)> spaceTargets = new();
+    private Queue<(Vector3 pos, Transform parent, bool isTeleport, bool isInRingWorld)> targets = new();
+    private Queue<(Vector3 pos, Transform parent, bool isTeleport, bool isInRingWorld)> spaceTargets = new();
 
     private TargetDataQueue storedTargets;
     private bool usingStoredTargets = false;
@@ -173,7 +173,7 @@ public class ErnestoMovement : MonoBehaviour
         {
             spawnDelayTimer = targetSpawnDelay;
 
-            Transform targetParent = planetManager.GetTargetParent();
+            Transform targetParent = GetTargetParent();
             var arrayTargets = targets.ToArray();
             Vector3 playerPos = targetParent.InverseTransformPoint(Locator.GetPlayerTransform().position);
 
@@ -256,7 +256,7 @@ public class ErnestoMovement : MonoBehaviour
             spawnDelayTimer = targetSpawnDelay;
             if (!planetManager.HasRecentlyTeleported())
             {
-                SpawnTarget(planetManager.GetTargetParent(), Locator.GetPlayerTransform().position);
+                SpawnTarget(GetTargetParent(), Locator.GetPlayerTransform().position);
             }
         }
     }
@@ -274,7 +274,7 @@ public class ErnestoMovement : MonoBehaviour
         {
             spawnDelayTimer = targetSpawnDelay;
             planetManager.UpdatePlayerPlanetState();
-            SpawnTarget(planetManager.GetTargetParent(), Locator.GetPlayerTransform().position);
+            SpawnTarget(GetTargetParent(), Locator.GetPlayerTransform().position);
         }
 
         if (state.QuantumMode)
@@ -328,13 +328,27 @@ public class ErnestoMovement : MonoBehaviour
 
     private void SpawnTarget(Transform parent, Vector3 worldPosition, bool isTeleport = false)
     {
-        targets.Enqueue((parent.InverseTransformPoint(worldPosition), isTeleport, 
+        targets.Enqueue((parent.InverseTransformPoint(worldPosition), parent, isTeleport, 
             Locator.GetRingWorldController()?._playerInsideRingWorld ?? false));
     }
 
     private void SpawnSpaceTarget(Vector3 localPosition, bool isTeleport = false)
     {
-        spaceTargets.Enqueue((localPosition, isTeleport, false));
+        spaceTargets.Enqueue((localPosition, planetManager.GetStaticParent(), isTeleport, 
+            false));
+    }
+
+    private Transform GetTargetParent(bool ignoreTeleports = false)
+    {
+        if (ErnestoChase.ActiveIslands.Count > 0)
+        {
+            ErnestoChase.WriteDebugMessage("return island " + ErnestoChase.ActiveIslands[0]);
+            return ErnestoChase.ActiveIslands[0].transform;
+        }
+        
+        return ignoreTeleports 
+            ? planetManager.GetCurrentPlanet().transform 
+            : planetManager.GetTargetParent();
     }
 
     private TargetData GenerateTargetData(bool isTeleportEnter = false, bool isTeleportExit = false,
@@ -494,9 +508,25 @@ public class ErnestoMovement : MonoBehaviour
 
     private void GroundMovement()
     {
-        Vector3 targetPos = targets.Count > 0
-            ? targets.Peek().pos
-            : planetManager.GetTargetParent().InverseTransformPoint(Locator.GetPlayerTransform().position);
+        Vector3 targetPos;
+        if (targets.Count > 0)
+        {
+            var target = targets.Peek();
+            if (target.parent == transform.parent)
+            {
+                targetPos = target.pos;
+            }
+            else
+            {
+                ErnestoChase.WriteDebugMessage("use position from parent " + target.parent);
+                targetPos = transform.parent.InverseTransformPoint(target.parent.TransformPoint(target.pos));
+            }
+        }
+        else
+        {
+            targetPos = planetManager.GetTargetParent().InverseTransformPoint(Locator.GetPlayerTransform().position);
+        }
+        
         float dist = (targetPos - lastPosition).magnitude;
         float speed = currentSpeed;
         float time = Time.time - timeAtRelease;
@@ -594,7 +624,7 @@ public class ErnestoMovement : MonoBehaviour
                 OWLayerMask.physicalMask))
         {
             targets.Clear();
-            SpawnTarget(planetManager.GetCurrentPlanet().transform, Locator.GetPlayerTransform().position);
+            SpawnTarget(GetTargetParent(true), Locator.GetPlayerTransform().position);
             OnTakeShortcut?.Invoke();
             hasTakenShortcut = true;
         }
@@ -933,7 +963,7 @@ public class ErnestoMovement : MonoBehaviour
         }
         else
         {
-            SpawnTarget(planetManager.GetTargetParent(), planetManager.GetPlayerParent().TransformPoint(state.LastPlayerPos), true);
+            SpawnTarget(GetTargetParent(), planetManager.GetPlayerParent().TransformPoint(state.LastPlayerPos), true);
         }
     }
 
@@ -948,7 +978,7 @@ public class ErnestoMovement : MonoBehaviour
             OWRigidbody planet = planetManager.GetCurrentPlanetBody();
             if (planet != null)
             {
-                SpawnTarget(planet.transform, Locator.GetPlayerTransform().position, false);
+                SpawnTarget(GetTargetParent(true), Locator.GetPlayerTransform().position, false);
             }
             else
             {

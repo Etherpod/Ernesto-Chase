@@ -39,7 +39,8 @@ public class ErnestoChase : ModBehaviour
     public static IQSBAPI QSBAPI;
     public static IQSBInteraction QSBInteraction;
     public static INHInteraction NHInteraction;
-
+    public static List<OWRigidbody> ActiveIslands = [];
+    
     private bool spectating = false;
     private bool spectatingErnesto = true;
     public List<SpectatorCamera> ernestoSpectatorCams = [];
@@ -192,6 +193,7 @@ public class ErnestoChase : ModBehaviour
 
             if (ErnestoConditionManager.GameStarted)
             {
+                SetUpIslandTriggers();
                 StartCoroutine(WaitForPlayer());
 
                 if (InMultiplayer)
@@ -240,6 +242,8 @@ public class ErnestoChase : ModBehaviour
                 storedErnestoTargets.Add(ernesto.GetComponent<ErnestoManager>().GetStoredTargets());
             }
 
+            ActiveIslands.Clear();
+
             if (_setupDialogue != null)
             {
                 _setupDialogue.OnEndConversation -= OnEndSetupConversation;
@@ -258,6 +262,66 @@ public class ErnestoChase : ModBehaviour
                 GlobalMessenger.RemoveListener("ExitDreamWorld", OnPlayerTriggerDreamWorld);
             }
         };
+    }
+
+    private void SetUpIslandTriggers()
+    {
+        var gb = GameObject.Find("GabbroIsland_Body");
+        if (gb)
+        {
+            var vol = gb.transform.Find("Sector_GabbroIsland/Volumes_GabbroIsland/InheritanceVolume");
+            if (vol) SpawnIslandTrigger(vol);
+        }
+
+        var st = GameObject.Find("StatueIsland_Body");
+        if (st)
+        {
+            var vol = st.transform.Find("Sector_StatueIsland/Volumes_StatueIsland/InheritanceVolume (1)");
+            if (vol) SpawnIslandTrigger(vol);
+        }
+        
+        var cy = GameObject.Find("ConstructionYardIsland_Body");
+        if (cy)
+        {
+            var vol = cy.transform.Find("Sector_ConstructionYard/Volumes_ConstructionYard/InheritanceVolume (2)");
+            if (vol) SpawnIslandTrigger(vol);
+        }
+        
+        var db = GameObject.Find("BrambleIsland_Body");
+        if (db)
+        {
+            var vol = db.transform.Find("Sector_BrambleIsland/Volumes_BrambleIsland/InheritanceVolume (2)");
+            if (vol) SpawnIslandTrigger(vol);
+        }
+    }
+
+    private void SpawnIslandTrigger(Transform source)
+    {
+        var trigger = new GameObject("EC_IslandTriggerVolume");
+        trigger.transform.parent = source.transform.parent;
+        trigger.transform.localPosition = source.transform.localPosition;
+        trigger.transform.localRotation = source.transform.localRotation;
+
+        Shape shape = source.GetComponent<Shape>();
+        if (shape is SphereShape sphere)
+        {
+            var copy = trigger.AddComponent<SphereShape>();
+            copy.center = sphere.center;
+            copy.radius = sphere.radius;
+            copy.pointChecksOnly = sphere.pointChecksOnly;
+        }
+        else if (shape is CapsuleShape capsule)
+        {
+            var copy = trigger.AddComponent<CapsuleShape>();
+            copy.center = capsule.center;
+            copy.radius = capsule.radius;
+            copy.height = capsule.height;
+            copy.direction = capsule.direction;
+            copy.pointChecksOnly = capsule.pointChecksOnly;
+        }
+
+        trigger.AddComponent<OWTriggerVolume>();
+        trigger.AddComponent<IslandTriggerVolume>();
     }
 
     private void Update()
