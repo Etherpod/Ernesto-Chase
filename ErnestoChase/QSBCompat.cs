@@ -64,6 +64,7 @@ public static class QSBCompat
         api.RegisterHandler<bool>("random-ship-log-objective", ReceiveShipLogObjectiveComplete);
         api.RegisterHandler<(string, int)>("random-ship-log-branch-rumor", ReceiveBranchRumor);
         api.RegisterHandler<(bool, bool, bool, int)>("random-ship-log-hint", ReceiveShipLogHint);
+        api.RegisterHandler<(uint, uint)>("state-change", ReceiveStateChange);
     }
 
     private static void OnPlayerJoin(uint id)
@@ -299,5 +300,18 @@ public static class QSBCompat
     {
         ErnestoChase.MinigameManager.SetShipLogHintsRemote(data.origin, data.location, 
             data.source, data.numHints);
+    }
+
+    public static void SendErnestoStateChange(uint to, uint localID, uint newStateIndex)
+    {
+        api.SendMessage("state-change", (localID, newStateIndex), to);
+    }
+
+    private static void ReceiveStateChange(uint from, (uint localID, uint newStateIndex) data)
+    {
+        if (ErnestoChase.TryGetRemoteErnesto(from, data.localID, out GameObject remoteErnesto))
+        {
+            remoteErnesto.GetComponent<ErnestoState>().SetActiveStateID(data.newStateIndex);
+        }
     }
 }

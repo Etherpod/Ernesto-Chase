@@ -81,13 +81,21 @@ public class ErnestoManager : MonoBehaviour
 
     private void Update()
     {
-        if (!state.ErnestoReleased || state.DataStates.Keys.Count <= 1) return;
+        if (!state.ErnestoReleased || state.DataStates.Keys.Count <= 1 || state.RemoteID != 0) return;
 
         if (switchDelay <= 0f)
         {
             var keys = state.DataStates.Keys.Where(key => key != state.ActiveStateID).ToArray();
             var randKey = keys[Random.Range(0, keys.Length)];
             state.SetActiveStateID(randKey);
+
+            if (ErnestoChase.InMultiplayer)
+            {
+                foreach (var id in ErnestoChase.Players)
+                {
+                    QSBCompat.SendErnestoStateChange(id, state.LocalID, randKey);
+                }
+            }
 
             switchDelay = Random.Range(switchTimeMin, switchTimeMax);
         }
