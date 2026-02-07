@@ -187,6 +187,11 @@ public class ControllableErnesto : MonoBehaviour
         return new TargetData(reference.name, localPos, worldPos, Time.fixedTime);
     }*/
 
+    public void SetActive(bool active)
+    {
+        scaleRoot.gameObject.SetActive(active);
+    }
+
     public void AttachPlayer()
     {
         Locator.GetPlayerCamera().enabled = false;
@@ -195,21 +200,34 @@ public class ControllableErnesto : MonoBehaviour
 
         if (PlayerState.IsWearingSuit())
         {
-            Locator.GetPlayerSuit().RemoveSuit();
+            Locator.GetPlayerSuit().RemoveSuit(true);
         }
 
         Locator.GetToolModeSwapper().UnequipTool();
 
-        foreach (var renderer in Locator.GetPlayerBody().GetComponentsInChildren<Renderer>())
-        {
-            renderer.forceRenderingOff = true;
-        }
-
+        ErnestoChase.WriteDebugMessage("attach");
         attachPoint.AttachPlayer();
 
         GlobalMessenger.FireEvent("PlayerRepositioned");
 
         Locator.GetPlayerBody().GetComponent<PlayerResources>()._invincible = true;
         Locator.GetDeathManager()._invincible = true;
+    }
+
+    public void DetachPlayer()
+    {
+        ErnestoChase.WriteDebugMessage("enabled: " + attachPoint.enabled);
+        attachPoint.DetachPlayer();
+        
+        GlobalMessenger.FireEvent("PlayerRepositioned");
+        
+        owCamera.enabled = false;
+        Locator.GetPlayerCamera().enabled = true;
+        GlobalMessenger<OWCamera>.FireEvent("SwitchActiveCamera", Locator.GetPlayerCamera());
+
+        Locator.GetPlayerSuit().SuitUp(instantSuitUp: true);
+
+        Locator.GetPlayerBody().GetComponent<PlayerResources>()._invincible = false;
+        Locator.GetDeathManager()._invincible = false;
     }
 }

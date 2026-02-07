@@ -5,6 +5,7 @@ namespace ErnestoChase;
 public class RemoteSizeChanger : MonoBehaviour
 {
     private ErnestoState state;
+    private ErnestoEffects effects;
     private bool shrinked = false;
     private bool changingSize = false;
     private float sizeStartTime;
@@ -14,6 +15,7 @@ public class RemoteSizeChanger : MonoBehaviour
     private void Awake()
     {
         state = GetComponent<ErnestoState>();
+        effects = GetComponent<ErnestoEffects>();
         enabled = false;
     }
 
@@ -34,13 +36,15 @@ public class RemoteSizeChanger : MonoBehaviour
             }
 
             transform.localScale = Vector3.one * scale;
+            float pitchMult = Mathf.Lerp(1f, 1.5f, timeLerp);
+            effects.SetAudioPitchMultiplier(pitchMult);
 
             if (timeLerp == 1)
             {
                 changingSize = false;
                 enabled = false;
 
-                if (!shrinked)
+                if (!shrinked && !ErnestoChase.Instance.ErnestoMorph)
                 {
                     state.KillVolumeEnabled = true;
                 }

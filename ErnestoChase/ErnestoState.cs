@@ -49,7 +49,7 @@ public class ErnestoState : MonoBehaviour
     {
         var data = new ErnestoData();
         
-        data.id = ErnestoChase.QSBAPI != null ? ErnestoChase.QSBAPI.GetLocalPlayerID() : 0;
+        data.id = ErnestoChase.InMultiplayer ? ErnestoChase.QSBAPI.GetLocalPlayerID() : 0;
         data.time = Time.fixedTime;
         data.MovementSpeed = (float)settings["groundMovementSpeed"].property;
         data.SpeedAccumulationType = (string)settings["speedAccumulationType"].property;
@@ -72,33 +72,11 @@ public class ErnestoState : MonoBehaviour
 
     public ErnestoData GetData(uint stateID)
     {
-        /*return new ErnestoData(id, LocalID, Time.fixedTime, MovementSpeedMultiplier, SpeedAccumulationType, SpeedAccumulationRate, 
-            DistanceSpeedMultiplier, SpaceAccelerationType, SpaceSpeedMultiplier, SpaceTimer, BrambleSpeedMultiplier, 
-            DreamWorldSpeedMultiplier, StartDelay, StealthMode, QuantumMode, ErnestoCam, ErnestoMusic);*/
         return DataStates.ContainsKey(stateID) ? DataStates[stateID] : null;
     }
 
     public void SetData(uint stateID, ErnestoData data)
     {
-        /*MovementSpeedMultiplier = data.MovementSpeed;
-        SpeedAccumulationType = data.SpeedAccumulationType;
-        SpeedAccumulationRate = data.SpeedAccumulationRate;
-        DistanceSpeedMultiplier = data.DistanceSpeedMultiplier;
-        SpaceAccelerationType = data.SpaceAccelerationType;
-        SpaceSpeedMultiplier = data.SpaceSpeed;
-        SpaceTimer = data.SpaceTimer;
-        BrambleSpeedMultiplier = data.BrambleSpeedMultiplier;
-        DreamWorldSpeedMultiplier = data.DreamWorldSpeedMultiplier;
-        StartDelay = data.StartDelay;
-        StealthMode = data.StealthMode;
-        QuantumMode = data.QuantumMode;
-        ErnestoCam = data.ErnestoCam;
-        ErnestoMusic = data.ErnestoMusic;
-        DisableLight = data.DisableLight;
-
-        RemoteID = data.id;
-        LocalID = data.localid;*/
-
         data.time -= Time.fixedTime;
         DataStates[stateID] = data;
     }

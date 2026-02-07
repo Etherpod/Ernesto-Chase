@@ -136,7 +136,6 @@ public class ErnestoChase : ModBehaviour
     {
         assetBundle = AssetBundle.LoadFromFile(Path.Combine(ModHelper.Manifest.ModFolderPath, "assets/ernestochase"));
         ernesto = LoadPrefab("Assets/ErnestoChase/Ernesto.prefab");
-        AssetBundleUtilities.ReplaceShaders(ernesto);
         ernesto.SetActive(false);
 
         _changeSpectateTargetPrompt = new(InputLibrary.toolOptionLeft, InputLibrary.toolOptionRight, 
@@ -722,19 +721,25 @@ public class ErnestoChase : ModBehaviour
         {
             if (ErnestoMorph)
             {
-                GameObject prefab = LoadPrefab("Assets/ErnestoChase/ControllableErnesto_Body.prefab");
-                ControllableErnesto ernesto = Instantiate(prefab, Locator.GetPlayerTransform().position + Locator.GetPlayerTransform().up * 3f, Locator.GetPlayerTransform().rotation)
+                GameObject prefab = LoadPrefab("Assets/ErnestoChase/PlayerMorphController.prefab");
+                Instantiate(prefab, Locator.GetPlayerTransform());
+
+                /*GameObject prefab = LoadPrefab("Assets/ErnestoChase/ControllableErnesto_Body.prefab");
+                ControllableErnesto controllableErnesto = Instantiate(prefab, Locator.GetPlayerTransform().position +
+                        Locator.GetPlayerTransform().up * 3f, Locator.GetPlayerTransform().rotation)
                     .GetComponent<ControllableErnesto>();
-                ModHelper.Events.Unity.FireOnNextUpdate(ernesto.AttachPlayer);
+                ModHelper.Events.Unity.FireOnNextUpdate(controllableErnesto.AttachPlayer);
 
                 if (InMultiplayer)
                 {
                     ErnestoData fakeData = new();
+                    fakeData.id = InMultiplayer ? QSBAPI.GetLocalPlayerID() : 0;
+                    fakeData.localid = 0;
                     foreach (var id in Players)
                     {
                         QSBCompat.SendControlledErnestoData(id, fakeData);
                     }
-                }
+                }*/
             }
 
             SpawnErnestos();
@@ -1243,7 +1248,14 @@ public class ErnestoChase : ModBehaviour
 
     public static GameObject LoadPrefab(string path)
     {
-        return (GameObject)Instance.assetBundle.LoadAsset(path);
+        var obj = (GameObject)Instance.assetBundle.LoadAsset(path);
+        if (obj)
+        {
+            AssetBundleUtilities.ReplaceShaders(obj);
+            return obj;
+        }
+
+        return null;
     }
 
     public static void WriteDebugMessage(object message)

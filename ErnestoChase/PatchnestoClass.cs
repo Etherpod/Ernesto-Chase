@@ -95,7 +95,7 @@ public static class PatchnestoClass
 			ErnestoChase.Instance.RespawnErnesto();
 		}
 
-		if (ErnestoChase.Instance.ErnestoMorph)
+		if (Locator.GetPlayerBody().GetComponentInChildren<PlayerMorphController>()?.IsMorphed() ?? false)
 		{
 			__instance._invincible = true;
 		}
@@ -105,7 +105,9 @@ public static class PatchnestoClass
 	[HarmonyPatch(typeof(ToolModeSwapper), nameof(ToolModeSwapper.EquipToolMode))]
 	public static bool CancelToolEquip()
 	{
-		return !ErnestoChase.Instance.ErnestoMorph;
+		return !(Locator.GetPlayerBody()
+			.GetComponentInChildren<PlayerMorphController>()?.IsMorphed() 
+			?? false);
 	}
 
 	[HarmonyPrefix]

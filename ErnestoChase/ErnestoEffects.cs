@@ -473,6 +473,13 @@ public class ErnestoEffects : MonoBehaviour
         UpdateMuffle(true);
     }
 
+    public void SetAudioPitchMultiplier(float mult)
+    {
+        loopingAudio.pitch = mult;
+        oneShotAudio.pitch = mult;
+        musicAudio.pitch = mult;
+    }
+
     private void OnDestroy()
     {
         state.OnDataChanged += OnDataChanged;

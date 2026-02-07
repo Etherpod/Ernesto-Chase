@@ -273,7 +273,7 @@ public class ErnestoManager : MonoBehaviour
         if (!state.ErnestoReleased)
         {
             state.ErnestoReleased = true;
-            state.KillVolumeEnabled = true;
+            state.KillVolumeEnabled = state.LocalID != 0 || !ErnestoChase.Instance.ErnestoMorph;
             if (!state.UsingStoredTargets)
             {
                 planetManager.UpdatePlayerPlanetState(true);
