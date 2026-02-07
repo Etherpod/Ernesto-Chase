@@ -234,7 +234,8 @@ public class ErnestoChase : ModBehaviour
                     continue;
                 }
 
-                if (InMultiplayer && remoteErnestos[0].All(e => e.Value != ernesto))
+                if (InMultiplayer && remoteErnestos.ContainsKey(0) && 
+                    remoteErnestos[0].All(e => e.Value != ernesto))
                 {
                     continue;
                 }

@@ -73,19 +73,29 @@ public class MinigameManager : MonoBehaviour
 
 	private void OnWakeUp()
 	{
-		Instance.ModHelper.Events.Unity.FireInNUpdates(() =>
+		if (!ErnestoConditionManager.GameStarted ||
+			(!ErnestoConditionManager.RandomShipLogEnabled && 
+				!ErnestoConditionManager.SurvivalEnabled))
 		{
-			WriteDebugMessage("WAKE UP WAKE UP");
-			if (_countdownTimer != null)
+			return;
+		}
+		
+		Instance.ModHelper.Events.Unity.RunWhen(
+			() => _countdownTimer != null || _shipLogInfo != null,
+			() =>
 			{
-				_countdownTimer.FadeIn(5f);
+				WriteDebugMessage("WAKE UP WAKE UP");
+				if (_countdownTimer != null)
+				{
+					_countdownTimer.FadeIn(5f);
+				}
+				else if (_shipLogInfo != null)
+				{
+					WriteDebugMessage("gaba");
+					_shipLogInfo.FadeIn(5f);
+				}
 			}
-			else if (_shipLogInfo != null)
-			{
-				WriteDebugMessage("gaba");
-				_shipLogInfo.FadeIn(5f);
-			}
-		}, 10);
+		);
 	}
 
 	private void OnPlayerDeath(DeathType deathType)
@@ -474,7 +484,7 @@ public class MinigameManager : MonoBehaviour
 		_selectedEntry = null;
 		_selectedPlanet = null;
 		
-		_shipLogInfo.OnObjectiveCompleted();
+		_shipLogInfo.OnGameWon();
 		_shipLogInfo.DisplayWinText(_numHintsUsed);
 		foreach (var e in Instance.ernestos)
 		{
@@ -534,10 +544,9 @@ public class MinigameManager : MonoBehaviour
 			return;
 		}
 		
-		_shipLogInfo.OnObjectiveCompleted();
-		
 		if (_currentRound >= Instance.ShipLogRounds)
 		{
+			_shipLogInfo.OnGameWon();
 			_shipLogInfo.DisplayWinText(_numHintsUsed);
 			foreach (var e in Instance.ernestos)
 			{
@@ -554,6 +563,8 @@ public class MinigameManager : MonoBehaviour
 		}
 		else
 		{
+			_shipLogInfo.OnObjectiveCompleted();
+			
 			if (InMultiplayer && QSBAPI.GetIsHost() && Instance.GlobalFactGoals)
 			{
 				foreach (var id in AlivePlayers)

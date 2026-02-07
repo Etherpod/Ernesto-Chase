@@ -11,6 +11,7 @@ public class RandomShipLogInfo : MinigameUIText
 	[SerializeField] private AudioClip _branchNotification = null;
 	[SerializeField] private AudioClip _rerollNotification = null;
 	[SerializeField] private AudioClip _hintNotification = null;
+	[SerializeField] private AudioClip _winNotification = null;
 	
 	private MinigameManager _minigameManager;
 	private ShipLogFact _assignedFact;
@@ -332,6 +333,12 @@ public class RandomShipLogInfo : MinigameUIText
 	{
 		Locator.GetPlayerAudioController()._oneShotExternalSource.PlayOneShot(_rerollNotification, 0.75f);
 		_notification.ShowNotification("Choosing New Objective...");
+	}
+
+	public void OnGameWon()
+	{
+		Locator.GetPlayerAudioController()._oneShotExternalSource.PlayOneShot(_winNotification, 1f);
+		_notification.ShowNotification("Objective Completed!");
 	}
 
 	public void DisplayWinText(int hintsUsed)
