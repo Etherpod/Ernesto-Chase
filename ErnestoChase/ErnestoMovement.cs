@@ -29,6 +29,8 @@ public class ErnestoMovement : MonoBehaviour
     private float baseSpeed = 8f;
     private float currentSpeed;
     private float timeAtRelease;
+    private float lastTargetCount;
+    private readonly float targetCountSmoothTime = 1.5f;
 
     private float baseSpaceSpeed;
     private float currentSpaceSpeed;
@@ -42,7 +44,7 @@ public class ErnestoMovement : MonoBehaviour
     private readonly int storedTargetsFrameDelay = 10;
     private int frameDelay;
 
-    private float targetSpawnDelay = 0.25f;
+    private readonly float targetSpawnDelay = 0.25f;
     private float spawnDelayTimer;
 
     private Vector3 lastPosition;
@@ -342,12 +344,11 @@ public class ErnestoMovement : MonoBehaviour
     {
         if (ErnestoChase.ActiveIslands.Count > 0)
         {
-            ErnestoChase.WriteDebugMessage("return island " + ErnestoChase.ActiveIslands[0]);
             return ErnestoChase.ActiveIslands[0].transform;
         }
         
         return ignoreTeleports 
-            ? planetManager.GetCurrentPlanet().transform 
+            ? planetManager.GetCurrentPlanetBody().transform 
             : planetManager.GetTargetParent();
     }
 
@@ -518,7 +519,6 @@ public class ErnestoMovement : MonoBehaviour
             }
             else
             {
-                ErnestoChase.WriteDebugMessage("use position from parent " + target.parent);
                 targetPos = transform.parent.InverseTransformPoint(target.parent.TransformPoint(target.pos));
             }
         }
@@ -547,7 +547,7 @@ public class ErnestoMovement : MonoBehaviour
         if (state.DistanceSpeedMultiplier != 1f)
         {
             var tempLerp = 1 - Mathf.InverseLerp(lastTime, lastTime + (dist / speed), Time.time);
-            var numTargets = targets.Count + tempLerp - 1;
+            var numTargets = lastTargetCount + tempLerp - 1;
             float cutoff = 10f;
             float scalar = 25f;
             var speedLerp = Mathf.LerpUnclamped(1f, state.DistanceSpeedMultiplier, 
@@ -611,19 +611,26 @@ public class ErnestoMovement : MonoBehaviour
                 AdvanceTarget();
             }
         }
+
+        lastTargetCount = Mathf.MoveTowards(lastTargetCount, targets.Count, 
+            Mathf.Abs(targets.Count - lastTargetCount) * Time.deltaTime / targetCountSmoothTime);
     }
 
     private void TryShortcut()
     {
-        float speedLerp = state.MovementSpeedMultiplier;
+        //float speedLerp = state.MovementSpeedMultiplier;
         Vector3 toPlayer = Locator.GetPlayerTransform().position - transform.position;
 
         if (!hasTakenShortcut && targets.Count > 20
-            && (Locator.GetPlayerTransform().position - transform.position).sqrMagnitude < Mathf.LerpUnclamped(10f * 10f, 15f * 15f, speedLerp)
+            && (Locator.GetPlayerTransform().position - transform.position).sqrMagnitude < 20f * 20f
             && !Physics.Raycast(transform.position, toPlayer, toPlayer.magnitude - 1f, 
                 OWLayerMask.physicalMask))
         {
             targets.Clear();
+            lastPosition = transform.localPosition;
+            lastRotation = transform.rotation;
+            lastTime = Time.time;
+            
             SpawnTarget(GetTargetParent(true), Locator.GetPlayerTransform().position);
             OnTakeShortcut?.Invoke();
             hasTakenShortcut = true;
