@@ -7,8 +7,10 @@ namespace ErnestoChase;
 public class RandomShipLogInfo : MinigameUIText
 {
 	[SerializeField] private RandomShipLogNotification _notification = null;
-	[SerializeField] private AudioClip _notificationAudio1 = null;
-	[SerializeField] private AudioClip _notificationAudio2 = null;
+	[SerializeField] private AudioClip _completeNotification = null;
+	[SerializeField] private AudioClip _branchNotification = null;
+	[SerializeField] private AudioClip _rerollNotification = null;
+	[SerializeField] private AudioClip _hintNotification = null;
 	
 	private MinigameManager _minigameManager;
 	private ShipLogFact _assignedFact;
@@ -25,6 +27,36 @@ public class RandomShipLogInfo : MinigameUIText
 	{
 		base.Awake();
 		_minigameManager = ErnestoChase.MinigameManager;
+		
+		foreach (var t in GetComponentsInChildren<Text>())
+		{
+			var color = t.color;
+			color.a = 0;
+			t.color = color;
+		}
+	}
+
+	protected override void LateUpdate()
+	{
+		if (_fading)
+		{
+			float lerp = Mathf.InverseLerp(_fadeStartTime, _fadeStartTime + _fadeLength, Time.time);
+			var color = _text.color;
+			color.a = Mathf.Lerp(_startFade, _targetFade, lerp * lerp);
+			_text.color = color;
+
+			foreach (var t in GetComponentsInChildren<Text>())
+			{
+				color = t.color;
+				color.a = Mathf.Lerp(_startFade, _targetFade, lerp * lerp);
+				t.color = color;
+			}
+
+			if (lerp >= 1f)
+			{
+				_fading = false;
+			}
+		}
 	}
 
 	public override void UpdateText()
@@ -228,33 +260,39 @@ public class RandomShipLogInfo : MinigameUIText
 
 	public bool AdvanceHint()
 	{
+		if (_textHidden) return false;
+		
 		bool hasSourceRumor = _minigameManager.GetShipLogGameMode() == ShipLogGameMode.Rumor &&
 			_assignedFact.HasSource();
+		bool advanced = false;
 		
 		if (!_originRevealed && _minigameManager.GetShipLogGameMode() is
 			ShipLogGameMode.Fact or ShipLogGameMode.Entry or ShipLogGameMode.Rumor)
 		{
 			_originRevealed = true;
 			UpdateText();
-			return true;
+			advanced = true;
 		}
-
-		if (!_locationRevealed && (_minigameManager.GetShipLogGameMode() is
+		else if (!_locationRevealed && (_minigameManager.GetShipLogGameMode() is
 			ShipLogGameMode.Fact || hasSourceRumor))
 		{
 			_locationRevealed = true;
 			UpdateText();
-			return true;
+			advanced = true;
 		}
-
-		if (!_sourceRevealed && hasSourceRumor)
+		else if (!_sourceRevealed && hasSourceRumor)
 		{
 			_sourceRevealed = true;
 			UpdateText();
-			return true;
+			advanced = true;
 		}
 
-		return false;
+		if (advanced)
+		{
+			Locator.GetPlayerAudioController()._oneShotExternalSource.PlayOneShot(_hintNotification, 0.75f);
+		}
+
+		return advanced;
 	}
 
 	public void SetCurrentHints(bool origin, bool location, bool source)
@@ -280,14 +318,20 @@ public class RandomShipLogInfo : MinigameUIText
 
 	public void OnObjectiveCompleted()
 	{
-		Locator.GetPlayerAudioController()._oneShotExternalSource.PlayOneShot(_notificationAudio1, 1f);
+		Locator.GetPlayerAudioController()._oneShotExternalSource.PlayOneShot(_completeNotification, 1f);
 		_notification.ShowNotification("Objective Completed!");
 	}
 	
 	public void OnBranchRumor()
 	{
-		Locator.GetPlayerAudioController()._oneShotExternalSource.PlayOneShot(_notificationAudio2, 1f);
+		Locator.GetPlayerAudioController()._oneShotExternalSource.PlayOneShot(_branchNotification, 1f);
 		_notification.ShowNotification("Choosing Next Rumor...");
+	}
+	
+	public void OnRerollObjective()
+	{
+		Locator.GetPlayerAudioController()._oneShotExternalSource.PlayOneShot(_rerollNotification, 0.75f);
+		_notification.ShowNotification("Choosing New Objective...");
 	}
 
 	public void DisplayWinText(int hintsUsed)

@@ -203,7 +203,7 @@ public class MinigameManager : MonoBehaviour
 				{
 					if (shipLogID != "")
 					{
-						QSBCompat.SendRandomShipLogData(id, _currentShipLogMode, 
+						QSBCompat.SendRandomShipLogData(id, _currentShipLogMode,
 							shipLogID, _currentRound);
 					}
 				}
@@ -566,6 +566,35 @@ public class MinigameManager : MonoBehaviour
 		}
 	}
 
+	public void RerollObjective()
+	{
+		_currentRound--;
+		_shipLogInfo.OnRerollObjective();
+		
+		if (_selectedFact != null)
+		{
+			_selectedFact.OnFactRevealed -= OnFactRevealed;
+			_selectedFact = null;
+		}
+
+		if (_selectedEntry != null)
+		{
+			_selectedEntry.GetExploreFacts()
+				.ForEach(fact => fact.OnFactRevealed -= OnFactRevealed);
+			_selectedEntry = null;
+		}
+
+		if (_selectedPlanet != null)
+		{
+			Locator.GetShipLogManager().GetEntriesByAstroBody(_selectedPlanet.GetID())
+				.ForEach(entry => entry.GetExploreFacts()
+					.ForEach(fact => fact.OnFactRevealed -= OnFactRevealed));
+			_selectedPlanet = null;
+		}
+			
+		SetUpRandomShipLog();
+	}
+
 	public void OnGameStopped()
 	{
 		OnPlayerDeath(DeathType.Digestion);
@@ -606,6 +635,11 @@ public class MinigameManager : MonoBehaviour
 			if (Keyboard.current.lKey.wasPressedThisFrame)
 			{
 				_shipLogInfo.ToggleTextExpanded();
+			}
+
+			if (Keyboard.current.nKey.wasPressedThisFrame)
+			{
+				RerollObjective();
 			}
 		}
 	}
