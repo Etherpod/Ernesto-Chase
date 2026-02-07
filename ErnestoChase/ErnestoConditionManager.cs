@@ -82,9 +82,17 @@ public static class ErnestoConditionManager
 	public static readonly Dictionary<string, string> NameToShipLogMode = new()
 	{ 
 		{ "Fact Mode", "EC_RSSR_FACT_MODE" },
-		{ "Entry Mode", "EC_RSSR_ENTRY_MODE"},
+		{ "Entry Mode", "EC_RSSR_ENTRY_MODE" },
 		{ "Planet Mode", "EC_RSSR_PLANET_MODE" },
 		{ "Rumor Mode", "EC_RSSR_RUMOR_MODE" }
+	};
+
+	private static readonly Dictionary<string, bool> SavedModeSelections = new()
+	{
+		{ "Fact Mode", false },
+		{ "Entry Mode", false},
+		{ "Planet Mode", false },
+		{ "Rumor Mode", false }
 	};
 
 	private static bool GetCondition(string name) => PlayerData.PersistentConditionExists(name) &&
@@ -112,7 +120,9 @@ public static class ErnestoConditionManager
 	{
 		if (NameToShipLogMode.ContainsKey(name))
 		{
-			return GetCondition(NameToShipLogMode[name]);
+			return ErnestoChase.InMultiplayer
+				? SavedModeSelections[name]
+				: GetCondition(NameToShipLogMode[name]);
 		}
 
 		return false;
@@ -121,6 +131,18 @@ public static class ErnestoConditionManager
 	public static void SetShipLogMode(string name, bool value)
 	{
 		if (NameToShipLogMode.ContainsKey(name))
+		{
+			SavedModeSelections[name] = value;
+			if (!ErnestoChase.InMultiplayer)
+			{
+				PlayerData.SetPersistentCondition(NameToShipLogMode[name], value);
+			}
+		}
+	}
+
+	public static void ApplySavedShipLogModes()
+	{
+		foreach (var (name, value) in SavedModeSelections)
 		{
 			PlayerData.SetPersistentCondition(NameToShipLogMode[name], value);
 		}
@@ -145,6 +167,11 @@ public static class ErnestoConditionManager
 	{
 		StartingGame = false;
 		GameStarted = false;
+		for (int i = 0; i < SavedModeSelections.Keys.Count; i++)
+		{
+			var key = SavedModeSelections.Keys.ToArray()[i];
+			SavedModeSelections[key] = PlayerData.GetPersistentCondition(NameToShipLogMode[key]);
+		}
 
 		/*if (NameToShipLogMode.All(mode => !GetCondition(mode)))
 		{

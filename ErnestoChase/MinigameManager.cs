@@ -24,6 +24,7 @@ public class MinigameManager : MonoBehaviour
 	private int _numHintsUsed;
 	private int _currentRound = 0;
 	private int _currentRumorChain = 0;
+	private bool _receivedShipLogData;
 
 	[Serializable]
 	public enum ShipLogGameMode
@@ -66,6 +67,7 @@ public class MinigameManager : MonoBehaviour
 		}
 		
 		_shipLogInfo = null;
+		_receivedShipLogData = false;
 		_numHintsUsed = 0;
 		_currentRound = 0;
 		_currentRumorChain = 0;
@@ -156,9 +158,14 @@ public class MinigameManager : MonoBehaviour
 		_countdownTimer?.SetCurrentTime(timeLeft);
 	}
 	
-	public void SetUpRandomShipLog()
+	public void SetUpRandomShipLog(bool reroll = false)
 	{
-		_currentRound++;
+		_receivedShipLogData = false;
+		
+		if (!reroll)
+		{
+			_currentRound++;
+		}
 		
 		if (!_shipLogInfo)
 		{
@@ -217,7 +224,7 @@ public class MinigameManager : MonoBehaviour
 							shipLogID, _currentRound);
 					}
 				}
-				else
+				else if (!reroll)
 				{
 					QSBCompat.SendRandomFactGenerate(id);
 				}
@@ -391,6 +398,8 @@ public class MinigameManager : MonoBehaviour
 	
 	public void SetUpRandomShipLogRemote(ShipLogGameMode gamemode, string id, int round)
 	{
+		_receivedShipLogData = true;
+		
 		_selectedFact = null;
 		_selectedEntry = null;
 		_selectedPlanet = null;
@@ -479,7 +488,7 @@ public class MinigameManager : MonoBehaviour
 		{
 			return;
 		}
-
+		
 		_selectedFact = null;
 		_selectedEntry = null;
 		_selectedPlanet = null;
@@ -579,7 +588,6 @@ public class MinigameManager : MonoBehaviour
 
 	public void RerollObjective()
 	{
-		_currentRound--;
 		_shipLogInfo.OnRerollObjective();
 		
 		if (_selectedFact != null)
@@ -603,7 +611,24 @@ public class MinigameManager : MonoBehaviour
 			_selectedPlanet = null;
 		}
 			
-		SetUpRandomShipLog();
+		SetUpRandomShipLog(true);
+
+		if (InMultiplayer && QSBAPI.GetIsHost() &&
+			Instance.GlobalFactGoals)
+		{
+			foreach (var id in AlivePlayers)
+			{
+				QSBCompat.SendShipLogReroll(id);
+			}
+		}
+	}
+	
+	public void RerollObjectiveRemote()
+	{
+		if (_shipLogInfo != null)
+		{
+			_shipLogInfo.OnRerollObjective();
+		}
 	}
 
 	public void OnGameStopped()
@@ -624,20 +649,6 @@ public class MinigameManager : MonoBehaviour
 	{
 		if (_shipLogInfo)
 		{
-			if (Keyboard.current.hKey.wasPressedThisFrame &&
-				_shipLogInfo.AdvanceHint())
-			{
-				_numHintsUsed++;
-
-				if (InMultiplayer && QSBAPI.GetIsHost() && Instance.GlobalFactGoals)
-				{
-					foreach (var id in AlivePlayers)
-					{
-						QSBCompat.SendShipLogHint(id, _shipLogInfo.GetCurrentHints(), _numHintsUsed);
-					}
-				}
-			}
-
 			if (Keyboard.current.oKey.wasPressedThisFrame)
 			{
 				_shipLogInfo.ToggleTextHidden();
@@ -648,9 +659,26 @@ public class MinigameManager : MonoBehaviour
 				_shipLogInfo.ToggleTextExpanded();
 			}
 
-			if (Keyboard.current.nKey.wasPressedThisFrame)
+			if (!InMultiplayer || QSBAPI.GetIsHost() || !_receivedShipLogData)
 			{
-				RerollObjective();
+				if (Keyboard.current.hKey.wasPressedThisFrame &&
+					_shipLogInfo.AdvanceHint())
+				{
+					_numHintsUsed++;
+
+					if (InMultiplayer && QSBAPI.GetIsHost() && Instance.GlobalFactGoals)
+					{
+						foreach (var id in AlivePlayers)
+						{
+							QSBCompat.SendShipLogHint(id, _shipLogInfo.GetCurrentHints(), _numHintsUsed);
+						}
+					}
+				}
+
+				if (Keyboard.current.nKey.wasPressedThisFrame)
+				{
+					RerollObjective();
+				}
 			}
 		}
 	}

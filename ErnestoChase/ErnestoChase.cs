@@ -153,7 +153,11 @@ public class ErnestoChase : ModBehaviour
 
         LoadManager.OnCompleteSceneLoad += (scene, loadScene) =>
         {
-            if (loadScene != OWScene.SolarSystem) return;
+            if (loadScene != OWScene.SolarSystem)
+            {
+                ErnestoConditionManager.ApplySavedShipLogModes();
+                return;
+            }
 
             if (scene != OWScene.SolarSystem)
             {
@@ -1167,6 +1171,7 @@ public class ErnestoChase : ModBehaviour
             DialogueConditionManager.SharedInstance.GetConditionState("EC_STOP_GAME"))
         {
             DialogueConditionManager.SharedInstance.SetConditionState("EC_STOP_GAME");
+            ErnestoConditionManager.ApplySavedShipLogModes();
             ErnestoConditionManager.Reset();
 
             MinigameManager.OnGameStopped();
@@ -1294,5 +1299,10 @@ public class ErnestoChase : ModBehaviour
             return value.ToString();
         }
         return value;
+    }
+
+    private void OnDestroy()
+    {
+        ErnestoConditionManager.ApplySavedShipLogModes();
     }
 }

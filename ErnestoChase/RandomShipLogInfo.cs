@@ -298,6 +298,13 @@ public class RandomShipLogInfo : MinigameUIText
 
 	public void SetCurrentHints(bool origin, bool location, bool source)
 	{
+		if ((!_originRevealed && origin) ||
+			(!_locationRevealed && location) ||
+			(!_sourceRevealed && source))
+		{
+			Locator.GetPlayerAudioController()._oneShotExternalSource.PlayOneShot(_hintNotification, 0.75f);
+		}
+		
 		_originRevealed = origin;
 		_locationRevealed = location;
 		_sourceRevealed = source;

@@ -65,6 +65,7 @@ public static class QSBCompat
         api.RegisterHandler<(string, int)>("random-ship-log-branch-rumor", ReceiveBranchRumor);
         api.RegisterHandler<(bool, bool, bool, int)>("random-ship-log-hint", ReceiveShipLogHint);
         api.RegisterHandler<(uint, uint)>("state-change", ReceiveStateChange);
+        api.RegisterHandler<bool>("reroll-random-ship-log", ReceiveShipLogReroll);
     }
 
     private static void OnPlayerJoin(uint id)
@@ -266,6 +267,16 @@ public static class QSBCompat
     private static void ReceiveShipLogWin(uint from, bool b)
     {
         ErnestoChase.MinigameManager.WinRandomShipLogRemote();
+    }
+    
+    public static void SendShipLogReroll(uint to)
+    {
+        api.SendMessage("reroll-random-ship-log", false, to);
+    }
+
+    private static void ReceiveShipLogReroll(uint from, bool b)
+    {
+        ErnestoChase.MinigameManager.RerollObjectiveRemote();
     }
 
     public static void SendShipLogObjectiveComplete(uint to)
