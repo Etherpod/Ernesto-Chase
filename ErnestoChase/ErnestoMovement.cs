@@ -831,7 +831,7 @@ public class ErnestoMovement : MonoBehaviour
             lerpStartPos = transform.localPosition;
             lerpTarget = targets.Peek().pos;
             float distLerp = Mathf.InverseLerp(50f * 50f, 2000f * 2000f, (lerpTarget - lerpStartPos).sqrMagnitude);
-            lerpTime = Mathf.Lerp(5f, 15f, distLerp);
+            lerpTime = Mathf.Lerp(5f, 15f, distLerp) + Random.Range(0f, 10f);
 
             lerpingToPlanet = true;
         }
