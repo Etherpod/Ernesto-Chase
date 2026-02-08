@@ -113,7 +113,10 @@ public class ErnestoManager : MonoBehaviour
         {
             planetManager.Initialize();
             ernestoMovement.Initialize();
-            StartCoroutine(ErnestoReleaseDelay());
+            if (state.AIEnabled)
+            {
+                StartCoroutine(ErnestoReleaseDelay());
+            }
             initialized = true;
         }
         

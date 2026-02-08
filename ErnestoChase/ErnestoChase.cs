@@ -723,6 +723,17 @@ public class ErnestoChase : ModBehaviour
             {
                 GameObject prefab = LoadPrefab("Assets/ErnestoChase/PlayerMorphController.prefab");
                 Instantiate(prefab, Locator.GetPlayerTransform());
+                
+                if (InMultiplayer)
+                {
+                    ErnestoData fakeData = new();
+                    fakeData.id = InMultiplayer ? QSBAPI.GetLocalPlayerID() : 0;
+                    fakeData.localid = 0;
+                    foreach (var id in Players)
+                    {
+                        QSBCompat.SendControlledErnestoData(id, fakeData);
+                    }
+                }
 
                 /*GameObject prefab = LoadPrefab("Assets/ErnestoChase/ControllableErnesto_Body.prefab");
                 ControllableErnesto controllableErnesto = Instantiate(prefab, Locator.GetPlayerTransform().position +
@@ -868,17 +879,21 @@ public class ErnestoChase : ModBehaviour
 
         ErnestoChase.WriteDebugMessage("Spawn controlled Ernesto with data");
 
-        GameObject ernestoObj = Instantiate(ernesto, Locator.GetPlayerTransform().position, Quaternion.identity);
+        Transform remoteParent = QSBAPI.GetPlayerBody(data.id).transform;
+        GameObject ernestoObj = Instantiate(ernesto, Vector3.zero, Quaternion.identity, remoteParent);
+        
         ErnestoManager manager = ernestoObj.GetComponent<ErnestoManager>();
         ErnestoState state = ernestoObj.GetComponent<ErnestoState>();
-        ernestoObj.AddComponent<RemoteSizeChanger>();
+        //ernestoObj.AddComponent<RemoteErnestoMorphController>();
 
         state.SetData(1, data);
         state.AIEnabled = false;
-
+        
         ernestoObj.SetActive(true);
-        ernestos.Add(ernestoObj);
+        manager.SetStoredTargets(new());
 
+        ernestos.Add(ernestoObj);
+        
         if (state.ErnestoCam)
         {
             camErnestos.Add(ernestoObj);
@@ -888,21 +903,20 @@ public class ErnestoChase : ModBehaviour
         {
             remoteErnestos.Add(data.id, []);
         }
-
         remoteErnestos[data.id].Add(data.localid, ernestoObj);
-        manager.SetStoredTargets(new());
 
-        Transform remoteParent = QSBAPI.GetPlayerBody(data.id).transform;
-        foreach (var renderer in remoteParent.GetComponentsInChildren<Renderer>())
+        remoteParent.gameObject.AddComponent<RemoteErnestoMorphController>();
+
+        /*foreach (var renderer in remoteParent.GetComponentsInChildren<Renderer>())
         {
             renderer.forceRenderingOff = true;
-        }
-        ernestoObj.transform.parent = remoteParent;
+        }*/
+        /*ernestoObj.transform.parent = remoteParent;
         ModHelper.Events.Unity.FireInNUpdates(() =>
         {
             ernestoObj.transform.localPosition = new Vector3(0f, 0f, 0f);
             ernestoObj.transform.localRotation = Quaternion.identity;
-        }, 10);
+        }, 10);*/
 
         /*if (ErnestoStacking && storedErnestoTargets.Count > i)
         {

@@ -106,7 +106,10 @@ public class ErnestoMovement : MonoBehaviour
     {
         // no parent being set?
         Vector3 playerStartPos = transform.parent.InverseTransformPoint(Locator.GetPlayerTransform().position);
-        transform.localPosition = playerStartPos;
+        if (state.AIEnabled)
+        {
+            transform.localPosition = playerStartPos;
+        }
         lastPosition = playerStartPos;
         lastRotation = transform.rotation;
 

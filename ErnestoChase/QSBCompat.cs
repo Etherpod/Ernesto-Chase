@@ -66,6 +66,7 @@ public static class QSBCompat
         api.RegisterHandler<(bool, bool, bool, int)>("random-ship-log-hint", ReceiveShipLogHint);
         api.RegisterHandler<(uint, uint)>("state-change", ReceiveStateChange);
         api.RegisterHandler<bool>("reroll-random-ship-log", ReceiveShipLogReroll);
+        api.RegisterHandler<bool>("ernesto-morph", ReceiveErnestoMorph);
     }
 
     private static void OnPlayerJoin(uint id)
@@ -139,7 +140,7 @@ public static class QSBCompat
     {
         if (ErnestoChase.TryGetRemoteErnesto(from, data.localID, out GameObject remoteErnesto))
         {
-            remoteErnesto.GetComponent<RemoteSizeChanger>()?.SetSize(data.shrink);
+            remoteErnesto.GetComponentInParent<RemoteErnestoMorphController>().SetSize(data.shrink);
         }
     }
 
@@ -324,5 +325,20 @@ public static class QSBCompat
         {
             remoteErnesto.GetComponent<ErnestoState>().SetActiveStateID(data.newStateIndex);
         }
+    }
+
+    public static void SendErnestoMorph(uint to, bool morphed)
+    {
+        api.SendMessage("ernesto-morph", morphed, to);
+    }
+
+    private static void ReceiveErnestoMorph(uint from, bool morphed)
+    {
+        if (ErnestoChase.TryGetRemoteErnesto(from, 0, out GameObject remoteErnesto))
+        {
+            var morph = remoteErnesto.GetComponentInParent<RemoteErnestoMorphController>();
+            ErnestoChase.WriteDebugMessage("morph: " + morph);
+            morph.SetMorphed(morphed);
+        } 
     }
 }

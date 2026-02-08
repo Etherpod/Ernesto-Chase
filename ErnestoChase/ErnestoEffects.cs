@@ -480,6 +480,20 @@ public class ErnestoEffects : MonoBehaviour
         musicAudio.pitch = mult;
     }
 
+    public void DebugRefresh()
+    {
+        oneShotAudio.PlayOneShot(AudioType.DBAnglerfishDetectTarget, 0.8f);
+        
+        if (!state.StealthMode)
+        {
+            loopingAudio.Play();
+            musicAudio.Play();
+        }
+
+        animator.enabled = true;
+        animator.SetTrigger("Impulse");
+    }
+
     private void OnDestroy()
     {
         state.OnDataChanged += OnDataChanged;

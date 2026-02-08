@@ -51,6 +51,14 @@ public class PlayerMorphController : MonoBehaviour
 		{
 			PlayerMorph();
 		}
+		
+		if (ErnestoChase.InMultiplayer)
+		{
+			foreach (var id in ErnestoChase.Players)
+			{
+				QSBCompat.SendErnestoMorph(id, morphed);
+			}
+		}
 	}
 
 	public void ErnestoMorph()
