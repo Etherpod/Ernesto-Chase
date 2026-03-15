@@ -45,9 +45,7 @@ public static class QSBCompat
     public static void Init(IQSBAPI qsbapi)
     {
         api = qsbapi;
-
-        api.OnPlayerJoin().AddListener(OnPlayerJoin);
-
+        
         api.RegisterHandler<string>("ernesto-data", ReceiveErnestoData);
         api.RegisterHandler<string>("controlled-ernesto-data", ReceiveControlledErnestoData);
         api.RegisterHandler<(uint, SerializedTargetData)>("target-data", ReceiveTargetData);
@@ -72,11 +70,8 @@ public static class QSBCompat
         api.RegisterHandler<bool>("ernesto-morph", ReceiveErnestoMorph);
     }
 
-    private static void OnPlayerJoin(uint id)
-    {
-        //ErnestoChase.Instance.StartCoroutine(ErnestoChase.Instance.AddCamToRemotePlayer(id));
-    }
-
+    #region ErnestoAI
+    
     public static void SendErnestoData(uint to, Dictionary<uint, ErnestoData> dataStates)
     {
         string json = JsonConvert.SerializeObject(dataStates);
@@ -94,7 +89,60 @@ public static class QSBCompat
             ErnestoChase.Instance.StartCoroutine(ErnestoChase.Instance.SpawnErnestoRemote(data));
         }
     }
+    
+    public static void SendErnestoStateChange(uint to, uint localID, uint newStateIndex)
+    {
+        api.SendMessage("state-change", (localID, newStateIndex), to);
+    }
 
+    private static void ReceiveStateChange(uint from, (uint localID, uint newStateIndex) data)
+    {
+        if (ErnestoChase.TryGetRemoteErnesto(from, data.localID, out GameObject remoteErnesto))
+        {
+            remoteErnesto.GetComponent<ErnestoState>().SetActiveStateID(data.newStateIndex);
+        }
+    }
+
+    public static void SendTargetData(uint to, uint localID, TargetData targetData)
+    {
+        api.SendMessage("target-data", (localID, new SerializedTargetData(targetData)), to, false);
+    }
+
+    private static void ReceiveTargetData(uint from, (uint localID, SerializedTargetData targetData) data)
+    {
+        ErnestoChase.Instance.AddTargetDataRemote(from, data.localID, data.targetData.TargetData);
+    }
+
+    public static void SendErnestoFinalWarp(uint to, uint localID)
+    {
+        api.SendMessage("final-warp", localID, to, false);
+    }
+
+    private static void ReceiveErnestoFinalWarp(uint from, uint localID)
+    {
+        if (ErnestoChase.TryGetRemoteErnesto(from, localID, out GameObject remoteErnesto))
+        {
+            remoteErnesto.GetComponent<ErnestoManager>()?.OnPlayerDeathRemote();
+        }
+    }
+    
+    public static void SendVisibilityState(uint to, uint localID, bool visible)
+    {
+        api.SendMessage("visibility-state", (localID, visible), to, false);
+    }
+
+    private static void ReceiveVisibilityState(uint from, (uint localID, bool visible) data)
+    {
+        if (ErnestoChase.TryGetRemoteErnesto(0, data.localID, out GameObject remoteErnesto))
+        {
+            remoteErnesto.GetComponent<ErnestoMovement>().UpdateVisibilityRemote(from, data.visible);
+        }
+    }
+    
+    #endregion
+    
+    #region PlayerErnesto
+    
     public static void SendControlledErnestoData(uint to, ErnestoData data)
     {
         string json = JsonConvert.SerializeObject(data);
@@ -111,29 +159,6 @@ public static class QSBCompat
         }
     }
 
-    public static void SendTargetData(uint to, uint localID, TargetData targetData)
-    {
-        api.SendMessage("target-data", (localID, new SerializedTargetData(targetData)), to, false);
-    }
-
-    private static void ReceiveTargetData(uint from, (uint localID, SerializedTargetData targetData) data)
-    {
-        ErnestoChase.Instance.AddTargetDataRemote(from, data.localID, data.targetData.TargetData);
-    }
-
-    public static void SendVisibilityState(uint to, uint localID, bool visible)
-    {
-        api.SendMessage("visibility-state", (localID, visible), to, false);
-    }
-
-    private static void ReceiveVisibilityState(uint from, (uint localID, bool visible) data)
-    {
-        if (ErnestoChase.TryGetRemoteErnesto(0, data.localID, out GameObject remoteErnesto))
-        {
-            remoteErnesto.GetComponent<ErnestoMovement>().UpdateVisibilityRemote(from, data.visible);
-        }
-    }
-
     public static void SendErnestoSizeChange(uint to, uint localID, bool shrink)
     {
         api.SendMessage("size-change", (localID, shrink), to, false);
@@ -146,19 +171,25 @@ public static class QSBCompat
             remoteErnesto.GetComponentInParent<RemoteErnestoMorphController>().SetSize(data.shrink);
         }
     }
-
-    public static void SendErnestoFinalWarp(uint to, uint localID)
+    
+    public static void SendErnestoMorph(uint to, bool morphed)
     {
-        api.SendMessage("final-warp", localID, to, false);
+        api.SendMessage("ernesto-morph", morphed, to);
     }
 
-    private static void ReceiveErnestoFinalWarp(uint from, uint localID)
+    private static void ReceiveErnestoMorph(uint from, bool morphed)
     {
-        if (ErnestoChase.TryGetRemoteErnesto(from, localID, out GameObject remoteErnesto))
+        if (ErnestoChase.TryGetRemoteErnesto(from, 0, out GameObject remoteErnesto))
         {
-            remoteErnesto.GetComponent<ErnestoManager>()?.OnPlayerDeathRemote();
-        }
+            var morph = remoteErnesto.GetComponentInParent<RemoteErnestoMorphController>();
+            ErnestoChase.WriteDebugMessage("morph: " + morph);
+            morph.SetMorphed(morphed);
+        } 
     }
+    
+    #endregion
+    
+    #region Spectating
 
     public static void SendRingWorldUpdate(uint to, bool state)
     {
@@ -199,7 +230,11 @@ public static class QSBCompat
             ErnestoChase.SpectateManager.SwitchToSpectatorCam(ErnestoChase.SpectateManager.SpectateTarget);
         }
     }
+    
+    #endregion
 
+    #region Minigames
+    
     public static void SendStartGame(uint to)
     {
         api.SendMessage("start-game", false, to);
@@ -318,32 +353,6 @@ public static class QSBCompat
         ErnestoChase.MinigameManager.SetShipLogHintsRemote(data.origin, data.location, 
             data.source, data.numHints);
     }
-
-    public static void SendErnestoStateChange(uint to, uint localID, uint newStateIndex)
-    {
-        api.SendMessage("state-change", (localID, newStateIndex), to);
-    }
-
-    private static void ReceiveStateChange(uint from, (uint localID, uint newStateIndex) data)
-    {
-        if (ErnestoChase.TryGetRemoteErnesto(from, data.localID, out GameObject remoteErnesto))
-        {
-            remoteErnesto.GetComponent<ErnestoState>().SetActiveStateID(data.newStateIndex);
-        }
-    }
-
-    public static void SendErnestoMorph(uint to, bool morphed)
-    {
-        api.SendMessage("ernesto-morph", morphed, to);
-    }
-
-    private static void ReceiveErnestoMorph(uint from, bool morphed)
-    {
-        if (ErnestoChase.TryGetRemoteErnesto(from, 0, out GameObject remoteErnesto))
-        {
-            var morph = remoteErnesto.GetComponentInParent<RemoteErnestoMorphController>();
-            ErnestoChase.WriteDebugMessage("morph: " + morph);
-            morph.SetMorphed(morphed);
-        } 
-    }
+    
+    #endregion
 }
