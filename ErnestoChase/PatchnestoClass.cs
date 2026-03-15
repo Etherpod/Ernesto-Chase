@@ -1,4 +1,3 @@
-using System;
 using UnityEngine;
 using HarmonyLib;
 using OWML.ModHelper.Menus.NewMenuSystem;
@@ -7,13 +6,16 @@ using System.Reflection;
 using System.Collections.Generic;
 using System.Linq;
 using System.Globalization;
+using ErnestoChase.ErnestoAI;
+using ErnestoChase.Spectating;
+using ErnestoChase.PlayerErnesto;
 
 namespace ErnestoChase;
 
 [HarmonyPatch]
 public static class PatchnestoClass
 {
-	private static List<ErnestoManager> caughtErnestos = [];
+	private static readonly List<ErnestoManager> caughtErnestos = [];
 
 	public static void Initialize()
 	{
@@ -280,8 +282,8 @@ public static class PatchnestoClass
 	{
 		MenuManager menuManager = StartupPopupPatches.menuManager;
 		var menus = typeof(MenuManager).GetField("ModSettingsMenus", BindingFlags.Public
-					| BindingFlags.NonPublic | BindingFlags.Static)
-				?.GetValue(menuManager)
+					| BindingFlags.NonPublic | BindingFlags.Static)?
+				.GetValue(menuManager)
 			as List<(IModBehaviour behaviour, Menu modMenu)>;
 
 		Menu modMenu = null;
@@ -312,7 +314,7 @@ public static class PatchnestoClass
 
 		//SettingExtensions.ResetCustomSettings();
 	}
-
+	
 	[HarmonyPrefix]
 	[HarmonyPatch(typeof(FirstPersonManipulator), nameof(FirstPersonManipulator.LateUpdate))]
 	public static bool FixMorphRaycast(FirstPersonManipulator __instance)
@@ -547,62 +549,6 @@ public static class PatchnestoClass
 			__instance.SetConditionState("EC_NON_HOST", state);
 		}
 	}
-
-	//private static int lastSelectedOption = -1;
-	
-	/*[HarmonyPrefix]
-	[HarmonyPatch(typeof(CharacterDialogueTree), nameof(CharacterDialogueTree.ContinueToNextNode), typeof(DialogueOption))]
-	public static void ForceConditionChange(CharacterDialogueTree __instance, DialogueOption selectedOption)
-	{
-		if (selectedOption._textID.Contains("EC_RSSR_Configure"))
-		{
-			string text = selectedOption._text;
-			if (text.Contains("Rumor Mode"))
-			{
-				ErnestoConditionManager.ShipLogRumorMode = !ErnestoConditionManager.ShipLogRumorMode;
-			}
-			else if (text.Contains("Planet Mode"))
-			{
-				ErnestoConditionManager.ShipLogPlanetMode = !ErnestoConditionManager.ShipLogPlanetMode;
-			}
-			else if (text.Contains("Entry Mode"))
-			{
-				ErnestoConditionManager.ShipLogEntryMode = !ErnestoConditionManager.ShipLogEntryMode;
-			}
-			else if (text.Contains("Fact Mode"))
-			{
-				ErnestoConditionManager.ShipLogFactMode = !ErnestoConditionManager.ShipLogFactMode;
-			}
-			else
-			{
-				return;
-			}
-
-			lastSelectedOption = __instance._currentDialogueBox._selectedOption;
-		}
-		else
-		{
-			lastSelectedOption = -1;
-		}
-	}*/
-
-	/*[HarmonyPrefix]
-	[HarmonyPatch(typeof(DialogueBoxVer2), nameof(DialogueBoxVer2.CompleteOptionsReveal))]
-	public static bool ChangeInitialSelectedOption(DialogueBoxVer2 __instance)
-	{
-		if (lastSelectedOption < 0) return true;
-		
-		__instance._timeOnLastOptionReveal = 0f;
-		__instance._revealingOptions = false;
-		if (__instance._optionsUIElements.Count > 0)
-		{
-			__instance._selectedOption = lastSelectedOption;
-			__instance.HighlightSelectedOption(-1);
-			lastSelectedOption = -1;
-		}
-
-		return false;
-	}*/
 
 	[HarmonyPrefix]
 	[HarmonyPatch(typeof(CharacterDialogueTree), nameof(CharacterDialogueTree.InputDialogueOption))]

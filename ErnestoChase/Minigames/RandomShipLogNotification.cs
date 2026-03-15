@@ -1,4 +1,4 @@
-﻿namespace ErnestoChase;
+﻿namespace ErnestoChase.Minigames;
 
 public class RandomShipLogNotification : MinigameUIText
 {

@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
 
-namespace ErnestoChase;
+namespace ErnestoChase.PlayerErnesto;
 
 public class ErnestoForceDetector : PriorityDetector
 {

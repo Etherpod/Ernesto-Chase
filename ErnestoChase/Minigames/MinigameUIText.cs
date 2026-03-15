@@ -1,7 +1,7 @@
 ﻿using UnityEngine;
 using UnityEngine.UI;
 
-namespace ErnestoChase;
+namespace ErnestoChase.Minigames;
 
 [RequireComponent(typeof(Text))]
 public class MinigameUIText : MonoBehaviour

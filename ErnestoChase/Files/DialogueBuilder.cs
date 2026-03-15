@@ -5,7 +5,7 @@ using System.Linq;
 using System.Xml;
 using UnityEngine;
 
-namespace ErnestoChase;
+namespace ErnestoChase.Files;
 
 // Borrowed from New Horizons
 // I would use New Horizons but I don't want this mod to have any dependencies

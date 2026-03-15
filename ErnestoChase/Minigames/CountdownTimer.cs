@@ -1,7 +1,7 @@
 ﻿using UnityEngine;
 using UnityEngine.UI;
 
-namespace ErnestoChase;
+namespace ErnestoChase.Minigames;
 
 public class CountdownTimer : MinigameUIText
 {

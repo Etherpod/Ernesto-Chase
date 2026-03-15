@@ -2,7 +2,7 @@
 using UnityEngine.InputSystem;
 using UnityEngine.UI;
 
-namespace ErnestoChase;
+namespace ErnestoChase.PlayerErnesto;
 
 public class PlayerMorphController : MonoBehaviour
 {

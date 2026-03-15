@@ -1,6 +1,6 @@
 ﻿using System;
 
-namespace ErnestoChase;
+namespace ErnestoChase.Files;
 
 [Serializable]
 public class SaveDataJson

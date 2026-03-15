@@ -7,7 +7,7 @@ using UnityEngine.InputSystem;
 using static ErnestoChase.ErnestoChase;
 using Random = UnityEngine.Random;
 
-namespace ErnestoChase;
+namespace ErnestoChase.Minigames;
 
 public class MinigameManager : MonoBehaviour
 {

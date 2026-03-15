@@ -1,6 +1,7 @@
 ﻿using UnityEngine;
+using ErnestoChase.ErnestoAI;
 
-namespace ErnestoChase;
+namespace ErnestoChase.Spectating;
 
 public class SpectatorCamera : MonoBehaviour
 {

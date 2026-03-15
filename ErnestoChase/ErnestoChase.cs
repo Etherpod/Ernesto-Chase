@@ -7,17 +7,11 @@ using UnityEngine;
 using UnityEngine.InputSystem;
 using System;
 using System.Collections.Generic;
-using OWML.Utils;
 using System.Reflection;
 using System.Linq;
-using UnityEngine.Events;
-using OWML.ModHelper.Menus.NewMenuSystem;
-using System.Globalization;
-using UnityEngine.UI;
 using Newtonsoft.Json;
-using UnityEngine.PostProcessing;
-using CSharpFunctionalExtensions;
-using MonoMod.Utils;
+using ErnestoChase.ErnestoAI;
+using ErnestoChase.Files;
 
 namespace ErnestoChase;
 
@@ -27,8 +21,8 @@ public class ErnestoChase : ModBehaviour
     public event PlayerWarpEvent OnPlayerWarped;
 
     public static ErnestoChase Instance;
-    public static MinigameManager MinigameManager;
-    public static SpectateManager SpectateManager;
+    public static Minigames.MinigameManager MinigameManager;
+    public static Spectating.SpectateManager SpectateManager;
     public static SaveDataJson CurrentSave;
     public AssetBundle assetBundle;
     public GameObject ernesto;
@@ -110,7 +104,7 @@ public class ErnestoChase : ModBehaviour
     private void Awake()
     {
         Instance = this;
-        MinigameManager = gameObject.AddComponent<MinigameManager>();
+        MinigameManager = gameObject.AddComponent<Minigames.MinigameManager>();
         HarmonyLib.Harmony.CreateAndPatchAll(Assembly.GetExecutingAssembly());
     }
 
@@ -161,7 +155,7 @@ public class ErnestoChase : ModBehaviour
                 InMultiplayer && !QSBAPI.GetIsHost());
 
             var spectate = new GameObject("EC_SpecatateManager");
-            SpectateManager = spectate.AddComponent<SpectateManager>();
+            SpectateManager = spectate.AddComponent<Spectating.SpectateManager>();
             
             var prefab = LoadPrefab("Assets/ErnestoChase/EC_SetupDialogue.prefab");
             var obj = Instantiate(prefab, FindObjectOfType<PlayerCameraController>().transform);
@@ -333,9 +327,9 @@ public class ErnestoChase : ModBehaviour
     private void UpdateProperties()
     {
         var keys = settings.Keys.ToArray();
-        for (int i = 0; i < keys.Length; i++)
+        foreach (var key in keys)
         {
-            settings[keys[i]] = (settings[keys[i]].value, settings[keys[i]].value);
+            settings[key] = (settings[key].value, settings[key].value);
         }
     }
 
@@ -446,23 +440,6 @@ public class ErnestoChase : ModBehaviour
                         QSBCompat.SendControlledErnestoData(id, fakeData);
                     }
                 }
-
-                /*GameObject prefab = LoadPrefab("Assets/ErnestoChase/ControllableErnesto_Body.prefab");
-                ControllableErnesto controllableErnesto = Instantiate(prefab, Locator.GetPlayerTransform().position +
-                        Locator.GetPlayerTransform().up * 3f, Locator.GetPlayerTransform().rotation)
-                    .GetComponent<ControllableErnesto>();
-                ModHelper.Events.Unity.FireOnNextUpdate(controllableErnesto.AttachPlayer);
-
-                if (InMultiplayer)
-                {
-                    ErnestoData fakeData = new();
-                    fakeData.id = InMultiplayer ? QSBAPI.GetLocalPlayerID() : 0;
-                    fakeData.localid = 0;
-                    foreach (var id in Players)
-                    {
-                        QSBCompat.SendControlledErnestoData(id, fakeData);
-                    }
-                }*/
             }
 
             SpawnErnestos();
@@ -557,12 +534,6 @@ public class ErnestoChase : ModBehaviour
 
         remoteErnestos[firstState.id].Add(firstState.localid, ernestoObj);
         manager.SetStoredTargets(new TargetDataQueue());
-
-        /*if (ErnestoStacking && storedErnestoTargets.Count > i)
-        {
-            manager.SetStoredTargets(storedErnestoTargets[i]);
-            oldErnestos.Add(ernestoObj);
-        }*/
     }
 
     public IEnumerator SpawnControlledErnestoRemote(ErnestoData data)
@@ -577,7 +548,6 @@ public class ErnestoChase : ModBehaviour
         
         ErnestoManager manager = ernestoObj.GetComponent<ErnestoManager>();
         ErnestoState state = ernestoObj.GetComponent<ErnestoState>();
-        //ernestoObj.AddComponent<RemoteErnestoMorphController>();
 
         state.SetRemoteData(1, data);
         state.AIEnabled = false;
@@ -598,24 +568,7 @@ public class ErnestoChase : ModBehaviour
         }
         remoteErnestos[data.id].Add(data.localid, ernestoObj);
 
-        remoteParent.gameObject.AddComponent<RemoteErnestoMorphController>();
-
-        /*foreach (var renderer in remoteParent.GetComponentsInChildren<Renderer>())
-        {
-            renderer.forceRenderingOff = true;
-        }*/
-        /*ernestoObj.transform.parent = remoteParent;
-        ModHelper.Events.Unity.FireInNUpdates(() =>
-        {
-            ernestoObj.transform.localPosition = new Vector3(0f, 0f, 0f);
-            ernestoObj.transform.localRotation = Quaternion.identity;
-        }, 10);*/
-
-        /*if (ErnestoStacking && storedErnestoTargets.Count > i)
-        {
-            manager.SetStoredTargets(storedErnestoTargets[i]);
-            oldErnestos.Add(ernestoObj);
-        }*/
+        remoteParent.gameObject.AddComponent<PlayerErnesto.RemoteErnestoMorphController>();
     }
 
     public void AddTargetDataRemote(uint from, uint localID, TargetDataQueue.TargetData targetData)

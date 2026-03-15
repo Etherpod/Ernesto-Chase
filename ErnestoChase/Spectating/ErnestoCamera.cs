@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
 
-namespace ErnestoChase;
+namespace ErnestoChase.Spectating;
 
 public class ErnestoCamera : MonoBehaviour
 {

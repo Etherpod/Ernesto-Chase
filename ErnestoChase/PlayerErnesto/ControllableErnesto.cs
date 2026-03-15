@@ -1,7 +1,7 @@
 ﻿using UnityEngine;
-using static ErnestoChase.TargetDataQueue;
+using ErnestoChase.ErnestoAI;
 
-namespace ErnestoChase;
+namespace ErnestoChase.PlayerErnesto;
 
 public class ControllableErnesto : MonoBehaviour
 {

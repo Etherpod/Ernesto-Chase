@@ -38,7 +38,7 @@ public static class GameStateManager
 		set => PlayerData.SetPersistentCondition("EC_GAME_STARTED", value);
 	}
 
-	public static void LoadSaveData(SaveDataJson saveData)
+	public static void LoadSaveData(Files.SaveDataJson saveData)
 	{
 		_selectedMinigame = saveData.SelectedMinigame;
 		_selectedShipLogModes.Clear();

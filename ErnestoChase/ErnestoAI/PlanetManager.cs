@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using UnityEngine;
 
-namespace ErnestoChase;
+namespace ErnestoChase.ErnestoAI;
 
 public class PlanetManager : MonoBehaviour
 {

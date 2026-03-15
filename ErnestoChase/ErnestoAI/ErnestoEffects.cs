@@ -7,7 +7,7 @@ using OWML.Common;
 using UnityEngine;
 using UnityEngine.Networking;
 
-namespace ErnestoChase;
+namespace ErnestoChase.ErnestoAI;
 
 public class ErnestoEffects : MonoBehaviour
 {
@@ -74,8 +74,8 @@ public class ErnestoEffects : MonoBehaviour
 
         state.OnDataChanged += OnDataChanged;
 
-        AssetBundleUtilities.ReplaceShaders(blackHolePrefab.gameObject);
-        AssetBundleUtilities.ReplaceShaders(whiteHolePrefab.gameObject);
+        Files.AssetBundleUtilities.ReplaceShaders(blackHolePrefab.gameObject);
+        Files.AssetBundleUtilities.ReplaceShaders(whiteHolePrefab.gameObject);
         blackHolePrefab._warpedObjectGeometry = ernestoMesh;
         whiteHolePrefab._warpedObjectGeometry = ernestoMesh;
         blackHole = Instantiate(blackHolePrefab);

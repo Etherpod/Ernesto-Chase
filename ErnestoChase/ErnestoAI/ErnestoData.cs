@@ -1,5 +1,7 @@
 ﻿using System;
 
+namespace ErnestoChase.ErnestoAI;
+
 [Serializable]
 public class ErnestoData
 {

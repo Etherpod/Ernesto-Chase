@@ -6,7 +6,7 @@ using OWML.ModHelper;
 using UnityEngine;
 using static ErnestoChase.ErnestoChase;
 
-namespace ErnestoChase;
+namespace ErnestoChase.Spectating;
 
 public class SpectateManager : MonoBehaviour
 {
@@ -267,8 +267,8 @@ public class SpectateManager : MonoBehaviour
 
         if (camera.IsErnestoCam)
         {
-            var remoteID = camera.GetComponent<ErnestoState>().RemoteID;
-            var localID = camera.GetComponent<ErnestoState>().LocalID;
+            var remoteID = camera.GetComponent<ErnestoAI.ErnestoState>().RemoteID;
+            var localID = camera.GetComponent<ErnestoAI.ErnestoState>().LocalID;
 
             ernestoRingWorldStates.TryAdd(remoteID, []);
             ernestoRingWorldStates[remoteID].TryAdd(localID, false);
@@ -297,7 +297,7 @@ public class SpectateManager : MonoBehaviour
 
         if (SpectateTarget.IsErnestoCam)
         {
-            var state = SpectateTarget.GetComponent<ErnestoState>();
+            var state = SpectateTarget.GetComponent<ErnestoAI.ErnestoState>();
             if (state.RemoteID != remoteID || state.LocalID != localID)
             {
                 return;

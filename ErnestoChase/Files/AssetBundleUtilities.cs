@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
 
-namespace ErnestoChase;
+namespace ErnestoChase.Files;
 
 public static class AssetBundleUtilities
 {

@@ -4,7 +4,7 @@ using System.Linq;
 using UnityEngine;
 using UnityEngine.InputSystem;
 
-namespace ErnestoChase;
+namespace ErnestoChase.ErnestoAI;
 
 public class ErnestoManager : MonoBehaviour
 {
@@ -71,13 +71,13 @@ public class ErnestoManager : MonoBehaviour
 
         if (!state.ErnestoCam)
         {
-            GetComponentInChildren<ErnestoCamera>().gameObject.SetActive(false);
+            GetComponentInChildren<Spectating.ErnestoCamera>().gameObject.SetActive(false);
         }
     }
 
     private void OnDataChanged(uint lastData)
     {
-        GetComponentInChildren<ErnestoCamera>(true).gameObject.SetActive(state.ErnestoCam);
+        GetComponentInChildren<Spectating.ErnestoCamera>(true).gameObject.SetActive(state.ErnestoCam);
     }
 
     private void Update()

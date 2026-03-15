@@ -3,7 +3,10 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
-using static ErnestoChase.TargetDataQueue;
+using ErnestoChase.Minigames;
+using ErnestoChase.PlayerErnesto;
+using ErnestoChase.ErnestoAI;
+using static ErnestoChase.ErnestoAI.TargetDataQueue;
 
 namespace ErnestoChase;
 

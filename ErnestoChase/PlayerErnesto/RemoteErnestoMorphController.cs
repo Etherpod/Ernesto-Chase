@@ -1,7 +1,8 @@
 ﻿using System.Linq;
 using UnityEngine;
+using ErnestoChase.ErnestoAI;
 
-namespace ErnestoChase;
+namespace ErnestoChase.PlayerErnesto;
 
 public class RemoteErnestoMorphController : MonoBehaviour
 {

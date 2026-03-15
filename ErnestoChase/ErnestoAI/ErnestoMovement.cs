@@ -1,9 +1,8 @@
 ﻿using System.Collections.Generic;
-using System.ComponentModel.Design;
 using UnityEngine;
-using static ErnestoChase.TargetDataQueue;
+using static ErnestoChase.ErnestoAI.TargetDataQueue;
 
-namespace ErnestoChase;
+namespace ErnestoChase.ErnestoAI;
 
 public class ErnestoMovement : MonoBehaviour
 {
@@ -398,7 +397,7 @@ public class ErnestoMovement : MonoBehaviour
             Bounds meshBounds = GetComponentInChildren<SkinnedMeshRenderer>().bounds;
             var camera = ErnestoChase.Instance.ErnestoMorph && state.RemoteID == 0
                 ? Locator.GetPlayerBody()
-                    .GetComponentInParent<ControllableErnesto>()
+                    .GetComponentInParent<PlayerErnesto.ControllableErnesto>()
                     .transform.Find("ScaleRoot/ErnestoCam")
                     .GetComponent<OWCamera>()
                 : Locator.GetPlayerCamera();

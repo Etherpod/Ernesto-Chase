@@ -1,8 +1,8 @@
 ﻿using UnityEngine;
 using UnityEngine.UI;
-using static ErnestoChase.MinigameManager;
+using static ErnestoChase.Minigames.MinigameManager;
 
-namespace ErnestoChase;
+namespace ErnestoChase.Minigames;
 
 public class RandomShipLogInfo : MinigameUIText
 {
