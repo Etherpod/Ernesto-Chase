@@ -39,6 +39,7 @@ public class MinigameManager : MonoBehaviour
 	{
 		GlobalMessenger.AddListener("WakeUp", OnWakeUp);
 		GlobalMessenger<DeathType>.AddListener("PlayerDeath", OnPlayerDeath);
+		GlobalMessenger.AddListener("EC_GameStopped", OnGameStopped);
 	}
 
 	public void OnSceneUnloaded()
@@ -495,10 +496,8 @@ public class MinigameManager : MonoBehaviour
 		
 		_shipLogInfo.OnGameWon();
 		_shipLogInfo.DisplayWinText(_numHintsUsed);
-		foreach (var e in Instance.ernestos)
-		{
-			e.GetComponent<ErnestoManager>().OnGameStopped();
-		}
+		
+		Instance.StopGameRemote();
 	}
 
 	public void CompleteObjectiveRemote()
@@ -557,10 +556,7 @@ public class MinigameManager : MonoBehaviour
 		{
 			_shipLogInfo.OnGameWon();
 			_shipLogInfo.DisplayWinText(_numHintsUsed);
-			foreach (var e in Instance.ernestos)
-			{
-				e.GetComponent<ErnestoManager>().OnGameStopped();
-			}
+			Instance.StopGame();
 
 			if (InMultiplayer && QSBAPI.GetIsHost() && Instance.GlobalFactGoals)
 			{
@@ -633,6 +629,7 @@ public class MinigameManager : MonoBehaviour
 
 	public void OnGameStopped()
 	{
+		ErnestoChase.WriteDebugMessage("I DID IT I STOPPED!!!!");
 		OnPlayerDeath(DeathType.Digestion);
 	}
 

@@ -32,7 +32,7 @@ public class CountdownTimer : MinigameUIText
 
 		if (_currentTime == 0f)
 		{
-			ErnestoChase.Instance.OnCountdownComplete();
+			ErnestoChase.Instance.StopGame();
 			_timerEnabled = false;
 		}
 	}

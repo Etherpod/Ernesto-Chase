@@ -765,32 +765,13 @@ public class ErnestoChase : ModBehaviour
             ErnestoManager manager = ernestoObj.GetComponent<ErnestoManager>();
             ErnestoState state = ernestoObj.GetComponent<ErnestoState>();
 
-            for (uint s = 1; s <= 2; s++)
+            if (RandomMode)
             {
-                if (RandomMode)
-                {
-                    state.InitializeStats(s, GenerateRandomSettings());
-                }
-                else
-                {
-                    Dictionary<string, (object value, object property)> customSettings = [];
-                    customSettings.AddRange(settings);
-                    if (s == 1)
-                    {
-                        customSettings["enableStealthMode"] = (true, true);
-                        customSettings["ernestoMusic"] = (true, true);
-                        customSettings["groundMovementSpeed"] = (0.1f, 0.1f);
-                        customSettings["distanceSpeedMultiplier"] = (5f, 5f);
-                    }
-                    if (s == 2)
-                    {
-                        customSettings["groundMovementSpeed"] = (2f, 2f);
-                        customSettings["distanceSpeedMultiplier"] = (1.5f, 1.5f);
-                        customSettings["enableStealthMode"] = (false, false);
-                        customSettings["ernestoMusic"] = (true, true);
-                    }
-                    state.InitializeStats(s, customSettings);
-                }
+                state.InitializeStats(1, GenerateRandomSettings());
+            }
+            else
+            {
+                state.InitializeStats(1, settings);
             }
 
             ernestoObj.SetActive(true);
@@ -846,7 +827,7 @@ public class ErnestoChase : ModBehaviour
         ErnestoManager manager = ernestoObj.GetComponent<ErnestoManager>();
         ErnestoState state = ernestoObj.GetComponent<ErnestoState>();
 
-        state.SetData(dataStates);
+        state.SetRemoteData(dataStates);
 
         ernestoObj.SetActive(true);
         ernestos.Add(ernestoObj);
@@ -886,7 +867,7 @@ public class ErnestoChase : ModBehaviour
         ErnestoState state = ernestoObj.GetComponent<ErnestoState>();
         //ernestoObj.AddComponent<RemoteErnestoMorphController>();
 
-        state.SetData(1, data);
+        state.SetRemoteData(1, data);
         state.AIEnabled = false;
         
         ernestoObj.SetActive(true);
@@ -1189,24 +1170,7 @@ public class ErnestoChase : ModBehaviour
         else if (ErnestoConditionManager.GameStarted &&
             DialogueConditionManager.SharedInstance.GetConditionState("EC_STOP_GAME"))
         {
-            DialogueConditionManager.SharedInstance.SetConditionState("EC_STOP_GAME");
-            ErnestoConditionManager.ApplySavedShipLogModes();
-            ErnestoConditionManager.Reset();
-
-            MinigameManager.OnGameStopped();
-            
-            foreach (var e in ernestos)
-            {
-                e.GetComponent<ErnestoManager>().OnGameStopped();
-            }
-            
-            if (InMultiplayer)
-            {
-                foreach (var id in Players)
-                {
-                    QSBCompat.SendStopGame(id);
-                }
-            }
+            StopGame();
         }
     }
 
@@ -1231,24 +1195,34 @@ public class ErnestoChase : ModBehaviour
         }
     }
 
-    public void StopGameRemote()
+    public void StopGame()
     {
+        if (InMultiplayer && !QSBAPI.GetIsHost()) return;
+        
+        WriteDebugMessage("Stopping game");
+        
         DialogueConditionManager.SharedInstance.SetConditionState("EC_STOP_GAME");
+        ErnestoConditionManager.ApplySavedShipLogModes();
         ErnestoConditionManager.Reset();
+        
+        GlobalMessenger.FireEvent("EC_GameStopped");
             
-        foreach (var e in ernestos)
+        if (InMultiplayer)
         {
-            e.GetComponent<ErnestoManager>().OnGameStopped();
+            foreach (var id in Players)
+            {
+                QSBCompat.SendStopGame(id);
+            }
         }
     }
 
-    public void OnCountdownComplete()
+    public void StopGameRemote()
     {
-        MinigameManager.OnGameStopped();
-        foreach (var e in ernestos)
-        {
-            e.GetComponent<ErnestoManager>().OnGameStopped();
-        }
+        WriteDebugMessage("STOP STOP STOP STOP!!!!!");
+        DialogueConditionManager.SharedInstance.SetConditionState("EC_STOP_GAME");
+        ErnestoConditionManager.Reset();
+        
+        GlobalMessenger.FireEvent("EC_GameStopped");
     }
 
     public void RespawnErnesto()

@@ -49,7 +49,9 @@ public class ErnestoState : MonoBehaviour
     {
         var data = new ErnestoData();
         
-        data.id = ErnestoChase.InMultiplayer ? ErnestoChase.QSBAPI.GetLocalPlayerID() : 0;
+        //data.id = ErnestoChase.InMultiplayer ? ErnestoChase.QSBAPI.GetLocalPlayerID() : 0;
+        data.id = 0;
+        data.remoteid = ErnestoChase.InMultiplayer ? ErnestoChase.QSBAPI.GetLocalPlayerID() : 0;
         data.time = Time.fixedTime;
         data.MovementSpeed = (float)settings["groundMovementSpeed"].property;
         data.SpeedAccumulationType = (string)settings["speedAccumulationType"].property;
@@ -75,17 +77,19 @@ public class ErnestoState : MonoBehaviour
         return DataStates.ContainsKey(stateID) ? DataStates[stateID] : null;
     }
 
-    public void SetData(uint stateID, ErnestoData data)
+    public void SetRemoteData(uint stateID, ErnestoData data)
     {
         data.time -= Time.fixedTime;
+        data.id = data.remoteid;
         DataStates[stateID] = data;
     }
 
-    public void SetData(Dictionary<uint, ErnestoData> dataStates)
+    public void SetRemoteData(Dictionary<uint, ErnestoData> dataStates)
     {
         foreach (var (id, state) in dataStates)
         {
             state.time -= Time.fixedTime;
+            state.id = state.remoteid;
             DataStates[id] = state;
         }
     }

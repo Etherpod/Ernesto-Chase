@@ -4,6 +4,7 @@
 public class ErnestoData
 {
     public uint id = 0;
+    public uint remoteid = 0;
     public uint localid = 0;
     public float time = 0;
     public float MovementSpeed;

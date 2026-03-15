@@ -59,6 +59,7 @@ public class ErnestoManager : MonoBehaviour
 
         ErnestoChase.Instance.OnPlayerWarped += planetManager.OnPlayerWarped;
         GlobalMessenger<DeathType>.AddListener("PlayerDeath", OnPlayerDeath);
+        GlobalMessenger.AddListener("EC_GameStopped", OnGameStopped);
 
         if (ErnestoChase.QSBAPI != null)
         {
@@ -143,7 +144,7 @@ public class ErnestoManager : MonoBehaviour
                 ernestoEffects.OnCaughtPlayer();
                 OnCaughtPlayer?.Invoke(this);
                 PatchnestoClass.OnCaughtPlayer(this);
-                GlobalMessenger.FireEvent("CaughtPlayer");
+                GlobalMessenger.FireEvent("EC_CaughtPlayer");
                 Locator.GetDeathManager().KillPlayer(DeathType.Digestion);
                 startedDeathSequence = true;
             }
@@ -330,6 +331,7 @@ public class ErnestoManager : MonoBehaviour
 
         ErnestoChase.Instance.OnPlayerWarped -= planetManager.OnPlayerWarped;
         GlobalMessenger<DeathType>.RemoveListener("PlayerDeath", OnPlayerDeath);
+        GlobalMessenger.RemoveListener("EC_GameStopped", OnGameStopped);
         
         if (ErnestoChase.QSBAPI != null)
         {

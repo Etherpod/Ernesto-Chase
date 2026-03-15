@@ -11,6 +11,7 @@ public class PlayerMorphController : MonoBehaviour
 
 	private OWRigidbody _playerBody;
 	private bool _morphed;
+	private bool _gameStopped;
 
 	private void Awake()
 	{
@@ -69,6 +70,8 @@ public class PlayerMorphController : MonoBehaviour
 
 	private void OnErnestoUnsuspended(OWRigidbody body)
 	{
+		if (_gameStopped) return;
+		
 		_ernestoBody.SetRotation(Quaternion.LookRotation(Locator.GetPlayerCamera().transform.forward,
 			Locator.GetPlayerCamera().transform.up));
 		_ernestoBody._rigidbody.angularDrag = 0.94f;
@@ -95,6 +98,19 @@ public class PlayerMorphController : MonoBehaviour
 	}
 
 	public bool IsMorphed() => _morphed;
+
+	public void OnGameStopped()
+	{
+		if (_gameStopped) return;
+		
+		if (_morphed)
+		{
+			SetMorphed(false);
+		}
+
+		_gameStopped = true;
+		enabled = false;
+	}
 
 	private void OnDestroy()
 	{

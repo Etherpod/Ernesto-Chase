@@ -722,8 +722,6 @@ public class ErnestoMovement : MonoBehaviour
             lastTime = Time.fixedTime;
 
             sendTarget = true;
-            
-            ErnestoChase.WriteDebugMessage(targetData.isInRingWorld);
         }
         else
         {

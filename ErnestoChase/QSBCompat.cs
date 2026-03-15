@@ -235,7 +235,7 @@ public static class QSBCompat
 
     private static void ReceiveSurvivalTimerSync(uint from, float timeLeft)
     {
-        ErnestoChase.MinigameManager.SetUpSurvivalRemote(timeLeft);
+        ErnestoChase.MinigameManager.UpdateSurvivalTimerRemote(timeLeft);
     }
 
     public static void SendRandomShipLogData(uint to, 

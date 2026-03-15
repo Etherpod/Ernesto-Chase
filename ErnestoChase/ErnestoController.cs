@@ -146,8 +146,6 @@ public class ErnestoController : MonoBehaviour
                 transform.parent = rigidbody.transform;
             }
 
-            ErnestoChase.WriteDebugMessage(transform.parent);
-
             Vector3 newPos = transform.parent.InverseTransformPoint(Locator.GetPlayerTransform().position);
             transform.localPosition = newPos;
             lastPosition = newPos;
