@@ -80,7 +80,7 @@ public static class PatchnestoClass
 	[HarmonyPatch(typeof(DeathManager), nameof(DeathManager.KillPlayer))]
 	public static void OverwriteInvincibility(DeathManager __instance)
 	{
-		if (caughtErnestos.Count > 0 || ErnestoConditionManager.StartingGame)
+		if (caughtErnestos.Count > 0 || GameStateManager.StartingGame)
 		{
 			__instance._invincible = false;
 		}
@@ -481,7 +481,7 @@ public static class PatchnestoClass
 	[HarmonyPatch(typeof(DeathManager), nameof(DeathManager.CheckShouldWakeInDreamWorld))]
 	public static bool PreventDreamRevival(ref bool __result)
 	{
-		if (caughtErnestos.Count > 0 || ErnestoConditionManager.StartingGame)
+		if (caughtErnestos.Count > 0 || GameStateManager.StartingGame)
 		{
 			__result = false;
 			return false;
@@ -619,8 +619,8 @@ public static class PatchnestoClass
 		{
 			string text = option._textID.Replace(stem, "");
 			string name = text.Substring(0, text.IndexOf(" - "));
-			bool state = ErnestoConditionManager.GetShipLogMode(name);
-			ErnestoConditionManager.SetShipLogMode(name, !state);
+			bool state = GameStateManager.GetShipLogMode(name);
+			GameStateManager.SetShipLogMode(name, !state);
 
 			__instance._currentDialogueBox._optionsUIElements[optionIndex]
 				.textElement.text = option.Text;
@@ -642,7 +642,7 @@ public static class PatchnestoClass
 	[HarmonyPatch(typeof(ShipLogController), nameof(ShipLogController.SetDamaged))]
 	public static bool PreventShipLogEnable(bool damaged)
 	{
-		return !ErnestoConditionManager.RandomShipLogEnabled ||
+		return GameStateManager.GetSelectedMinigame() != Minigame.RandomShipLog ||
 			damaged || ErnestoChase.Instance.AllowShipLog;
 	}
 
@@ -658,7 +658,7 @@ public static class PatchnestoClass
 		{
 			string text = key.Replace(stem, "");
 			if (key.IndexOf(" - ") < 0) return;
-			bool state = ErnestoConditionManager.GetShipLogMode(text.Substring(0, text.IndexOf(" - ")));
+			bool state = GameStateManager.GetShipLogMode(text.Substring(0, text.IndexOf(" - ")));
 
 			__result = __result.Replace("STATE", state ? "Enabled" : "Disabled");
 			return;
@@ -667,11 +667,11 @@ public static class PatchnestoClass
 		if (key.Contains("EC_SelectMinigame") || key.Contains("EC_SelectMinigame_Selected"))
 		{
 			string minigame;
-			if (ErnestoConditionManager.RandomShipLogEnabled)
+			if (GameStateManager.GetSelectedMinigame() == Minigame.RandomShipLog)
 			{
 				minigame = "Random Ship Log";
 			}
-			else if (ErnestoConditionManager.SurvivalEnabled)
+			else if (GameStateManager.GetSelectedMinigame() == Minigame.Survival)
 			{
 				minigame = "Survival";
 			}

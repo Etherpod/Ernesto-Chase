@@ -28,6 +28,7 @@ public class ErnestoChase : ModBehaviour
 
     public static ErnestoChase Instance;
     public static MinigameManager MinigameManager;
+    public static SaveDataJson CurrentSave;
     public AssetBundle assetBundle;
     public GameObject ernesto;
     public bool playerDetectorReady = false;
@@ -135,6 +136,9 @@ public class ErnestoChase : ModBehaviour
     private void Start()
     {
         assetBundle = AssetBundle.LoadFromFile(Path.Combine(ModHelper.Manifest.ModFolderPath, "assets/ernestochase"));
+        CurrentSave = ModHelper.Storage.Load<SaveDataJson>("save.json");
+        CurrentSave ??= new SaveDataJson();
+        GameStateManager.LoadSaveData(CurrentSave);
         ernesto = LoadPrefab("Assets/ErnestoChase/Ernesto.prefab");
         ernesto.SetActive(false);
 
@@ -154,13 +158,12 @@ public class ErnestoChase : ModBehaviour
         {
             if (loadScene != OWScene.SolarSystem)
             {
-                ErnestoConditionManager.ApplySavedShipLogModes();
                 return;
             }
 
             if (scene != OWScene.SolarSystem)
             {
-                ErnestoConditionManager.Reset();
+                GameStateManager.Reset();
             }
 
             playerDetectorReady = false;
@@ -179,9 +182,9 @@ public class ErnestoChase : ModBehaviour
                 storedErnestoTargets.Clear();
             }
 
-            if (ErnestoConditionManager.StartingGame)
+            if (GameStateManager.StartingGame)
             {
-                ErnestoConditionManager.GameStarted = true;
+                GameStateManager.GameStarted = true;
             }
 
             DialogueConditionManager.SharedInstance.SetConditionState("EC_NON_HOST",
@@ -194,7 +197,7 @@ public class ErnestoChase : ModBehaviour
             _setupDialogue.OnEndConversation += OnEndSetupConversation;
             DialogueBuilder.FixCustomDialogue(obj, "ConversationZone");
 
-            if (ErnestoConditionManager.GameStarted)
+            if (GameStateManager.GameStarted)
             {
                 SetUpIslandTriggers();
                 StartCoroutine(WaitForPlayer());
@@ -677,6 +680,14 @@ public class ErnestoChase : ModBehaviour
         return output;
     }
 
+    public static void SaveData()
+    {
+        CurrentSave ??= new SaveDataJson();
+        CurrentSave.SelectedMinigame = GameStateManager.GetSelectedMinigame();
+        CurrentSave.SelectedShipLogModes = GameStateManager.GetSelectedShipLogModes();
+        Instance.ModHelper.Storage.Save(CurrentSave, "save.json");
+    }
+
     public IEnumerator AddCamToRemotePlayer(uint playerID)
     {
         yield return new WaitUntil(() => QSBAPI.GetPlayerReady(playerID));
@@ -1152,10 +1163,10 @@ public class ErnestoChase : ModBehaviour
     {
         GameObject.FindWithTag("DialogueGui").GetRequiredComponent<DialogueBoxVer2>()._revealingOptions = false;
         
-        if (!ErnestoConditionManager.GameStarted && 
+        if (!GameStateManager.GameStarted && 
             DialogueConditionManager.SharedInstance.GetConditionState("EC_START_GAME"))
         {
-            ErnestoConditionManager.StartingGame = true;
+            GameStateManager.StartingGame = true;
             Locator.GetDeathManager().KillPlayer(DeathType.Meditation);
             DialogueConditionManager.SharedInstance.SetConditionState("EC_START_GAME");
 
@@ -1167,7 +1178,7 @@ public class ErnestoChase : ModBehaviour
                 }
             }
         }
-        else if (ErnestoConditionManager.GameStarted &&
+        else if (GameStateManager.GameStarted &&
             DialogueConditionManager.SharedInstance.GetConditionState("EC_STOP_GAME"))
         {
             StopGame();
@@ -1180,17 +1191,17 @@ public class ErnestoChase : ModBehaviour
         
         if (DialogueConditionManager.SharedInstance.GetConditionState("EC_RSSR_MODE_SELECTED"))
         {
-            ErnestoConditionManager.RandomShipLogEnabled = true;
+            GameStateManager.SelectMinigame(Minigame.RandomShipLog);
             DialogueConditionManager.SharedInstance.SetConditionState("EC_RSSR_MODE_SELECTED");
         }
         else if (DialogueConditionManager.SharedInstance.GetConditionState("EC_SURVIVAL_MODE_SELECTED"))
         {
-            ErnestoConditionManager.SurvivalEnabled = true;
+            GameStateManager.SelectMinigame(Minigame.Survival);
             DialogueConditionManager.SharedInstance.SetConditionState("EC_SURVIVAL_MODE_SELECTED");
         }
         else if (DialogueConditionManager.SharedInstance.GetConditionState("EC_MINIGAMES_DISABLED"))
         {
-            ErnestoConditionManager.DeselectMinigame();
+            GameStateManager.SelectMinigame(Minigame.None);
             DialogueConditionManager.SharedInstance.SetConditionState("EC_MINIGAMES_DISABLED");
         }
     }
@@ -1202,8 +1213,7 @@ public class ErnestoChase : ModBehaviour
         WriteDebugMessage("Stopping game");
         
         DialogueConditionManager.SharedInstance.SetConditionState("EC_STOP_GAME");
-        ErnestoConditionManager.ApplySavedShipLogModes();
-        ErnestoConditionManager.Reset();
+        GameStateManager.Reset();
         
         GlobalMessenger.FireEvent("EC_GameStopped");
             
@@ -1218,9 +1228,8 @@ public class ErnestoChase : ModBehaviour
 
     public void StopGameRemote()
     {
-        WriteDebugMessage("STOP STOP STOP STOP!!!!!");
         DialogueConditionManager.SharedInstance.SetConditionState("EC_STOP_GAME");
-        ErnestoConditionManager.Reset();
+        GameStateManager.Reset();
         
         GlobalMessenger.FireEvent("EC_GameStopped");
     }
@@ -1258,23 +1267,10 @@ public class ErnestoChase : ModBehaviour
     public override void Configure(IModConfig config)
     {
         var keys = settings.Keys.ToArray();
-        //bool anyChanged = false;
-        for (int i = 0; i < keys.Length; i++)
+        foreach (var key in keys)
         {
-            /*object configValue = ConvertJValue(config.GetSettingsValue<object>(keys[i]));
-            if (!anyChanged && !settings[keys[i]].value.Equals(configValue)
-                && (keys[i] == "spaceAccelerationType" || keys[i] == "advancedSettings"))
-            {
-                WriteDebugMessage(keys[i] + " was changed");
-                anyChanged = true;
-            }*/
-            settings[keys[i]] = (ConvertJValue(config.GetSettingsValue<object>(keys[i])), settings[keys[i]].property);
+            settings[key] = (ConvertJValue(config.GetSettingsValue<object>(key)), settings[key].property);
         }
-
-        /*if (anyChanged)
-        {
-            ECMenuManager.RedrawSettingsMenu();
-        }*/
     }
 
     public static object ConvertJValue(object obj)
@@ -1303,6 +1299,6 @@ public class ErnestoChase : ModBehaviour
 
     private void OnDestroy()
     {
-        ErnestoConditionManager.ApplySavedShipLogModes();
+        SaveData();
     }
 }

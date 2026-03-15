@@ -202,7 +202,7 @@ public static class QSBCompat
 
     private static void ReceiveStartGame(uint from, bool b)
     {
-        ErnestoConditionManager.StartingGame = true;
+        GameStateManager.StartingGame = true;
         Locator.GetDeathManager().KillPlayer(DeathType.Meditation);
         DialogueConditionManager.SharedInstance.SetConditionState("EC_START_GAME", false);
         DialogueConditionManager.SharedInstance.SetConditionState("EC_GAME_STARTED", true);

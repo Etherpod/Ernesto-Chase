@@ -41,7 +41,81 @@ public class MinigameManager : MonoBehaviour
 		GlobalMessenger<DeathType>.AddListener("PlayerDeath", OnPlayerDeath);
 		GlobalMessenger.AddListener("EC_GameStopped", OnGameStopped);
 	}
+	
+	public void SetUpMinigames()
+	{
+		if (GameStateManager.GetSelectedMinigame() == Minigame.RandomShipLog &&
+			(!InMultiplayer || QSBAPI.GetIsHost()))
+		{
+			SetUpRandomShipLog();
+		}
+		else if (GameStateManager.GetSelectedMinigame() == Minigame.Survival &&
+			(!InMultiplayer || QSBAPI.GetIsHost()))
+		{
+			SetUpSurvival();
+		}
+	}
+	
+	private void Update()
+	{
+		if (_shipLogInfo)
+		{
+			if (Keyboard.current.oKey.wasPressedThisFrame)
+			{
+				_shipLogInfo.ToggleTextHidden();
+			}
 
+			if (Keyboard.current.lKey.wasPressedThisFrame)
+			{
+				_shipLogInfo.ToggleTextExpanded();
+			}
+
+			if (!InMultiplayer || QSBAPI.GetIsHost() || !_receivedShipLogData)
+			{
+				if (Keyboard.current.hKey.wasPressedThisFrame &&
+					_shipLogInfo.AdvanceHint())
+				{
+					_numHintsUsed++;
+
+					if (InMultiplayer && QSBAPI.GetIsHost() && Instance.GlobalFactGoals)
+					{
+						foreach (var id in AlivePlayers)
+						{
+							QSBCompat.SendShipLogHint(id, _shipLogInfo.GetCurrentHints(), _numHintsUsed);
+						}
+					}
+				}
+
+				if (Keyboard.current.nKey.wasPressedThisFrame)
+				{
+					RerollObjective();
+				}
+			}
+		}
+	}
+	
+	private void FixedUpdate()
+	{
+		if (!_syncingTimer || !InMultiplayer)
+		{
+			return;
+		}
+		
+		if (_frameDelay <= 0)
+		{
+			foreach (var id in AlivePlayers)
+			{
+				QSBCompat.SendSurvivalTimerSync(id, _countdownTimer.GetCurrentTime());
+			}
+
+			_frameDelay = _syncFrameDelay;
+		}
+		else
+		{
+			_frameDelay--;
+		}
+	}
+	
 	public void OnSceneUnloaded()
 	{
 		_countdownTimer = null;
@@ -76,9 +150,8 @@ public class MinigameManager : MonoBehaviour
 
 	private void OnWakeUp()
 	{
-		if (!ErnestoConditionManager.GameStarted ||
-			(!ErnestoConditionManager.RandomShipLogEnabled && 
-				!ErnestoConditionManager.SurvivalEnabled))
+		if (!GameStateManager.GameStarted || 
+			GameStateManager.GetSelectedMinigame() == Minigame.None)
 		{
 			return;
 		}
@@ -87,18 +160,21 @@ public class MinigameManager : MonoBehaviour
 			() => _countdownTimer != null || _shipLogInfo != null,
 			() =>
 			{
-				WriteDebugMessage("WAKE UP WAKE UP");
 				if (_countdownTimer != null)
 				{
 					_countdownTimer.FadeIn(5f);
 				}
 				else if (_shipLogInfo != null)
 				{
-					WriteDebugMessage("gaba");
 					_shipLogInfo.FadeIn(5f);
 				}
 			}
 		);
+	}
+	
+	public void OnGameStopped()
+	{
+		OnPlayerDeath(DeathType.Digestion);
 	}
 
 	private void OnPlayerDeath(DeathType deathType)
@@ -113,21 +189,9 @@ public class MinigameManager : MonoBehaviour
 			_shipLogInfo.FadeOut(5f);
 		}
 	}
-	
-	public void SetUpMinigames()
-	{
-		if (ErnestoConditionManager.RandomShipLogEnabled &&
-			(!InMultiplayer || QSBAPI.GetIsHost()))
-		{
-			SetUpRandomShipLog();
-		}
-		else if (ErnestoConditionManager.SurvivalEnabled &&
-			(!InMultiplayer || QSBAPI.GetIsHost()))
-		{
-			SetUpSurvival();
-		}
-	}
 
+	#region Survival
+	
 	public void SetUpSurvival()
 	{
 		GameObject ui = LoadPrefab("Assets/ErnestoChase/CountdownHUD.prefab");
@@ -147,7 +211,6 @@ public class MinigameManager : MonoBehaviour
 	
 	public void SetUpSurvivalRemote(float timerLength)
 	{
-		ErnestoChase.WriteDebugMessage("Add UI remote");
 		GameObject ui = LoadPrefab("Assets/ErnestoChase/CountdownHUD.prefab");
 		_countdownTimer = Instantiate(ui).GetComponentInChildren<CountdownTimer>();
 		_countdownTimer.SetTimerLength(timerLength);
@@ -158,6 +221,10 @@ public class MinigameManager : MonoBehaviour
 	{
 		_countdownTimer?.SetCurrentTime(timeLeft);
 	}
+	
+	#endregion
+	
+	#region RandomShipLog
 	
 	public void SetUpRandomShipLog(bool reroll = false)
 	{
@@ -176,22 +243,22 @@ public class MinigameManager : MonoBehaviour
 
 		List<Func<string>> actionPool = [];
 
-		if (ErnestoConditionManager.GetShipLogMode("Fact Mode"))
+		if (GameStateManager.GetShipLogMode("Fact Mode"))
 		{
 			actionPool.Add(SetRandomFact);
 		}
 		
-		if (ErnestoConditionManager.GetShipLogMode("Entry Mode"))
+		if (GameStateManager.GetShipLogMode("Entry Mode"))
 		{
 			actionPool.Add(SetRandomEntry);
 		}
 
-		if (ErnestoConditionManager.GetShipLogMode("Planet Mode"))
+		if (GameStateManager.GetShipLogMode("Planet Mode"))
 		{
 			actionPool.Add(SetRandomPlanet);
 		}
 		
-		if (ErnestoConditionManager.GetShipLogMode("Rumor Mode"))
+		if (GameStateManager.GetShipLogMode("Rumor Mode"))
 		{
 			actionPool.Add(SetRandomRumor);
 		}
@@ -206,6 +273,7 @@ public class MinigameManager : MonoBehaviour
 		else
 		{
 			WriteDebugMessage("No gamemode selected!");
+			return;
 		}
 		
 		if (!Instance.AllowShipLog)
@@ -367,35 +435,6 @@ public class MinigameManager : MonoBehaviour
 		_shipLogInfo.AssignShipLogFact(_selectedFact);
 		return _selectedFact.GetID();
 	}
-
-	private bool CanBranchRumor(ShipLogFact rumor)
-	{
-		if (!rumor.HasSource()) return false;
-
-		var entry = Locator.GetShipLogManager().GetEntry(rumor.GetSourceID());
-		return entry.GetRumorFacts().Count > 0 && 
-			entry.GetRumorFacts().Any(fact => !fact.IsRevealed());
-	}
-	
-	private void SetBranchingRumor(ShipLogFact baseRumor)
-	{
-		var entry = Locator.GetShipLogManager().GetEntry(baseRumor.GetSourceID());
-		var rumors = entry.GetRumorFacts()
-			.Where(fact => !fact.IsRevealed()).ToArray();
-		
-		if (rumors.Length == 0)
-		{
-			WriteDebugMessage("AAAH THERE'S NO RUMORS TO BRANCH TO");
-			return;
-		}
-		
-		_selectedFact = rumors[Random.Range(0, rumors.Length)];
-		_selectedFact.OnFactRevealed += OnFactRevealed;
-
-		_currentShipLogMode = ShipLogGameMode.Rumor;
-		_currentRumorChain++;
-		_shipLogInfo.AssignShipLogFact(_selectedFact);
-	}
 	
 	public void SetUpRandomShipLogRemote(ShipLogGameMode gamemode, string id, int round)
 	{
@@ -468,6 +507,35 @@ public class MinigameManager : MonoBehaviour
 		}
 	}
 
+	private bool CanBranchRumor(ShipLogFact rumor)
+	{
+		if (!rumor.HasSource()) return false;
+
+		var entry = Locator.GetShipLogManager().GetEntry(rumor.GetSourceID());
+		return entry.GetRumorFacts().Count > 0 && 
+			entry.GetRumorFacts().Any(fact => !fact.IsRevealed());
+	}
+	
+	private void SetBranchingRumor(ShipLogFact baseRumor)
+	{
+		var entry = Locator.GetShipLogManager().GetEntry(baseRumor.GetSourceID());
+		var rumors = entry.GetRumorFacts()
+			.Where(fact => !fact.IsRevealed()).ToArray();
+		
+		if (rumors.Length == 0)
+		{
+			WriteDebugMessage("AAAH THERE'S NO RUMORS TO BRANCH TO");
+			return;
+		}
+		
+		_selectedFact = rumors[Random.Range(0, rumors.Length)];
+		_selectedFact.OnFactRevealed += OnFactRevealed;
+
+		_currentShipLogMode = ShipLogGameMode.Rumor;
+		_currentRumorChain++;
+		_shipLogInfo.AssignShipLogFact(_selectedFact);
+	}
+
 	public void SetBranchingRumorRemote(string id, int currentChain)
 	{
 		_shipLogInfo.OnBranchRumor();
@@ -476,13 +544,66 @@ public class MinigameManager : MonoBehaviour
 		_currentRumorChain = currentChain;
 		_shipLogInfo.AssignShipLogFact(_selectedFact);
 	}
+	
+	public void RerollObjective()
+	{
+		_shipLogInfo.OnRerollObjective();
+		
+		if (_selectedFact != null)
+		{
+			_selectedFact.OnFactRevealed -= OnFactRevealed;
+			_selectedFact = null;
+		}
 
-	public ShipLogGameMode GetShipLogGameMode() => _currentShipLogMode;
+		if (_selectedEntry != null)
+		{
+			_selectedEntry.GetExploreFacts()
+				.ForEach(fact => fact.OnFactRevealed -= OnFactRevealed);
+			_selectedEntry = null;
+		}
 
-	public int GetShipLogRound() => _currentRound;
+		if (_selectedPlanet != null)
+		{
+			Locator.GetShipLogManager().GetEntriesByAstroBody(_selectedPlanet.GetID())
+				.ForEach(entry => entry.GetExploreFacts()
+					.ForEach(fact => fact.OnFactRevealed -= OnFactRevealed));
+			_selectedPlanet = null;
+		}
+			
+		SetUpRandomShipLog(true);
 
-	public int GetShipLogRumorChain() => _currentRumorChain;
+		if (InMultiplayer && QSBAPI.GetIsHost() &&
+			Instance.GlobalFactGoals)
+		{
+			foreach (var id in AlivePlayers)
+			{
+				QSBCompat.SendShipLogReroll(id);
+			}
+		}
+	}
+	
+	public void RerollObjectiveRemote()
+	{
+		if (_shipLogInfo != null)
+		{
+			_shipLogInfo.OnRerollObjective();
+		}
+	}
+	
+	public void CompleteObjectiveRemote()
+	{
+		_shipLogInfo.OnObjectiveCompleted();
+	}
 
+	public void SetShipLogHintsRemote(bool origin, bool location, 
+		bool source, int hintsUsed)
+	{
+		if (!_shipLogInfo) return;
+
+		_numHintsUsed = hintsUsed;
+		_shipLogInfo.SetCurrentHints(origin, location, source);
+	}
+	
 	public void WinRandomShipLogRemote()
 	{
 		if (!_shipLogInfo)
@@ -500,10 +621,11 @@ public class MinigameManager : MonoBehaviour
 		Instance.StopGameRemote();
 	}
 
-	public void CompleteObjectiveRemote()
-	{
-		_shipLogInfo.OnObjectiveCompleted();
-	}
+	public ShipLogGameMode GetShipLogGameMode() => _currentShipLogMode;
+
+	public int GetShipLogRound() => _currentRound;
+
+	public int GetShipLogRumorChain() => _currentRumorChain;
 
 	public void OnFactRevealed()
 	{
@@ -581,124 +703,6 @@ public class MinigameManager : MonoBehaviour
 			SetUpRandomShipLog();
 		}
 	}
-
-	public void RerollObjective()
-	{
-		_shipLogInfo.OnRerollObjective();
-		
-		if (_selectedFact != null)
-		{
-			_selectedFact.OnFactRevealed -= OnFactRevealed;
-			_selectedFact = null;
-		}
-
-		if (_selectedEntry != null)
-		{
-			_selectedEntry.GetExploreFacts()
-				.ForEach(fact => fact.OnFactRevealed -= OnFactRevealed);
-			_selectedEntry = null;
-		}
-
-		if (_selectedPlanet != null)
-		{
-			Locator.GetShipLogManager().GetEntriesByAstroBody(_selectedPlanet.GetID())
-				.ForEach(entry => entry.GetExploreFacts()
-					.ForEach(fact => fact.OnFactRevealed -= OnFactRevealed));
-			_selectedPlanet = null;
-		}
-			
-		SetUpRandomShipLog(true);
-
-		if (InMultiplayer && QSBAPI.GetIsHost() &&
-			Instance.GlobalFactGoals)
-		{
-			foreach (var id in AlivePlayers)
-			{
-				QSBCompat.SendShipLogReroll(id);
-			}
-		}
-	}
 	
-	public void RerollObjectiveRemote()
-	{
-		if (_shipLogInfo != null)
-		{
-			_shipLogInfo.OnRerollObjective();
-		}
-	}
-
-	public void OnGameStopped()
-	{
-		ErnestoChase.WriteDebugMessage("I DID IT I STOPPED!!!!");
-		OnPlayerDeath(DeathType.Digestion);
-	}
-
-	public void SetShipLogHintsRemote(bool origin, bool location, 
-		bool source, int hintsUsed)
-	{
-		if (!_shipLogInfo) return;
-
-		_numHintsUsed = hintsUsed;
-		_shipLogInfo.SetCurrentHints(origin, location, source);
-	}
-	
-	private void Update()
-	{
-		if (_shipLogInfo)
-		{
-			if (Keyboard.current.oKey.wasPressedThisFrame)
-			{
-				_shipLogInfo.ToggleTextHidden();
-			}
-
-			if (Keyboard.current.lKey.wasPressedThisFrame)
-			{
-				_shipLogInfo.ToggleTextExpanded();
-			}
-
-			if (!InMultiplayer || QSBAPI.GetIsHost() || !_receivedShipLogData)
-			{
-				if (Keyboard.current.hKey.wasPressedThisFrame &&
-					_shipLogInfo.AdvanceHint())
-				{
-					_numHintsUsed++;
-
-					if (InMultiplayer && QSBAPI.GetIsHost() && Instance.GlobalFactGoals)
-					{
-						foreach (var id in AlivePlayers)
-						{
-							QSBCompat.SendShipLogHint(id, _shipLogInfo.GetCurrentHints(), _numHintsUsed);
-						}
-					}
-				}
-
-				if (Keyboard.current.nKey.wasPressedThisFrame)
-				{
-					RerollObjective();
-				}
-			}
-		}
-	}
-	
-	private void FixedUpdate()
-	{
-		if (!_syncingTimer || !InMultiplayer)
-		{
-			return;
-		}
-		
-		if (_frameDelay <= 0)
-		{
-			foreach (var id in AlivePlayers)
-			{
-				QSBCompat.SendSurvivalTimerSync(id, _countdownTimer.GetCurrentTime());
-			}
-
-			_frameDelay = _syncFrameDelay;
-		}
-		else
-		{
-			_frameDelay--;
-		}
-	}
+	#endregion
 }

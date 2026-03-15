@@ -133,7 +133,7 @@ public class QSBPatches
     [HarmonyPatch(typeof(PlayerJoinMessage), nameof(PlayerJoinMessage.OnReceiveRemote))]
     public static bool PreventJoinIfGameStarted(PlayerJoinMessage __instance)
     {
-        if (QSBCore.IsHost && ErnestoConditionManager.GameStarted)
+        if (QSBCore.IsHost && GameStateManager.GameStarted)
         {
             DebugLog.ToConsole($"Error - Ernesto Chase game has started already!", MessageType.Error);
             new PlayerKickMessage(__instance.From,
