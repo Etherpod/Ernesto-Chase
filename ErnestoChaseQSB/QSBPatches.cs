@@ -7,7 +7,6 @@ using QSB.DeathSync;
 using QSB.Player.TransformSync;
 using QSB.ShipSync;
 using QSB.Localization;
-using System.Linq;
 using ErnestoChase;
 using OWML.Common;
 using QSB;
@@ -31,11 +30,11 @@ public class QSBPatches
     [HarmonyPatch(typeof(SectorStreaming), nameof(SectorStreaming.FixedUpdate))]
     public static bool SectorStreaming_FixedUpdate(SectorStreaming __instance)
     {
-        if (!ErnestoChase.ErnestoChase.Instance.IsSpectating 
-            || ErnestoChase.ErnestoChase.Instance.SpectateTarget == null) return true;
+        if (!ErnestoChase.ErnestoChase.SpectateManager.IsSpectating 
+            || ErnestoChase.ErnestoChase.SpectateManager.SpectateTarget == null) return true;
 
         var playerInSoftRadius =
-            (ErnestoChase.ErnestoChase.Instance.SpectateTarget.transform.position 
+            (ErnestoChase.ErnestoChase.SpectateManager.SpectateTarget.transform.position 
             - __instance._sector.transform.position).sqrMagnitude < __instance._softLoadRadius * __instance._softLoadRadius;
 
         if (PlayerState.OnQuantumMoon() && Locator.GetQuantumMoon().IsPlayerInsideShrine() 
@@ -68,8 +67,8 @@ public class QSBPatches
     [HarmonyPatch(typeof(ShipLODTrigger), nameof(ShipLODTrigger.FixedUpdate))]
     public static bool ShipLODTrigger_FixedUpdate(ShipLODTrigger __instance)
     {
-        if (!ErnestoChase.ErnestoChase.Instance.IsSpectating
-            || ErnestoChase.ErnestoChase.Instance.SpectateTarget == null) return true;
+        if (!ErnestoChase.ErnestoChase.SpectateManager.IsSpectating
+            || ErnestoChase.ErnestoChase.SpectateManager.SpectateTarget == null) return true;
 
         var playerInRadius = __instance._playerInRadius;
         var probeInRadius = __instance._probeInRadius;
@@ -77,7 +76,7 @@ public class QSBPatches
         if (__instance._playerTransform != null)
         {
             __instance._playerInRadius =
-                Vector3.SqrMagnitude(ErnestoChase.ErnestoChase.Instance.SpectateTarget.transform.position 
+                Vector3.SqrMagnitude(ErnestoChase.ErnestoChase.SpectateManager.SpectateTarget.transform.position 
                 - __instance._playerTransform.position) < __instance._radius * __instance._radius;
         }
 

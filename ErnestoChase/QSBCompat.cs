@@ -164,7 +164,7 @@ public static class QSBCompat
 
     private static void ReceiveRingWorldUpdate(uint from, bool state)
     {
-        ErnestoChase.Instance.UpdateRingWorldState(from, state);
+        ErnestoChase.SpectateManager.UpdateRingWorldState(from, state);
     }
 
     public static void SendRingWorldRefresh(uint to)
@@ -174,10 +174,11 @@ public static class QSBCompat
 
     private static void ReceiveRingWorldRefresh(uint from, bool b)
     {
-        if (ErnestoChase.Instance.IsSpectating && !ErnestoChase.Instance.SpectateTarget.IsErnestoCam &&
-            ErnestoChase.Instance.SpectateTarget.PlayerID == from)
+        if (ErnestoChase.SpectateManager.IsSpectating && 
+            !ErnestoChase.SpectateManager.SpectateTarget.IsErnestoCam &&
+            ErnestoChase.SpectateManager.SpectateTarget.PlayerID == from)
         {
-            ErnestoChase.Instance.SwitchToSpectatorCam(ErnestoChase.Instance.SpectateTarget);
+            ErnestoChase.SpectateManager.SwitchToSpectatorCam(ErnestoChase.SpectateManager.SpectateTarget);
         }
     }
     
@@ -188,10 +189,11 @@ public static class QSBCompat
 
     private static void ReceiveDreamWorldRefresh(uint from, bool b)
     {
-        if (ErnestoChase.Instance.IsSpectating && !ErnestoChase.Instance.SpectateTarget.IsErnestoCam &&
-            ErnestoChase.Instance.SpectateTarget.PlayerID == from)
+        if (ErnestoChase.SpectateManager.IsSpectating && 
+            !ErnestoChase.SpectateManager.SpectateTarget.IsErnestoCam &&
+            ErnestoChase.SpectateManager.SpectateTarget.PlayerID == from)
         {
-            ErnestoChase.Instance.SwitchToSpectatorCam(ErnestoChase.Instance.SpectateTarget);
+            ErnestoChase.SpectateManager.SwitchToSpectatorCam(ErnestoChase.SpectateManager.SpectateTarget);
         }
     }
 

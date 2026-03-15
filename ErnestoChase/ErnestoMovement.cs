@@ -750,7 +750,7 @@ public class ErnestoMovement : MonoBehaviour
         if (state.RemoteID > 0 && targetData.isInRingWorld != wasInRingWorld)
         {
             wasInRingWorld = targetData.isInRingWorld;
-            ErnestoChase.Instance.UpdateRingWorldState(state.RemoteID, state.LocalID, targetData.isInRingWorld);
+            ErnestoChase.SpectateManager.UpdateRingWorldState(state.RemoteID, state.LocalID, targetData.isInRingWorld);
         }
 
         if (!ProcessStoredTeleportLogic(targetData) && hasSkippedTeleport)
@@ -776,8 +776,8 @@ public class ErnestoMovement : MonoBehaviour
         else if (targetData.isTeleportExit)
         {
             TriggerFakeWarpExit?.Invoke();
-            ErnestoChase.Instance.RefreshDreamWorld(state.RemoteID);
-            ErnestoChase.Instance.RefreshRingWorld(state.RemoteID, state.LocalID, targetData.isInRingWorld, false);
+            ErnestoChase.SpectateManager.RefreshDreamWorld(state.RemoteID);
+            ErnestoChase.SpectateManager.RefreshRingWorld(state.RemoteID, state.LocalID, targetData.isInRingWorld, false);
         }
         else if (targetData.isFinalTarget)
         {

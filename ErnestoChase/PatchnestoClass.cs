@@ -444,7 +444,7 @@ public static class PatchnestoClass
 		SunLightController.SunOverrideSettings settings,
 		ref SunLightController.SunOverrideSettings __result)
 	{
-		if (ErnestoChase.Instance.IsSpectating && ErnestoChase.Instance.loadedDreamWorld)
+		if (ErnestoChase.SpectateManager.IsSpectating && ErnestoChase.SpectateManager.loadedDreamWorld)
 		{
 			settings.sunIntensity = 0f;
 			settings.ambientIntensity = 0f;
@@ -460,7 +460,7 @@ public static class PatchnestoClass
 	[HarmonyPatch(typeof(CloakFieldController), nameof(CloakFieldController.OnSectorOccupantsUpdated))]
 	public static bool PreventCloakExitInSpectate(CloakFieldController __instance)
 	{
-		return !ErnestoChase.Instance.IsSpectating;
+		return !ErnestoChase.SpectateManager.IsSpectating;
 	}
 
 	[HarmonyPrefix]

@@ -26,7 +26,7 @@ public class SpectatorCamera : MonoBehaviour
         {
             ernestoManager = GetComponent<ErnestoManager>();
             isErnestoCam = true;
-            ErnestoChase.Instance.ernestoSpectatorCams.Add(this);
+            ErnestoChase.SpectateManager.ernestoSpectatorCams.Add(this);
         }
 
         audioListener = owCamera.GetComponent<AudioListener>();
