@@ -3,6 +3,8 @@ using OWML.Common;
 using UnityEngine;
 using UnityEngine.Events;
 
+namespace ErnestoChase.Interaction;
+
 public interface IQSBAPI
 {
     #region General

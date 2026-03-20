@@ -1,4 +1,4 @@
-﻿namespace ErnestoChase;
+﻿namespace ErnestoChase.Interaction;
 
 public interface INHInteraction
 {

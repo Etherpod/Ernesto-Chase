@@ -7,6 +7,7 @@ using ErnestoChase;
 using QSB.Player;
 using System.Linq;
 using QSB.Player.TransformSync;
+using ErnestoChase.Interaction;
 
 namespace ErnestoChaseQSB;
 

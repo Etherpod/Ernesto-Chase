@@ -6,6 +6,7 @@ using UnityEngine;
 using ErnestoChase.Minigames;
 using ErnestoChase.PlayerErnesto;
 using ErnestoChase.ErnestoAI;
+using ErnestoChase.Interaction;
 using static ErnestoChase.ErnestoAI.TargetDataQueue;
 
 namespace ErnestoChase;

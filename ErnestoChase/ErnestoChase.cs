@@ -12,6 +12,7 @@ using System.Linq;
 using Newtonsoft.Json;
 using ErnestoChase.ErnestoAI;
 using ErnestoChase.Files;
+using ErnestoChase.Interaction;
 
 namespace ErnestoChase;
 

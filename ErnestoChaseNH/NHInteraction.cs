@@ -1,6 +1,7 @@
 ﻿using ErnestoChase;
 using NewHorizons.External;
 using NewHorizons.Handlers;
+using ErnestoChase.Interaction;
 using UnityEngine;
 
 namespace ErnestoChaseNH;

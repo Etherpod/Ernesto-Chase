@@ -1,6 +1,6 @@
 ﻿using UnityEngine;
 
-namespace ErnestoChase;
+namespace ErnestoChase.Interaction;
 
 public interface IQSBInteraction
 {
