@@ -62,8 +62,6 @@ public class ErnestoEffects : MonoBehaviour
     private void Awake()
     {
         state = GetComponent<ErnestoState>();
-        animator = GetComponentInChildren<Animator>();
-        loopingAudio = GetComponentInChildren<OWAudioSource>();
         ernestoRenderer = GetComponentInChildren<SkinnedMeshRenderer>();
         baseMeshScale = ernestoMesh.transform.localScale.magnitude;
         baseLightRange = anglerLight.range;
@@ -471,27 +469,6 @@ public class ErnestoEffects : MonoBehaviour
         }
             
         UpdateMuffle(true);
-    }
-
-    public void SetAudioPitchMultiplier(float mult)
-    {
-        loopingAudio.pitch = mult;
-        oneShotAudio.pitch = mult;
-        musicAudio.pitch = mult;
-    }
-
-    public void DebugRefresh()
-    {
-        oneShotAudio.PlayOneShot(AudioType.DBAnglerfishDetectTarget, 0.8f);
-        
-        if (!state.StealthMode)
-        {
-            loopingAudio.Play();
-            musicAudio.Play();
-        }
-
-        animator.enabled = true;
-        animator.SetTrigger("Impulse");
     }
 
     private void OnDestroy()

@@ -38,7 +38,6 @@ public class ErnestoState : MonoBehaviour
 
     // Data
     public bool ErnestoReleased { get; set; } = false;
-    public bool AIEnabled { get; set; } = true;
     public bool UsingStoredTargets { get; set; } = false;
     public Vector3 LastPlayerPos { get; set; } = Vector3.zero;
     public bool FollowedPlayerToPlanet { get; set; } = true;

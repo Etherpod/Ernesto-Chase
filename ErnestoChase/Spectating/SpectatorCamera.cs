@@ -1,5 +1,6 @@
 ﻿using UnityEngine;
 using ErnestoChase.ErnestoAI;
+using ErnestoChase.PlayerErnesto;
 
 namespace ErnestoChase.Spectating;
 
@@ -13,6 +14,7 @@ public class SpectatorCamera : MonoBehaviour
     private bool isErnestoCam;
     private uint playerID;
     private ErnestoManager ernestoManager;
+    private ControllableErnestoRemote controllableErnesto;
     private AudioListener audioListener;
 
     public bool IsErnestoCam { get => isErnestoCam; }
@@ -26,6 +28,12 @@ public class SpectatorCamera : MonoBehaviour
         if (GetComponent<ErnestoManager>())
         {
             ernestoManager = GetComponent<ErnestoManager>();
+            isErnestoCam = true;
+            ErnestoChase.SpectateManager.ernestoSpectatorCams.Add(this);
+        }
+        else if (GetComponentInParent<ControllableErnestoRemote>())
+        {
+            controllableErnesto = GetComponentInParent<ControllableErnestoRemote>();
             isErnestoCam = true;
             ErnestoChase.SpectateManager.ernestoSpectatorCams.Add(this);
         }
@@ -44,17 +52,25 @@ public class SpectatorCamera : MonoBehaviour
         playerID = id;
         sectorDetector = ErnestoChase.QSBInteraction.GetRemoteFluidDetector(playerID).GetAddComponent<SectorDetector>();
         sectorDetector.SetOccupantType(DynamicOccupant.Player);
+
+        if (GetComponent<ControllableErnestoRemote>())
+        {
+            controllableErnesto = GetComponent<ControllableErnestoRemote>();
+        }
     }
 
     public bool CanSpectate()
     {
-        if (isErnestoCam)
+        if (controllableErnesto)
+        {
+            return controllableErnesto.CanSpectate(isErnestoCam);
+        }
+        
+        if (isErnestoCam && ernestoManager)
         {
             return ernestoManager.CanSpectate();
         }
-        else
-        {
-            return !ErnestoChase.QSBAPI.GetPlayerDead(playerID);
-        }
+        
+        return !ErnestoChase.QSBAPI.GetPlayerDead(playerID);
     }
 }

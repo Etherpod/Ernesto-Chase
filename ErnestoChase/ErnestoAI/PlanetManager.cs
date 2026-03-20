@@ -45,12 +45,9 @@ public class PlanetManager : MonoBehaviour
         if (body != null)
         {
             currentPlanet = body.gameObject;
-            if (state.AIEnabled)
-            {
-                transform.parent = body.transform;
-            }
+            transform.parent = body.transform;
         }
-        else if (state.AIEnabled)
+        else
         {
             transform.parent = rigidbody.transform;
         }

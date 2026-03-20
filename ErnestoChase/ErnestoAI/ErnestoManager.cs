@@ -114,10 +114,7 @@ public class ErnestoManager : MonoBehaviour
         {
             planetManager.Initialize();
             ernestoMovement.Initialize();
-            if (state.AIEnabled)
-            {
-                StartCoroutine(ErnestoReleaseDelay());
-            }
+            StartCoroutine(ErnestoReleaseDelay());
             initialized = true;
         }
         
@@ -151,17 +148,14 @@ public class ErnestoManager : MonoBehaviour
             return;
         }
 
-        if (state.AIEnabled)
+        if (planetManager.UpdatePlayerPlanetState())
         {
-            if (planetManager.UpdatePlayerPlanetState())
-            {
-                state.LastPlayerPos = planetManager.GetPlayerParent().InverseTransformPoint(state.LastPlayerPos);
-            }
+            state.LastPlayerPos = planetManager.GetPlayerParent().InverseTransformPoint(state.LastPlayerPos);
+        }
 
-            if (state.ErnestoReleased)
-            {
-                ernestoMovement.UpdateMovement(planetManager.IsOnPlanet());
-            }
+        if (state.ErnestoReleased)
+        {
+            ernestoMovement.UpdateMovement(planetManager.IsOnPlanet());
         }
 
         state.LastPlayerPos = planetManager.GetPlayerParent().InverseTransformPoint(Locator.GetPlayerTransform().position);

@@ -169,7 +169,7 @@ public static class QSBCompat
     {
         if (ErnestoChase.TryGetRemoteErnesto(from, data.localID, out GameObject remoteErnesto))
         {
-            remoteErnesto.GetComponentInParent<RemoteErnestoMorphController>().SetSize(data.shrink);
+            remoteErnesto.GetComponentInParent<ControllableErnestoRemote>().SetSize(data.shrink);
         }
     }
     
@@ -182,7 +182,7 @@ public static class QSBCompat
     {
         if (ErnestoChase.TryGetRemoteErnesto(from, 0, out GameObject remoteErnesto))
         {
-            var morph = remoteErnesto.GetComponentInParent<RemoteErnestoMorphController>();
+            var morph = remoteErnesto.GetComponentInParent<ControllableErnestoRemote>();
             ErnestoChase.WriteDebugMessage("morph: " + morph);
             morph.SetMorphed(morphed);
         } 

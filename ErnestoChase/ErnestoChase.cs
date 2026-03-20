@@ -198,7 +198,10 @@ public class ErnestoChase : ModBehaviour
                     continue;
                 }
 
-                storedErnestoTargets.Add(ernesto.GetComponent<ErnestoManager>().GetStoredTargets());
+                if (ernesto.TryGetComponent(out ErnestoManager manager))
+                {
+                    storedErnestoTargets.Add(manager.GetStoredTargets());
+                }
             }
 
             ActiveIslands.Clear();
@@ -542,26 +545,18 @@ public class ErnestoChase : ModBehaviour
         yield return new WaitUntil(() => QSBAPI.GetPlayerReady(QSBAPI.GetLocalPlayerID()) 
             && QSBAPI.GetPlayerReady(data.id));
 
-        ErnestoChase.WriteDebugMessage("Spawn controlled Ernesto with data");
+        ErnestoChase.WriteDebugMessage("Spawn controlled Ernesto");
 
         Transform remoteParent = QSBAPI.GetPlayerBody(data.id).transform;
-        GameObject ernestoObj = Instantiate(ernesto, Vector3.zero, Quaternion.identity, remoteParent);
-        
-        ErnestoManager manager = ernestoObj.GetComponent<ErnestoManager>();
-        ErnestoState state = ernestoObj.GetComponent<ErnestoState>();
-
-        state.SetRemoteData(1, data);
-        state.AIEnabled = false;
+        var obj = LoadPrefab("Assets/ErnestoChase/ControllableErnesto_Remote.prefab");
+        obj.SetActive(false);
+        GameObject ernestoObj = Instantiate(obj, Vector3.zero, Quaternion.identity, remoteParent);
         
         ernestoObj.SetActive(true);
-        manager.SetStoredTargets(new());
-
         ernestos.Add(ernestoObj);
         
-        if (state.ErnestoCam)
-        {
-            camErnestos.Add(ernestoObj);
-        }
+        // TODO: toggleable camera?
+        camErnestos.Add(ernestoObj);
 
         if (!remoteErnestos.ContainsKey(data.id))
         {
@@ -569,7 +564,7 @@ public class ErnestoChase : ModBehaviour
         }
         remoteErnestos[data.id].Add(data.localid, ernestoObj);
 
-        remoteParent.gameObject.AddComponent<PlayerErnesto.RemoteErnestoMorphController>();
+        remoteParent.gameObject.AddComponent<PlayerErnesto.ControllableErnestoRemote>();
     }
 
     public void AddTargetDataRemote(uint from, uint localID, TargetDataQueue.TargetData targetData)

@@ -105,10 +105,7 @@ public class ErnestoMovement : MonoBehaviour
     {
         // no parent being set?
         Vector3 playerStartPos = transform.parent.InverseTransformPoint(Locator.GetPlayerTransform().position);
-        if (state.AIEnabled)
-        {
-            transform.localPosition = playerStartPos;
-        }
+        transform.localPosition = playerStartPos;
         lastPosition = playerStartPos;
         lastRotation = transform.rotation;
 
@@ -120,7 +117,7 @@ public class ErnestoMovement : MonoBehaviour
             storedTargets = new();
         }
 
-        enabled = state.AIEnabled;
+        enabled = true;
     }
 
     public void SetStoredTargets(TargetDataQueue queue)

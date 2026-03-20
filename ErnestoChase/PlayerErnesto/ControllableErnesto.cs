@@ -1,5 +1,4 @@
 ﻿using UnityEngine;
-using ErnestoChase.ErnestoAI;
 
 namespace ErnestoChase.PlayerErnesto;
 
@@ -16,9 +15,6 @@ public class ControllableErnesto : MonoBehaviour
     private SectorDetector sectorDetector;
     private RulesetDetector rulesetDetector;
     private AlignmentForceDetector forceDetector;
-    private TargetDataQueue storedTargets;
-    private int frameDelay;
-    private readonly int storedTargetsFrameDelay;
 
     private bool shrinked = false;
     private bool changingSize = false;
@@ -28,13 +24,9 @@ public class ControllableErnesto : MonoBehaviour
 
     private float baseMass;
     private float baseFOV;
-
-    private float adjustedManualDrag;
-    private Vector3 manualAngularVelocity;
-
-    private readonly float angularDrag = 0.95f;
+    
     private readonly float movementMultiplier = 30f;
-    private readonly float rotationMultiplier = 2.2f;
+    private readonly float rotationMultiplier = 1f;
     private readonly float forceMultiplier = 0.8f;
 
     private void Awake()
@@ -50,19 +42,7 @@ public class ControllableErnesto : MonoBehaviour
         baseMass = rigidbody.GetMass();
         baseFOV = owCamera.fieldOfView;
         forceDetector._fieldMultiplier = forceMultiplier;
-        manualAngularVelocity = Vector3.zero;
         rigidbody.FreezeRotation();
-    }
-
-    private void Start()
-    {
-        adjustedManualDrag = Mathf.Pow(angularDrag, OWTime.GetFixedTimestep() / 0.01666666f);
-        storedTargets = new TargetDataQueue();
-    }
-
-    private void OnDisable()
-    {
-        manualAngularVelocity = Vector3.zero;
     }
 
     private void Update()
@@ -143,13 +123,7 @@ public class ControllableErnesto : MonoBehaviour
         }
 
         rotation.x -= OWInput.GetValue(InputLibrary.pitch);
-        rigidbody.AddLocalAngularAcceleration(rotation);
-
-        /*manualAngularVelocity += transform.TransformDirection(rotation * (rotationMultiplier * Time.fixedDeltaTime));
-        manualAngularVelocity *= adjustedManualDrag;
-        Quaternion quaternion = Quaternion.AngleAxis(manualAngularVelocity.magnitude * 
-            180f / Mathf.PI * Time.fixedDeltaTime, manualAngularVelocity.normalized);
-        rigidbody.AddRotation(quaternion);*/
+        rigidbody.AddLocalAngularAcceleration(rotation * rotationMultiplier);
     }
 
     private void UpdateSize()
@@ -168,24 +142,6 @@ public class ControllableErnesto : MonoBehaviour
             }
         }
     }
-
-    /*private TargetData GenerateTargetData()
-    {
-        var staticRef = Locator.GetCenterOfTheUniverse().GetStaticReferenceFrame().transform;
-        Transform reference;
-        if (sectorDetector.GetLastEnteredSector() != null)
-        {
-            reference = sectorDetector.GetLastEnteredSector().transform;
-        }
-        else
-        {
-            reference = staticRef;
-        }
-        
-        var localPos = reference.InverseTransformPoint(transform.position);
-        var worldPos = staticRef.InverseTransformDirection(transform.position);
-        return new TargetData(reference.name, localPos, worldPos, Time.fixedTime);
-    }*/
 
     public void SetActive(bool active)
     {

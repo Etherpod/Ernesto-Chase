@@ -1,14 +1,15 @@
 ﻿using System.Linq;
 using UnityEngine;
-using ErnestoChase.ErnestoAI;
 
 namespace ErnestoChase.PlayerErnesto;
 
-public class RemoteErnestoMorphController : MonoBehaviour
+public class ControllableErnestoRemote : MonoBehaviour
 {
+    public bool KillVolumeEnabled { get; private set; }
+    
     private Transform _ernesto;
-    private ErnestoState _state;
-    private ErnestoEffects _effects;
+    private ControllableErnestoEffectsRemote _effects;
+    private bool _morphed;
     private bool _shrinked;
     private bool _changingSize;
     private float _sizeStartTime;
@@ -18,9 +19,8 @@ public class RemoteErnestoMorphController : MonoBehaviour
 
     private void Awake()
     {
-        _ernesto = GetComponentInChildren<ErnestoManager>().transform;
-        _state = _ernesto.GetComponent<ErnestoState>();
-        _effects = _ernesto.GetComponent<ErnestoEffects>();
+        _effects = GetComponentInChildren<ControllableErnestoEffectsRemote>();
+        _ernesto = _effects.transform;
     }
 
     private void Start()
@@ -68,16 +68,20 @@ public class RemoteErnestoMorphController : MonoBehaviour
             }
             
             _ernesto.gameObject.SetActive(true);
+            
+            _effects.CreateWhiteHole();
 
-            if (!_state.ErnestoReleased)
+            /*if (!_state.ErnestoReleased)
             {
                 _effects.CreateWhiteHole();
             }
             else
             {
-                _effects.DebugRefresh();
-            }
+                _effects.RefreshEffects();
+            }*/
         }
+
+        _morphed = morphed;
     }
 
     private void UpdateSize()
@@ -85,7 +89,7 @@ public class RemoteErnestoMorphController : MonoBehaviour
         float timeLerp = Mathf.InverseLerp(_sizeStartTime, _sizeStartTime + _sizeChangeLength, Time.fixedTime);
         float scale = Mathf.SmoothStep(_lastSize, _shrinked ? _shrinkSize : 1f, timeLerp);
         _ernesto.localScale = Vector3.one * scale;
-        float pitchMult = Mathf.Lerp(1f, 1.5f, timeLerp);
+        float pitchMult = Mathf.Lerp(1f, 1.5f, Mathf.InverseLerp(1f, _shrinkSize, scale));
         _effects.SetAudioPitchMultiplier(pitchMult);
 
         if (timeLerp == 1)
@@ -93,9 +97,11 @@ public class RemoteErnestoMorphController : MonoBehaviour
             _changingSize = false;
             enabled = false;
 
+            ErnestoChase.WriteDebugMessage("Finish size change");
             if (!_shrinked && !ErnestoChase.Instance.ErnestoMorph)
             {
-                _state.KillVolumeEnabled = true;
+                ErnestoChase.WriteDebugMessage("Enable kill volume");
+                KillVolumeEnabled = true;
             }
         }
     }
@@ -104,7 +110,8 @@ public class RemoteErnestoMorphController : MonoBehaviour
     {
         if (instant)
         {
-            _state.KillVolumeEnabled = !_shrinked && !ErnestoChase.Instance.ErnestoMorph;
+            ErnestoChase.WriteDebugMessage("Set kill volume: " + (!_shrinked && !ErnestoChase.Instance.ErnestoMorph));
+            KillVolumeEnabled = !_shrinked && !ErnestoChase.Instance.ErnestoMorph;
             float scale = _shrinked ? _shrinkSize : 1f;
             _ernesto.localScale = Vector3.one * scale;
             float pitchMult = _shrinked ? 1.5f : 1f;
@@ -113,9 +120,11 @@ public class RemoteErnestoMorphController : MonoBehaviour
         }
         else if (_shrinked != shrink)
         {
-            if (_shrinked)
+            // if not shrinked then going to shrink
+            if (!_shrinked)
             {
-                _state.KillVolumeEnabled = false;
+                ErnestoChase.WriteDebugMessage("Disable kill volume");
+                KillVolumeEnabled = false;
             }
             
             _lastSize = _ernesto.localScale.x;
@@ -125,5 +134,10 @@ public class RemoteErnestoMorphController : MonoBehaviour
         }
         
         _shrinked = shrink;
+    }
+
+    public bool CanSpectate(bool ernesto)
+    {
+        return ernesto == _morphed;
     }
 }
