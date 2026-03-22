@@ -426,8 +426,6 @@ public class ErnestoChase : ModBehaviour
         yield return new WaitUntil(() => Locator.GetPlayerBody() != null 
         && (!InMultiplayer || QSBAPI.GetPlayerReady(QSBAPI.GetLocalPlayerID())));
 
-        
-
         MinigameManager.SetUpMinigames();
         
         ModHelper.Events.Unity.FireInNUpdates(() =>
@@ -448,8 +446,10 @@ public class ErnestoChase : ModBehaviour
                     }
                 }
             }
-
+            
             SpawnErnestos();
+            
+            ECLocator.Initialize();
         }, 50);
     }
 

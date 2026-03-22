@@ -10,6 +10,7 @@ public class PlayerMorphController : MonoBehaviour
 	[SerializeField] private ControllableErnesto _ernestoController;
 
 	private OWRigidbody _playerBody;
+	private KeyInfoPromptController _keyInfo;
 	private bool _morphed;
 	private bool _gameStopped;
 
@@ -21,6 +22,7 @@ public class PlayerMorphController : MonoBehaviour
 	
 	private void Start()
 	{
+		_keyInfo = GameObject.FindWithTag("Global").GetComponent<KeyInfoPromptController>();
 		_morphed = false;
 		_ernestoBody.Suspend(transform, _playerBody);
 		_ernestoBody.transform.localPosition = Vector3.zero;
@@ -80,6 +82,13 @@ public class PlayerMorphController : MonoBehaviour
 		{
 			renderer.forceRenderingOff = true;
 		}
+
+		if (_keyInfo._displayCodePrompt)
+		{
+			_keyInfo._codePrompt.SetVisibility(false);
+			_keyInfo._displayCodePrompt = false;
+		}
+		
 		_morphed = true;
 	}
 

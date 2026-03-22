@@ -97,7 +97,7 @@ public static class PatchnestoClass
 			ErnestoChase.Instance.RespawnErnesto();
 		}
 
-		if (Locator.GetPlayerBody().GetComponentInChildren<PlayerMorphController>()?.IsMorphed() ?? false)
+		if (ECLocator.GetMorphController()?.IsMorphed() ?? false)
 		{
 			__instance._invincible = true;
 		}
@@ -107,9 +107,7 @@ public static class PatchnestoClass
 	[HarmonyPatch(typeof(ToolModeSwapper), nameof(ToolModeSwapper.EquipToolMode))]
 	public static bool CancelToolEquip()
 	{
-		return !(Locator.GetPlayerBody()
-			.GetComponentInChildren<PlayerMorphController>()?.IsMorphed() 
-			?? false);
+		return !(ECLocator.GetMorphController()?.IsMorphed() ?? false);
 	}
 
 	[HarmonyPrefix]
@@ -647,8 +645,7 @@ public static class PatchnestoClass
 			__instance.UntargetReferenceFrame();
 		}
 
-		bool morphed = ErnestoChase.Instance.ErnestoMorph &&
-			(Locator.GetPlayerTransform().GetComponentInChildren<PlayerMorphController>()?.IsMorphed() ?? false);
+		bool morphed = ErnestoChase.Instance.ErnestoMorph && (ECLocator.GetMorphController()?.IsMorphed() ?? false);
 		
 		__instance._playerTargetingActive = (morphed || (Locator.GetPlayerSuit().IsWearingHelmet() && 
 			PlayerState.InZeroG())) && __instance._blockerCount <= 0 && !OWTime.IsPaused(OWTime.PauseType.Reading);
@@ -661,5 +658,18 @@ public static class PatchnestoClass
 		}
 
 		return false;
+	}
+
+	[HarmonyPrefix]
+	[HarmonyPatch(typeof(EyeCoordinatePromptTrigger), nameof(EyeCoordinatePromptTrigger.Update))]
+	public static bool HideEyeCoordinates(EyeCoordinatePromptTrigger __instance)
+	{
+		if (ECLocator.GetMorphController()?.IsMorphed() ?? false)
+		{
+			__instance._promptController.SetEyeCoordinatesVisibility(false);
+			return false;
+		}
+
+		return true;
 	}
 }
