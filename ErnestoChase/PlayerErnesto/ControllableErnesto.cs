@@ -11,6 +11,8 @@ public class ControllableErnesto : MonoBehaviour
     [SerializeField]
     private OWCamera owCamera;
     [SerializeField]
+    private AlignWithWarpTarget alignWithTarget;
+    [SerializeField]
     private GameObject lockOnCanvas;
 
     private OWRigidbody rigidbody;
@@ -30,6 +32,16 @@ public class ControllableErnesto : MonoBehaviour
     private readonly float movementMultiplier = 30f;
     private readonly float rotationMultiplier = 1f;
     private readonly float forceMultiplier = 0.8f;
+    private Vector3 localAcceleration = Vector3.zero;
+    private Vector3 localAngularAcceleration = Vector3.zero;
+
+    private readonly float warpChargeLength = 2.5f;
+    private float warpChargeStartTime;
+    private bool isChargingWarp;
+
+    private readonly float warpSpeed = 1000f;
+    private readonly float warpCollisionBuffer = 100f;
+    private bool warping;
 
     private void Awake()
     {
@@ -45,10 +57,63 @@ public class ControllableErnesto : MonoBehaviour
         baseFOV = owCamera.fieldOfView;
         forceDetector._fieldMultiplier = forceMultiplier;
         rigidbody.FreezeRotation();
+        alignWithTarget.enabled = false;
     }
 
     private void Update()
     {
+        localAcceleration = Vector3.zero;
+        localAngularAcceleration = Vector3.zero;
+
+        if (!warping && !changingSize && OWInput.IsNewlyPressed(InputLibrary.matchVelocity) &&
+            CanWarpToTarget(Locator.GetReferenceFrame()))
+        {
+            warpChargeStartTime = Time.time;
+            alignWithTarget.enabled = true;
+            isChargingWarp = true;
+        }
+
+        if (isChargingWarp)
+        {
+            if (OWInput.IsNewlyReleased(InputLibrary.matchVelocity) ||
+                !CanWarpToTarget(Locator.GetReferenceFrame()))
+            {
+                isChargingWarp = false;
+                owCamera.fieldOfView = shrinked ? baseFOV + 10 : baseFOV;
+                alignWithTarget.enabled = false;
+            }
+            
+            var lerp = Mathf.InverseLerp(warpChargeStartTime, 
+                warpChargeStartTime + warpChargeLength, Time.time);
+            var originalFOV = shrinked ? baseFOV + 10 : baseFOV;
+            var newFOV = Mathf.Lerp(originalFOV, originalFOV + 20, Mathf.Pow(lerp, 2));
+            owCamera.fieldOfView = newFOV;
+
+            if (lerp == 1f)
+            {
+                isChargingWarp = false;
+                warping = true;
+            }
+
+            return;
+        }
+        
+        if (warping)
+        {
+            if (OWInput.IsNewlyPressed(InputLibrary.matchVelocity))
+            {
+                warping = false;
+                owCamera.fieldOfView = shrinked ? baseFOV + 10 : baseFOV;
+                alignWithTarget.enabled = false;
+                
+                rigidbody.SetVelocity(Locator.GetReferenceFrame() != null
+                    ? Locator.GetReferenceFrame().GetVelocity()
+                    : Vector3.zero);
+            }
+
+            return;
+        }
+        
         bool downPressed = OWInput.IsNewlyPressed(InputLibrary.toolOptionDown);
         bool upPressed = OWInput.IsNewlyPressed(InputLibrary.toolOptionUp);
 
@@ -67,18 +132,32 @@ public class ControllableErnesto : MonoBehaviour
                 }
             }
         }
+        
+        ReadTranslationalInput();
+        ReadRotationalInput();
     }
 
     private void FixedUpdate()
     {
         if (OWTime.IsPaused()) return;
 
-        UpdateMovement();
-        UpdateRotation();
-        UpdateSize();
+        if (!warping)
+        {
+            UpdateMovement();
+
+            if (!isChargingWarp)
+            {
+                UpdateRotation();
+                UpdateSize();
+            }
+        }
+        else
+        {
+            UpdateWarp();
+        }
     }
 
-    private void UpdateMovement()
+    private void ReadTranslationalInput()
     {
         Vector3 acceleration = Vector3.zero;
 
@@ -106,12 +185,11 @@ public class ControllableErnesto : MonoBehaviour
         {
             acceleration += Vector3.down;
         }
-        
-        float multiplier = Mathf.Min(movementMultiplier * (scaleRoot.localScale.x / 2 + 0.5f), rulesetDetector.GetThrustLimit());
-        rigidbody.AddLocalAcceleration(acceleration.normalized * multiplier);
-    }
 
-    private void UpdateRotation()
+        localAcceleration = acceleration.normalized;
+    }
+    
+    private void ReadRotationalInput()
     {
         Vector3 rotation = Vector3.zero;
 
@@ -125,7 +203,18 @@ public class ControllableErnesto : MonoBehaviour
         }
 
         rotation.x -= OWInput.GetValue(InputLibrary.pitch);
-        rigidbody.AddLocalAngularAcceleration(rotation * rotationMultiplier);
+        localAngularAcceleration = rotation;
+    }
+
+    private void UpdateMovement()
+    {
+        float multiplier = Mathf.Min(movementMultiplier * (scaleRoot.localScale.x / 2 + 0.5f), rulesetDetector.GetThrustLimit());
+        rigidbody.AddLocalAcceleration(localAcceleration * multiplier);
+    }
+
+    private void UpdateRotation()
+    {
+        rigidbody.AddLocalAngularAcceleration(localAngularAcceleration * rotationMultiplier);
     }
 
     private void UpdateSize()
@@ -145,6 +234,57 @@ public class ControllableErnesto : MonoBehaviour
         }
     }
 
+    private void UpdateWarp()
+    {
+        var rf = Locator.GetReferenceFrame();
+        if (!CanWarpToTarget(rf))
+        {
+            warping = false;
+            owCamera.fieldOfView = shrinked ? baseFOV + 10 : baseFOV;
+            alignWithTarget.enabled = false;
+            rigidbody.SetVelocity(Locator.GetReferenceFrame() != null
+                ? Locator.GetReferenceFrame().GetVelocity()
+                : Vector3.zero);
+            return;
+        }
+
+        var toTarget = Locator.GetReferenceFrame().GetPosition() - rigidbody.GetWorldCenterOfMass();
+        if (Physics.Raycast(rigidbody.GetWorldCenterOfMass(), toTarget.normalized,
+            out var hit, warpCollisionBuffer, OWLayerMask.physicalMask))
+        {
+            warping = false;
+            owCamera.fieldOfView = shrinked ? baseFOV + 10 : baseFOV;
+            alignWithTarget.enabled = false;
+
+            if (hit.collider.GetAttachedOWRigidbody() != null)
+            {
+                rigidbody.SetVelocity(hit.collider.GetAttachedOWRigidbody().GetVelocity());
+            }
+            else
+            {
+                rigidbody.SetVelocity(Locator.GetReferenceFrame() != null
+                    ? Locator.GetReferenceFrame().GetVelocity()
+                    : Vector3.zero);
+            }
+            return;
+        }
+
+        rigidbody.SetVelocity(rf.GetVelocity() + toTarget.normalized * warpSpeed);
+    }
+
+    private bool CanWarpToTarget(ReferenceFrame rf)
+    {
+        if (rf == null || !rf.GetAllowAutopilot()) return false;
+        
+        var toTarget = rf.GetPosition() - rigidbody.GetWorldCenterOfMass();
+        if (toTarget.magnitude < rf.GetAutopilotArrivalDistance())
+        {
+            return false;
+        }
+
+        return true;
+    }
+
     public void SetActive(bool active)
     {
         scaleRoot.gameObject.SetActive(active);
@@ -161,12 +301,9 @@ public class ControllableErnesto : MonoBehaviour
         {
             Locator.GetPlayerSuit().RemoveSuit(true);
         }
-
         Locator.GetToolModeSwapper().UnequipTool();
-
-        ErnestoChase.WriteDebugMessage("attach");
+        
         attachPoint.AttachPlayer();
-
         GlobalMessenger.FireEvent("PlayerRepositioned");
 
         Locator.GetPlayerBody().GetComponent<PlayerResources>()._invincible = true;
@@ -175,7 +312,6 @@ public class ControllableErnesto : MonoBehaviour
 
     public void DetachPlayer()
     {
-        ErnestoChase.WriteDebugMessage("enabled: " + attachPoint.enabled);
         attachPoint.DetachPlayer();
         
         GlobalMessenger.FireEvent("PlayerRepositioned");
