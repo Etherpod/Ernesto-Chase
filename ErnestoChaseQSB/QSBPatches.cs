@@ -30,8 +30,9 @@ public class QSBPatches
     [HarmonyPatch(typeof(SectorStreaming), nameof(SectorStreaming.FixedUpdate))]
     public static bool SectorStreaming_FixedUpdate(SectorStreaming __instance)
     {
-        if (!ErnestoChase.ErnestoChase.SpectateManager.IsSpectating 
-            || ErnestoChase.ErnestoChase.SpectateManager.SpectateTarget == null) return true;
+        if (ErnestoChase.ErnestoChase.SpectateManager == null ||
+            !ErnestoChase.ErnestoChase.SpectateManager.IsSpectating || 
+            ErnestoChase.ErnestoChase.SpectateManager.SpectateTarget == null) return true;
 
         var playerInSoftRadius =
             (ErnestoChase.ErnestoChase.SpectateManager.SpectateTarget.transform.position 
@@ -67,8 +68,9 @@ public class QSBPatches
     [HarmonyPatch(typeof(ShipLODTrigger), nameof(ShipLODTrigger.FixedUpdate))]
     public static bool ShipLODTrigger_FixedUpdate(ShipLODTrigger __instance)
     {
-        if (!ErnestoChase.ErnestoChase.SpectateManager.IsSpectating
-            || ErnestoChase.ErnestoChase.SpectateManager.SpectateTarget == null) return true;
+        if (ErnestoChase.ErnestoChase.SpectateManager == null ||
+            !ErnestoChase.ErnestoChase.SpectateManager.IsSpectating || 
+            ErnestoChase.ErnestoChase.SpectateManager.SpectateTarget == null) return true;
 
         var playerInRadius = __instance._playerInRadius;
         var probeInRadius = __instance._probeInRadius;

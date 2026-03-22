@@ -104,6 +104,21 @@ public class ControllableErnestoEffectsRemote : MonoBehaviour
 		UpdateMuffle(true);
 	}
 	
+	public void CreateBlackHole()
+	{
+		_blackHole.transform.parent = transform.parent;
+		_blackHole.transform.localPosition = transform.localPosition;
+		_blackHole.WarpObjectOut(2f);
+		_blackHole.singularityController.OnCollapse += OnBlackHoleCollapse;
+		_loopingAudio.FadeOut(1f);
+		_musicAudio.FadeOut(1f, OWAudioSource.FadeOutCompleteAction.PAUSE);
+	}
+	
+	private void OnBlackHoleCollapse()
+	{
+		_blackHole.singularityController.OnCollapse -= OnBlackHoleCollapse;
+	}
+	
 	private void UpdateMuffle(bool instant = false)
 	{
 		var toPlayer = Locator.GetPlayerTransform().position - transform.position;

@@ -31,7 +31,7 @@ public class PlayerMorphController : MonoBehaviour
 
 	private void Update()
 	{
-		if (Keyboard.current.mKey.wasPressedThisFrame)
+		if (Keyboard.current.mKey.wasPressedThisFrame && !_ernestoController.IsWarping())
 		{
 			SetMorphed(!_morphed);
 		}

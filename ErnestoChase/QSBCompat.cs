@@ -69,6 +69,7 @@ public static class QSBCompat
         api.RegisterHandler<(uint, uint)>("state-change", ReceiveStateChange);
         api.RegisterHandler<bool>("reroll-random-ship-log", ReceiveShipLogReroll);
         api.RegisterHandler<bool>("ernesto-morph", ReceiveErnestoMorph);
+        api.RegisterHandler<bool>("morph-warp-event", ReceiveMorphWarpEvent);
     }
 
     #region ErnestoAI
@@ -185,6 +186,20 @@ public static class QSBCompat
             var morph = remoteErnesto.GetComponentInParent<ControllableErnestoRemote>();
             ErnestoChase.WriteDebugMessage("morph: " + morph);
             morph.SetMorphed(morphed);
+        } 
+    }
+
+    public static void SendMorphWarpEvent(uint to, bool warpStart)
+    {
+        api.SendMessage("morph-warp-event", warpStart, to);
+    }
+
+    private static void ReceiveMorphWarpEvent(uint from, bool warpStart)
+    {
+        if (ErnestoChase.TryGetRemoteErnesto(from, 0, out GameObject remoteErnesto))
+        {
+            var morph = remoteErnesto.GetComponentInParent<ControllableErnestoRemote>();
+            morph.OnWarpEvent(warpStart);
         } 
     }
     

@@ -96,11 +96,9 @@ public class ControllableErnestoRemote : MonoBehaviour
         {
             _changingSize = false;
             enabled = false;
-
-            ErnestoChase.WriteDebugMessage("Finish size change");
+            
             if (!_shrinked && !ErnestoChase.Instance.ErnestoMorph)
             {
-                ErnestoChase.WriteDebugMessage("Enable kill volume");
                 KillVolumeEnabled = true;
             }
         }
@@ -110,7 +108,6 @@ public class ControllableErnestoRemote : MonoBehaviour
     {
         if (instant)
         {
-            ErnestoChase.WriteDebugMessage("Set kill volume: " + (!_shrinked && !ErnestoChase.Instance.ErnestoMorph));
             KillVolumeEnabled = !_shrinked && !ErnestoChase.Instance.ErnestoMorph;
             float scale = _shrinked ? _shrinkSize : 1f;
             _effects.GetScaleRoot().localScale = Vector3.one * scale;
@@ -123,7 +120,6 @@ public class ControllableErnestoRemote : MonoBehaviour
             // if not shrinked then going to shrink
             if (!_shrinked)
             {
-                ErnestoChase.WriteDebugMessage("Disable kill volume");
                 KillVolumeEnabled = false;
             }
             
@@ -137,6 +133,18 @@ public class ControllableErnestoRemote : MonoBehaviour
         }
         
         _shrinked = shrink;
+    }
+
+    public void OnWarpEvent(bool warpStart)
+    {
+        if (warpStart)
+        {
+            _effects.CreateBlackHole();
+        }
+        else
+        {
+            _effects.CreateWhiteHole();
+        }
     }
 
     public bool CanSpectate(bool ernesto)

@@ -93,6 +93,14 @@ public class ControllableErnesto : MonoBehaviour
             {
                 isChargingWarp = false;
                 warping = true;
+
+                if (ErnestoChase.InMultiplayer)
+                {
+                    foreach (var id in ErnestoChase.Players)
+                    {
+                        QSBCompat.SendMorphWarpEvent(id, true);
+                    }
+                }
             }
 
             return;
@@ -109,6 +117,14 @@ public class ControllableErnesto : MonoBehaviour
                 rigidbody.SetVelocity(Locator.GetReferenceFrame() != null
                     ? Locator.GetReferenceFrame().GetVelocity()
                     : Vector3.zero);
+                
+                if (ErnestoChase.InMultiplayer)
+                {
+                    foreach (var id in ErnestoChase.Players)
+                    {
+                        QSBCompat.SendMorphWarpEvent(id, false);
+                    }
+                }
             }
 
             return;
@@ -245,6 +261,14 @@ public class ControllableErnesto : MonoBehaviour
             rigidbody.SetVelocity(Locator.GetReferenceFrame() != null
                 ? Locator.GetReferenceFrame().GetVelocity()
                 : Vector3.zero);
+            
+            if (ErnestoChase.InMultiplayer)
+            {
+                foreach (var id in ErnestoChase.Players)
+                {
+                    QSBCompat.SendMorphWarpEvent(id, false);
+                }
+            }
             return;
         }
 
@@ -266,6 +290,14 @@ public class ControllableErnesto : MonoBehaviour
                     ? Locator.GetReferenceFrame().GetVelocity()
                     : Vector3.zero);
             }
+            
+            if (ErnestoChase.InMultiplayer)
+            {
+                foreach (var id in ErnestoChase.Players)
+                {
+                    QSBCompat.SendMorphWarpEvent(id, false);
+                }
+            }
             return;
         }
 
@@ -284,6 +316,8 @@ public class ControllableErnesto : MonoBehaviour
 
         return true;
     }
+
+    public bool IsWarping() => warping || isChargingWarp;
 
     public void SetActive(bool active)
     {

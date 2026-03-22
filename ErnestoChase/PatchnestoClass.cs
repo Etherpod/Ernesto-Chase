@@ -460,7 +460,8 @@ public static class PatchnestoClass
 	[HarmonyPatch(typeof(CloakFieldController), nameof(CloakFieldController.OnSectorOccupantsUpdated))]
 	public static bool PreventCloakExitInSpectate(CloakFieldController __instance)
 	{
-		return !ErnestoChase.InMultiplayer || !ErnestoChase.SpectateManager.IsSpectating;
+		return !ErnestoChase.InMultiplayer || ErnestoChase.SpectateManager == null ||
+			!ErnestoChase.SpectateManager.IsSpectating;
 	}
 
 	[HarmonyPrefix]
