@@ -15,6 +15,8 @@ public class ControllableErnestoEffectsRemote : MonoBehaviour
 	[SerializeField]
 	private Animator _animator = null;
 	[SerializeField]
+	private GameObject _scaleRoot = null;
+	[SerializeField]
 	private GameObject _ernestoMesh = null;
 	[SerializeField]
 	private Light _anglerLight = null;
@@ -31,7 +33,6 @@ public class ControllableErnestoEffectsRemote : MonoBehaviour
 	private float _baseLightRange;
 	private float _baseLightIntensity;
 	private Texture _bulbTexture;
-	private float _baseMeshScale;
 
 	private float _filterLerp = 1f;
 
@@ -42,7 +43,6 @@ public class ControllableErnestoEffectsRemote : MonoBehaviour
 	private void Awake()
 	{
 		_ernestoRenderer = GetComponentInChildren<SkinnedMeshRenderer>();
-		_baseMeshScale = _ernestoMesh.transform.localScale.magnitude;
 		_baseLightRange = _anglerLight.range;
 		_baseLightIntensity = _anglerLight.intensity;
 		_bulbTexture = _ernestoRenderer.material.GetTexture("_EmissionMap");
@@ -55,7 +55,8 @@ public class ControllableErnestoEffectsRemote : MonoBehaviour
 		_whiteHole = Instantiate(_whiteHolePrefab);
 
 		_ernestoMesh.transform.localScale = Vector3.zero;
-		_anglerLight.range = _baseLightRange * (_ernestoMesh.transform.localScale.magnitude / _baseMeshScale);
+		_anglerLight.range = _baseLightRange * _ernestoMesh.transform.localScale.x *
+			_scaleRoot.transform.localScale.x;
 	}
 	
 	private void Start()
@@ -73,7 +74,8 @@ public class ControllableErnestoEffectsRemote : MonoBehaviour
 	{
 		if (!_disableLight)
 		{
-			_anglerLight.range = _baseLightRange * (_ernestoMesh.transform.localScale.magnitude / _baseMeshScale);
+			_anglerLight.range = _baseLightRange * _ernestoMesh.transform.localScale.x *
+				_scaleRoot.transform.localScale.x;
 		}
         
 		UpdateMuffle();
@@ -147,5 +149,10 @@ public class ControllableErnestoEffectsRemote : MonoBehaviour
 
 		_animator.enabled = true;
 		_animator.SetTrigger("Impulse");
+	}
+
+	public Transform GetScaleRoot()
+	{
+		return _scaleRoot.transform;
 	}
 }

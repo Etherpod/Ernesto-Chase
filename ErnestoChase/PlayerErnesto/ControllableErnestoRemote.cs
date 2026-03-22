@@ -13,7 +13,7 @@ public class ControllableErnestoRemote : MonoBehaviour
     private bool _shrinked;
     private bool _changingSize;
     private float _sizeStartTime;
-    private float _lastSize;
+    private float _lastSize = 1f;
     private readonly float _sizeChangeLength = 1.5f;
     private readonly float _shrinkSize = 0.1f;
 
@@ -88,7 +88,7 @@ public class ControllableErnestoRemote : MonoBehaviour
     {
         float timeLerp = Mathf.InverseLerp(_sizeStartTime, _sizeStartTime + _sizeChangeLength, Time.fixedTime);
         float scale = Mathf.SmoothStep(_lastSize, _shrinked ? _shrinkSize : 1f, timeLerp);
-        _ernesto.localScale = Vector3.one * scale;
+        _effects.GetScaleRoot().localScale = Vector3.one * scale;
         float pitchMult = Mathf.Lerp(1f, 1.5f, Mathf.InverseLerp(1f, _shrinkSize, scale));
         _effects.SetAudioPitchMultiplier(pitchMult);
 
@@ -113,7 +113,7 @@ public class ControllableErnestoRemote : MonoBehaviour
             ErnestoChase.WriteDebugMessage("Set kill volume: " + (!_shrinked && !ErnestoChase.Instance.ErnestoMorph));
             KillVolumeEnabled = !_shrinked && !ErnestoChase.Instance.ErnestoMorph;
             float scale = _shrinked ? _shrinkSize : 1f;
-            _ernesto.localScale = Vector3.one * scale;
+            _effects.GetScaleRoot().localScale = Vector3.one * scale;
             float pitchMult = _shrinked ? 1.5f : 1f;
             _effects.SetAudioPitchMultiplier(pitchMult);
             enabled = false;
@@ -127,7 +127,10 @@ public class ControllableErnestoRemote : MonoBehaviour
                 KillVolumeEnabled = false;
             }
             
-            _lastSize = _ernesto.localScale.x;
+            float timeLerp = Mathf.InverseLerp(_sizeStartTime, _sizeStartTime + _sizeChangeLength, Time.fixedTime);
+            float scale = Mathf.SmoothStep(_lastSize, _shrinked ? _shrinkSize : 1f, timeLerp);
+            
+            _lastSize = scale;
             _sizeStartTime = Time.fixedTime;
             _changingSize = true;
             enabled = true;

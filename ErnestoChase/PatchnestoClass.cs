@@ -462,7 +462,7 @@ public static class PatchnestoClass
 	[HarmonyPatch(typeof(CloakFieldController), nameof(CloakFieldController.OnSectorOccupantsUpdated))]
 	public static bool PreventCloakExitInSpectate(CloakFieldController __instance)
 	{
-		return !ErnestoChase.SpectateManager.IsSpectating;
+		return !ErnestoChase.InMultiplayer || !ErnestoChase.SpectateManager.IsSpectating;
 	}
 
 	[HarmonyPrefix]
@@ -628,5 +628,38 @@ public static class PatchnestoClass
 
 			__result = __result.Replace("CURRENT_MINIGAME", minigame);
 		}
+	}
+
+	[HarmonyPrefix]
+	[HarmonyPatch(typeof(ReferenceFrameTracker), nameof(ReferenceFrameTracker.Update))]
+	public static bool FixPlayerTargetActive(ReferenceFrameTracker __instance)
+	{
+		if (__instance._activeCam == null)
+		{
+			return true;
+		}
+		
+		if (__instance._cloakController != null && __instance._hasTarget && 
+			!__instance._currentReferenceFrame.GetOWRigidBody().IsKinematic() && 
+			__instance._cloakController.CheckBodyInsideCloak(__instance._currentReferenceFrame.GetOWRigidBody()) != 
+			__instance._cloakController.isPlayerInsideCloak)
+		{
+			__instance.UntargetReferenceFrame();
+		}
+
+		bool morphed = ErnestoChase.Instance.ErnestoMorph &&
+			(Locator.GetPlayerTransform().GetComponentInChildren<PlayerMorphController>()?.IsMorphed() ?? false);
+		
+		__instance._playerTargetingActive = (morphed || (Locator.GetPlayerSuit().IsWearingHelmet() && 
+			PlayerState.InZeroG())) && __instance._blockerCount <= 0 && !OWTime.IsPaused(OWTime.PauseType.Reading);
+		__instance._shipTargetingActive = PlayerState.AtFlightConsole();
+		__instance._mapTargetingActive = __instance._isMapView && (__instance._playerTargetingActive || PlayerState.IsInsideShip());
+		
+		if (__instance._playerTargetingActive || __instance._shipTargetingActive || __instance._mapTargetingActive)
+		{
+			__instance.UpdateTargeting();
+		}
+
+		return false;
 	}
 }

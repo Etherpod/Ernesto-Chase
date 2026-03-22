@@ -155,8 +155,11 @@ public class ErnestoChase : ModBehaviour
             DialogueConditionManager.SharedInstance.SetConditionState("EC_NON_HOST",
                 InMultiplayer && !QSBAPI.GetIsHost());
 
-            var spectate = new GameObject("EC_SpecatateManager");
-            SpectateManager = spectate.AddComponent<Spectating.SpectateManager>();
+            if (InMultiplayer && GameStateManager.GameStarted)
+            {
+                var spectate = new GameObject("EC_SpecatateManager");
+                SpectateManager = spectate.AddComponent<Spectating.SpectateManager>();
+            }
             
             var prefab = LoadPrefab("Assets/ErnestoChase/EC_SetupDialogue.prefab");
             var obj = Instantiate(prefab, FindObjectOfType<PlayerCameraController>().transform);

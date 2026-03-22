@@ -10,6 +10,8 @@ public class ControllableErnesto : MonoBehaviour
     private PlayerAttachPoint attachPoint;
     [SerializeField]
     private OWCamera owCamera;
+    [SerializeField]
+    private GameObject lockOnCanvas;
 
     private OWRigidbody rigidbody;
     private SectorDetector sectorDetector;
@@ -146,6 +148,7 @@ public class ControllableErnesto : MonoBehaviour
     public void SetActive(bool active)
     {
         scaleRoot.gameObject.SetActive(active);
+        lockOnCanvas.SetActive(active);
     }
 
     public void AttachPlayer()
