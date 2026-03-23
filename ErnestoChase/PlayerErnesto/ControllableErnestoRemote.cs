@@ -48,40 +48,38 @@ public class ControllableErnestoRemote : MonoBehaviour
         
         if (!morphed)
         {
-            SetSize(_shrinked, true);
-            _ernesto.gameObject.SetActive(false);
-            
-            var ernestoRends = _ernesto.GetComponentsInChildren<Renderer>();
-            foreach (var renderer in GetComponentsInChildren<Renderer>(true)
-                .Where(rend => !ernestoRends.Contains(rend)))
-            {
-                renderer.forceRenderingOff = false;
-            }
+            _effects.CreateBlackHole(PlayerMorph);
         }
         else
         {
-            var ernestoRends = _ernesto.GetComponentsInChildren<Renderer>();
-            foreach (var renderer in GetComponentsInChildren<Renderer>(true)
-                .Where(rend => !ernestoRends.Contains(rend)))
-            {
-                renderer.forceRenderingOff = true;
-            }
-            
             _ernesto.gameObject.SetActive(true);
-            
-            _effects.CreateWhiteHole();
-
-            /*if (!_state.ErnestoReleased)
-            {
-                _effects.CreateWhiteHole();
-            }
-            else
-            {
-                _effects.RefreshEffects();
-            }*/
+            _effects.CreateWhiteHole(ErnestoMorph);
         }
 
         _morphed = morphed;
+    }
+
+    private void PlayerMorph()
+    {
+        SetSize(_shrinked, true);
+        _ernesto.gameObject.SetActive(false);
+            
+        var ernestoRends = _ernesto.GetComponentsInChildren<Renderer>();
+        foreach (var renderer in GetComponentsInChildren<Renderer>(true)
+            .Where(rend => !ernestoRends.Contains(rend)))
+        {
+            renderer.forceRenderingOff = false;
+        }
+    }
+
+    private void ErnestoMorph()
+    {
+        var ernestoRends = _ernesto.GetComponentsInChildren<Renderer>();
+        foreach (var renderer in GetComponentsInChildren<Renderer>(true)
+            .Where(rend => !ernestoRends.Contains(rend)))
+        {
+            renderer.forceRenderingOff = true;
+        }
     }
 
     private void UpdateSize()
@@ -151,4 +149,6 @@ public class ControllableErnestoRemote : MonoBehaviour
     {
         return ernesto == _morphed;
     }
+
+    public ControllableErnestoEffectsRemote GetEffects() => _effects;
 }

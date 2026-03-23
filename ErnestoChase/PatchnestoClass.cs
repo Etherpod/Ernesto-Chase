@@ -673,4 +673,18 @@ public static class PatchnestoClass
 
 		return true;
 	}
+
+	[HarmonyPrefix]
+	[HarmonyPatch(typeof(Flashlight), nameof(Flashlight.TurnOn), typeof(bool))]
+	public static bool PreventFlashlightEnable()
+	{
+		return !(ECLocator.GetMorphController()?.IsMorphed() ?? false);
+	}
+	
+	[HarmonyPrefix]
+	[HarmonyPatch(typeof(Flashlight), nameof(Flashlight.TurnOff), typeof(bool))]
+	public static bool PreventFlashlightDisable()
+	{
+		return !(ECLocator.GetMorphController()?.IsMorphed() ?? false);
+	}
 }

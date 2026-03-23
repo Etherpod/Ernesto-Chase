@@ -1,10 +1,17 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections;
+using System.Collections.Generic;
+using System.IO;
 using UnityEngine;
+using UnityEngine.InputSystem;
+using UnityEngine.Networking;
 
 namespace ErnestoChase.PlayerErnesto;
 
-public class ControllableErnestoEffectsRemote : MonoBehaviour
+public class ControllableErnestoEffects : MonoBehaviour
 {
+	[SerializeField]
+	private Transform _scaleRoot = null;
 	[SerializeField]
 	private OWAudioSource _loopingAudio = null;
 	[SerializeField]
@@ -12,80 +19,127 @@ public class ControllableErnestoEffectsRemote : MonoBehaviour
 	[SerializeField]
 	private OWAudioSource _musicAudio = null;
 	[SerializeField]
-	private AudioLowPassFilter[] _lowPassFilters = [];
-	[SerializeField]
-	private Animator _animator = null;
-	[SerializeField]
-	private GameObject _scaleRoot = null;
-	[SerializeField]
-	private GameObject _ernestoMesh = null;
-	[SerializeField]
 	private Light _anglerLight = null;
 	[SerializeField]
 	private Texture2D _noBulbTexture = null;
 	[SerializeField]
+	private Animator _animator;
+	[SerializeField]
 	private SingularityWarpEffect _blackHole;
 	[SerializeField]
 	private SingularityWarpEffect _whiteHole;
-	
+
 	private SkinnedMeshRenderer _ernestoRenderer;
 	private float _baseLightRange;
 	private float _baseLightIntensity;
 	private Texture _bulbTexture;
-	
+	private readonly List<AudioClip> _musicClips = [];
+
 	private readonly List<SingularityController.SingularityEffectEvent> _whiteHoleListeners = [];
 	private readonly List<SingularityController.SingularityEffectEvent> _blackHoleListeners = [];
 
-	private float _filterLerp = 1f;
-
-	private bool _lightEnabled;
 	private bool _stealthEnabled;
 	private bool _quantumMode;
+	private bool _lightEnabled = true;
 
 	private void Awake()
 	{
 		_ernestoRenderer = GetComponentInChildren<SkinnedMeshRenderer>();
 		_baseLightRange = _anglerLight.range;
 		_baseLightIntensity = _anglerLight.intensity;
-		_bulbTexture = _ernestoRenderer.material.GetTexture("_EmissionMap");
+		_bulbTexture = _bulbTexture = _ernestoRenderer.material.GetTexture("_EmissionMap");
 
-		_ernestoMesh.transform.localScale = Vector3.zero;
-		_anglerLight.range = _baseLightRange * _ernestoMesh.transform.localScale.x *
-			_scaleRoot.transform.localScale.x;
+		// inactive in editor to spare my eyes
+		_whiteHole.gameObject.SetActive(true);
+		_blackHole.gameObject.SetActive(true);
+		_anglerLight.range = _baseLightRange * _scaleRoot.transform.localScale.x;
 	}
-	
+
 	private void Start()
 	{
-		if (_lightEnabled)
-		{
-			_anglerLight.intensity = 0f;
-			_ernestoRenderer.material.SetTexture("_EmissionMap", _noBulbTexture);
-		}
-        
-		//StartCoroutine(InitAudioFiles(state.DataStates.Keys.ToArray()));
+		StartCoroutine(InitAudioFiles());
 	}
 	
 	private void Update()
 	{
-		if (!_lightEnabled)
+		if (OWInput.IsNewlyPressed(InputLibrary.flashlight))
 		{
-			_anglerLight.range = _baseLightRange * _ernestoMesh.transform.localScale.x *
-				_scaleRoot.transform.localScale.x;
+			SetLightEnabled(!_lightEnabled);
 		}
+
+		if (Keyboard.current.hKey.wasPressedThisFrame)
+		{
+			SetStealthEnabled(!_stealthEnabled);
+		}
+		
+		if (_lightEnabled)
+		{
+			_anglerLight.range = _baseLightRange * _scaleRoot.transform.localScale.x;
+		}
+	}
+	
+	private IEnumerator InitAudioFiles()
+	{
+		string filePath = Path.Combine(ErnestoChase.Instance.ModHelper.Manifest.ModFolderPath, "ErnestoMusic");
+		string[] fileTypes = [".mp3", ".ogg", ".wav"];
         
-		UpdateMuffle();
+		List<string> files = [];
+            
+		foreach (var type in fileTypes)
+		{
+			var foundFiles = Directory.GetFiles(filePath, $"ErnestoMorph_*{type}", SearchOption.AllDirectories);
+			if (foundFiles.Length > 0)
+			{
+				files.AddRange(foundFiles);
+				continue;
+			}
+            
+			//files.AddRange(Directory.GetFiles(filePath, $"*{type}", SearchOption.AllDirectories));
+		}
+
+		if (files.Count > 0)
+		{
+			foreach (var file in files)
+			{
+				var request = UnityWebRequestMultimedia.GetAudioClip("file:///" + file, UnityEngine.AudioType.UNKNOWN);
+				yield return request.SendWebRequest();
+
+				if (request.isDone && !request.isNetworkError)
+				{
+					_musicClips.Add(DownloadHandlerAudioClip.GetContent(request));
+				}
+			}
+        
+			SelectRandomMusicClip();
+		}
+		else
+		{
+			yield return null;
+		}
+	}
+	
+	private void SelectRandomMusicClip()
+	{
+		var rand = new System.Random();
+		int index = rand.Next(0, _musicClips.Count);
+		var clip = _musicClips[index];
+        
+		_musicAudio.clip = clip;
 	}
 	
 	public void CreateWhiteHole(SingularityController.SingularityEffectEvent createAction = null)
 	{
-		_whiteHole.WarpObjectIn(2f);
-
+		if (_whiteHole.singularityController.enabled) return;
+		
+		var length = Mathf.Max(2f - (_whiteHole._singularityCreationLength + 
+			_whiteHole._singularityCollapseLength), 0f);
+		_whiteHole.singularityController.CreateWithLifetime(length);
+		
 		if (createAction != null)
 		{
 			_whiteHole.singularityController.OnCreation += createAction;
 			_whiteHoleListeners.Add(createAction);
 		}
-
 		_whiteHole.singularityController.OnCreation += OnWhiteHoleCreated;
 	}
 
@@ -96,7 +150,7 @@ public class ControllableErnestoEffectsRemote : MonoBehaviour
 			_whiteHole.singularityController.OnCreation -= a);
 		_whiteHoleListeners.Clear();
 		
-		_animator.SetTrigger("Impulse");
+		//_animator.SetTrigger("Impulse");
 		_oneShotAudio.PlayOneShot(AudioType.DBAnglerfishDetectTarget, 0.8f);
 		_loopingAudio.AssignAudioLibraryClip(AudioType.DBAnglerfishChasing_LP);
 		if (!_quantumMode && !_stealthEnabled)
@@ -104,12 +158,15 @@ public class ControllableErnestoEffectsRemote : MonoBehaviour
 			_loopingAudio.FadeIn(1f);
 			_musicAudio.FadeIn(0f);
 		}
-		UpdateMuffle(true);
 	}
 	
 	public void CreateBlackHole(SingularityController.SingularityEffectEvent createAction = null)
 	{
-		_blackHole.WarpObjectOut(2f);
+		if (_blackHole.singularityController.enabled) return;
+		
+		var length = Mathf.Max(2f - (_blackHole._singularityCreationLength + 
+			_blackHole._singularityCollapseLength), 0f);
+		_blackHole.singularityController.CreateWithLifetime(length);
 		
 		if (createAction != null)
 		{
@@ -124,36 +181,11 @@ public class ControllableErnestoEffectsRemote : MonoBehaviour
 	
 	private void OnBlackHoleCreated()
 	{
-		_blackHole.singularityController.OnCollapse -= OnBlackHoleCreated;
+		_blackHole.singularityController.OnCreation -= OnBlackHoleCreated;
 		_blackHoleListeners.ForEach(a => 
 			_blackHole.singularityController.OnCreation -= a);
 		_blackHoleListeners.Clear();
-	}
-	
-	private void UpdateMuffle(bool instant = false)
-	{
-		var toPlayer = Locator.GetPlayerTransform().position - transform.position;
-		float distMult = Mathf.InverseLerp(50f * 50f, 500f * 500f, toPlayer.sqrMagnitude);
-		bool muffle = false;
-		if (distMult < 1f && Locator.GetAudioMixer()._playerInReverbVolume)
-		{
-			muffle = Physics.Raycast(transform.position, toPlayer, toPlayer.magnitude - 1f, 
-				OWLayerMask.physicalMask);
-		}
-
-		if (instant)
-		{
-			_filterLerp = muffle ? 1f : 0f;
-		}
-		else
-		{
-			_filterLerp = Mathf.MoveTowards(_filterLerp, muffle ? 1f : 0f, Time.deltaTime / 4f);
-		}
-        
-		foreach (var filter in _lowPassFilters)
-		{
-			filter.cutoffFrequency = Mathf.Lerp(22000, 3000, Mathf.Lerp(Mathf.Sqrt(_filterLerp), 1f, distMult));
-		}
+		_blackHole.singularityController.CollapseImmediate();
 	}
 	
 	public void SetAudioPitchMultiplier(float mult)
@@ -162,13 +194,21 @@ public class ControllableErnestoEffectsRemote : MonoBehaviour
 		_oneShotAudio.pitch = mult;
 		//_musicAudio.pitch = mult;
 	}
-	
+
 	public void SetLightEnabled(bool lightEnabled)
 	{
 		_lightEnabled = lightEnabled;
 		_anglerLight.intensity = lightEnabled ? _baseLightIntensity : 0f;
 		_ernestoRenderer.material.SetTexture("_EmissionMap", 
 			lightEnabled ? _bulbTexture : _noBulbTexture);
+
+		if (ErnestoChase.InMultiplayer)
+		{
+			foreach (var id in ErnestoChase.Players)
+			{
+				QSBCompat.SendMorphEffectsInput(id, lightEnabled, toggleLight: true);
+			}
+		}
 	}
 
 	public void SetStealthEnabled(bool stealthEnabled)
@@ -185,24 +225,15 @@ public class ControllableErnestoEffectsRemote : MonoBehaviour
 			_loopingAudio.FadeIn(1f);
 			_musicAudio.FadeIn(0f);
 		}
-	}
-	
-	public void RefreshEffects()
-	{
-		_oneShotAudio.PlayOneShot(AudioType.DBAnglerfishDetectTarget, 0.8f);
-        
-		if (!_stealthEnabled)
+		
+		if (ErnestoChase.InMultiplayer)
 		{
-			_loopingAudio.FadeIn(0f);
-			_musicAudio.FadeIn(0f);
+			foreach (var id in ErnestoChase.Players)
+			{
+				QSBCompat.SendMorphEffectsInput(id, stealthEnabled, toggleStealth: true);
+			}
 		}
-
-		_animator.enabled = true;
-		_animator.SetTrigger("Impulse");
 	}
 
-	public Transform GetScaleRoot()
-	{
-		return _scaleRoot.transform;
-	}
+	public Transform GetScaleRoot() => _scaleRoot;
 }

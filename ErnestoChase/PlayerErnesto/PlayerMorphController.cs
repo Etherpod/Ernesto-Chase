@@ -22,6 +22,8 @@ public class PlayerMorphController : MonoBehaviour
 	
 	private void Start()
 	{
+		GlobalMessenger.AddListener("EC_GameStopped", OnGameStopped);
+		
 		_keyInfo = GameObject.FindWithTag("Global").GetComponent<KeyInfoPromptController>();
 		_morphed = false;
 		_ernestoBody.Suspend(transform, _playerBody);
@@ -48,11 +50,11 @@ public class PlayerMorphController : MonoBehaviour
 		
 		if (morphed)
 		{
-			ErnestoMorph();
+			_ernestoController.GetEffects().CreateWhiteHole(ErnestoMorph);
 		}
 		else
 		{
-			PlayerMorph();
+			_ernestoController.GetEffects().CreateBlackHole(PlayerMorph);
 		}
 		
 		if (ErnestoChase.InMultiplayer)
@@ -82,18 +84,28 @@ public class PlayerMorphController : MonoBehaviour
 		{
 			renderer.forceRenderingOff = true;
 		}
-
+		
+		Locator.GetPlayerController().LockMovement();
+		Locator.GetFlashlight().TurnOff(false);
+		
 		if (_keyInfo._displayCodePrompt)
 		{
 			_keyInfo._codePrompt.SetVisibility(false);
 			_keyInfo._displayCodePrompt = false;
 		}
 		
+		_ernestoController.GetEffects().CreateWhiteHole();
+		
 		_morphed = true;
 	}
 
 	public void PlayerMorph()
 	{
+		if (_ernestoController.IsWarping())
+		{
+			_ernestoController.CancelWarp();
+		}
+		
 		_ernestoController.DetachPlayer();
 		foreach (var renderer in Locator.GetPlayerBody().GetComponentsInChildren<Renderer>())
 		{
@@ -103,12 +115,15 @@ public class PlayerMorphController : MonoBehaviour
 			_ernestoBody.transform.up));
 		_ernestoBody.Suspend(transform, _playerBody);
 		_ernestoController.SetActive(false);
+		Locator.GetPlayerController().UnlockMovement();
 		_morphed = false;
+		
+		Locator.GetFlashlight().TurnOn(false);
 	}
 
 	public bool IsMorphed() => _morphed;
 
-	public void OnGameStopped()
+	private void OnGameStopped()
 	{
 		if (_gameStopped) return;
 		
@@ -123,6 +138,7 @@ public class PlayerMorphController : MonoBehaviour
 
 	private void OnDestroy()
 	{
+		GlobalMessenger.RemoveListener("EC_GameStopped", OnGameStopped);
 		_ernestoBody.OnUnsuspendOWRigidbody -= OnErnestoUnsuspended;
 	}
 }

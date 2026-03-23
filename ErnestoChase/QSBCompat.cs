@@ -70,6 +70,7 @@ public static class QSBCompat
         api.RegisterHandler<bool>("reroll-random-ship-log", ReceiveShipLogReroll);
         api.RegisterHandler<bool>("ernesto-morph", ReceiveErnestoMorph);
         api.RegisterHandler<bool>("morph-warp-event", ReceiveMorphWarpEvent);
+        api.RegisterHandler<(bool, bool, bool)>("morph-effects-input", ReceiveMorphEffectsInput);
     }
 
     #region ErnestoAI
@@ -200,7 +201,29 @@ public static class QSBCompat
         {
             var morph = remoteErnesto.GetComponentInParent<ControllableErnestoRemote>();
             morph.OnWarpEvent(warpStart);
-        } 
+        }
+    }
+
+    public static void SendMorphEffectsInput(uint to, bool value, bool toggleLight = false, bool toggleStealth = false)
+    {
+        api.SendMessage("morph-effects-input", (value, toggleLight, toggleStealth), to);
+    }
+
+    private static void ReceiveMorphEffectsInput(uint from, (bool value, bool toggleLight, bool toggleStealth) data)
+    {
+        if (ErnestoChase.TryGetRemoteErnesto(from, 0, out GameObject remoteErnesto))
+        {
+            var morph = remoteErnesto.GetComponentInParent<ControllableErnestoRemote>();
+
+            if (data.toggleLight)
+            {
+                morph.GetEffects().SetLightEnabled(data.value);
+            }
+            else if (data.toggleStealth)
+            {
+                morph.GetEffects().SetStealthEnabled(data.value);
+            }
+        }
     }
     
     #endregion

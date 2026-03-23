@@ -5,7 +5,7 @@ namespace ErnestoChase.PlayerErnesto;
 public class ControllableErnesto : MonoBehaviour
 {
     [SerializeField]
-    private Transform scaleRoot;
+    private ControllableErnestoEffects effects;
     [SerializeField]
     private PlayerAttachPoint attachPoint;
     [SerializeField]
@@ -136,7 +136,7 @@ public class ControllableErnesto : MonoBehaviour
         if (!changingSize && (downPressed || upPressed))
         {
             shrinked = downPressed;
-            lastSize = scaleRoot.localScale.x;
+            lastSize = effects.GetScaleRoot().localScale.x;
             sizeStartTime = Time.fixedTime;
             changingSize = true;
 
@@ -224,7 +224,7 @@ public class ControllableErnesto : MonoBehaviour
 
     private void UpdateMovement()
     {
-        float multiplier = Mathf.Min(movementMultiplier * (scaleRoot.localScale.x / 2 + 0.5f), rulesetDetector.GetThrustLimit());
+        float multiplier = Mathf.Min(movementMultiplier * (effects.GetScaleRoot().localScale.x / 2 + 0.5f), rulesetDetector.GetThrustLimit());
         rigidbody.AddLocalAcceleration(localAcceleration * multiplier);
     }
 
@@ -240,7 +240,8 @@ public class ControllableErnesto : MonoBehaviour
             float timeLerp = Mathf.InverseLerp(sizeStartTime, sizeStartTime + sizeChangeLength, Time.fixedTime);
             float scale = Mathf.SmoothStep(lastSize, shrinked ? 0.1f : 1f, timeLerp);
 
-            scaleRoot.localScale = Vector3.one * scale;
+            effects.GetScaleRoot().localScale = Vector3.one * scale;
+            effects.SetAudioPitchMultiplier(Mathf.Lerp(1f, 1.5f, Mathf.InverseLerp(1f, 0.1f, scale)));
             owCamera.fieldOfView = Mathf.Lerp(baseFOV + 10f, baseFOV, scale);
 
             if (timeLerp == 1)
@@ -321,9 +322,39 @@ public class ControllableErnesto : MonoBehaviour
 
     public void SetActive(bool active)
     {
-        scaleRoot.gameObject.SetActive(active);
+        effects.GetScaleRoot().gameObject.SetActive(active);
         lockOnCanvas.SetActive(active);
     }
+
+    public void CancelWarp()
+    {
+        if (isChargingWarp)
+        {
+            isChargingWarp = false;
+            owCamera.fieldOfView = shrinked ? baseFOV + 10 : baseFOV;
+            alignWithTarget.enabled = false;
+        }
+        
+        if (!warping) return;
+        
+        warping = false;
+        owCamera.fieldOfView = shrinked ? baseFOV + 10 : baseFOV;
+        alignWithTarget.enabled = false;
+                
+        rigidbody.SetVelocity(Locator.GetReferenceFrame() != null
+            ? Locator.GetReferenceFrame().GetVelocity()
+            : Vector3.zero);
+                
+        if (ErnestoChase.InMultiplayer)
+        {
+            foreach (var id in ErnestoChase.Players)
+            {
+                QSBCompat.SendMorphWarpEvent(id, false);
+            }
+        }
+    }
+
+    public ControllableErnestoEffects GetEffects() => effects;
 
     public void AttachPlayer()
     {
