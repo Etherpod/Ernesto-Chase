@@ -13,6 +13,7 @@ using Newtonsoft.Json;
 using ErnestoChase.ErnestoAI;
 using ErnestoChase.Files;
 using ErnestoChase.Interaction;
+using ErnestoChase.PlayerErnesto;
 
 namespace ErnestoChase;
 
@@ -168,6 +169,11 @@ public class ErnestoChase : ModBehaviour
             _setupDialogue.OnEndConversation += OnEndSetupConversation;
             DialogueBuilder.FixCustomDialogue(obj, "ConversationZone");
 
+            var ui = LoadPrefab("Assets/ErnestoChase/UIParticleTest.prefab");
+            ui.GetComponentInChildren<Canvas>().worldCamera = GameObject.FindWithTag("Player")
+                .GetComponentInChildren<PlayerCameraController>()._playerCamera.mainCamera;
+            Instantiate(ui);
+
             if (GameStateManager.GameStarted)
             {
                 SetUpIslandTriggers();
@@ -201,7 +207,7 @@ public class ErnestoChase : ModBehaviour
                     continue;
                 }
 
-                if (ernesto.TryGetComponent(out ErnestoManager manager))
+                if (ernesto != null && ernesto.TryGetComponent(out ErnestoManager manager))
                 {
                     storedErnestoTargets.Add(manager.GetStoredTargets());
                 }

@@ -48,6 +48,9 @@ public class ControllableErnestoEffectsRemote : MonoBehaviour
 		_baseLightRange = _anglerLight.range;
 		_baseLightIntensity = _anglerLight.intensity;
 		_bulbTexture = _ernestoRenderer.material.GetTexture("_EmissionMap");
+		
+		_whiteHole.gameObject.SetActive(true);
+		_blackHole.gameObject.SetActive(true);
 
 		_ernestoMesh.transform.localScale = Vector3.zero;
 		_anglerLight.range = _baseLightRange * _ernestoMesh.transform.localScale.x *
@@ -79,14 +82,13 @@ public class ControllableErnestoEffectsRemote : MonoBehaviour
 	public void CreateWhiteHole(SingularityController.SingularityEffectEvent createAction = null)
 	{
 		_whiteHole.WarpObjectIn(2f);
-
+		_whiteHole.singularityController.OnCreation += OnWhiteHoleCreated;
+		
 		if (createAction != null)
 		{
 			_whiteHole.singularityController.OnCreation += createAction;
 			_whiteHoleListeners.Add(createAction);
 		}
-
-		_whiteHole.singularityController.OnCreation += OnWhiteHoleCreated;
 	}
 
 	private void OnWhiteHoleCreated()
@@ -110,13 +112,13 @@ public class ControllableErnestoEffectsRemote : MonoBehaviour
 	public void CreateBlackHole(SingularityController.SingularityEffectEvent createAction = null)
 	{
 		_blackHole.WarpObjectOut(2f);
+		_blackHole.singularityController.OnCreation += OnBlackHoleCreated;
 		
 		if (createAction != null)
 		{
 			_blackHole.singularityController.OnCreation += createAction;
 			_blackHoleListeners.Add(createAction);
 		}
-		_blackHole.singularityController.OnCreation += OnBlackHoleCreated;
 		
 		_loopingAudio.FadeOut(1f);
 		_musicAudio.FadeOut(1f, OWAudioSource.FadeOutCompleteAction.PAUSE);

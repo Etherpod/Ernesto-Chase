@@ -27,6 +27,12 @@
         <PackageReference Include="OuterWildsGameLibs" Version="1.1.16.1372" IncludeAssets="compile"/>
         <PackageReference Include="CSharpFunctionalExtensions" Version="3.6.0"/>
     </ItemGroup>
+    
+    <ItemGroup>
+        <Reference Include="UnityEditor">
+            <HintPath>E:\Unity\Editors\2019.4.39f1\Editor\Data\Managed\UnityEditor.dll</HintPath>
+        </Reference>
+    </ItemGroup>
 
     <ItemGroup>
         <None Include="default-config.json">
