@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.Linq;
 using UnityEngine;
 using static ErnestoChase.ErnestoAI.TargetDataQueue;
 
@@ -24,6 +25,7 @@ public class ErnestoMovement : MonoBehaviour
 
     ErnestoState state;
     PlanetManager planetManager;
+    private SectorDetector sectorDetector;
 
     private float baseSpeed = 8f;
     private float currentSpeed;
@@ -34,8 +36,8 @@ public class ErnestoMovement : MonoBehaviour
     private float baseSpaceSpeed;
     private float currentSpaceSpeed;
 
-    private Queue<(Vector3 pos, Transform parent, bool isTeleport, bool isInRingWorld)> targets = new();
-    private Queue<(Vector3 pos, Transform parent, bool isTeleport, bool isInRingWorld)> spaceTargets = new();
+    private Queue<(Vector3 pos, Transform parent, bool isTeleport, int[] sectors)> targets = new();
+    private Queue<(Vector3 pos, Transform parent, bool isTeleport, int[] sectors)> spaceTargets = new();
 
     private TargetDataQueue storedTargets;
     private bool usingStoredTargets = false;
@@ -77,6 +79,7 @@ public class ErnestoMovement : MonoBehaviour
     {
         state = GetComponent<ErnestoState>();
         planetManager = GetComponent<PlanetManager>();
+        sectorDetector = GetComponentInChildren<SectorDetector>(true);
 
         state.OnDataChanged += OnDataChanged;
 
@@ -329,14 +332,32 @@ public class ErnestoMovement : MonoBehaviour
 
     private void SpawnTarget(Transform parent, Vector3 worldPosition, bool isTeleport = false)
     {
+        List<int> sectorIds = [];
+        if (ErnestoChase.InMultiplayer)
+        {
+            foreach (var sector in Locator.GetPlayerSectorDetector()._sectorList)
+            {
+                sectorIds.Add(ErnestoChase.QSBInteraction.SectorToID(sector));
+            }
+        }
+        
         targets.Enqueue((parent.InverseTransformPoint(worldPosition), parent, isTeleport, 
-            Locator.GetRingWorldController()?._playerInsideRingWorld ?? false));
+            sectorIds.ToArray()));
     }
 
     private void SpawnSpaceTarget(Vector3 localPosition, bool isTeleport = false)
     {
+        List<int> sectorIds = [];
+        if (ErnestoChase.InMultiplayer)
+        {
+            foreach (var sector in Locator.GetPlayerSectorDetector()._sectorList)
+            {
+                sectorIds.Add(ErnestoChase.QSBInteraction.SectorToID(sector));
+            }
+        }
+        
         spaceTargets.Enqueue((localPosition, planetManager.GetStaticParent(), isTeleport, 
-            false));
+            sectorIds.ToArray()));
     }
 
     private Transform GetTargetParent(bool ignoreTeleports = false)
@@ -364,19 +385,15 @@ public class ErnestoMovement : MonoBehaviour
             parent = transform.parent;
         }
 
-        bool inRingWorld;
+        int[] sectors = null;
         if (targets.Count > 0)
         {
-            inRingWorld = targets.Peek().isInRingWorld;
-        }
-        else
-        {
-            inRingWorld = Locator.GetRingWorldController()?._playerInsideRingWorld ?? false;
+            sectors = targets.Peek().sectors;
         }
 
         return new TargetData(parent.name, parent.InverseTransformPoint(transform.position), 
             planetManager.GetStaticParent().InverseTransformPoint(transform.position), transform.up,
-            Time.fixedTime, isTeleportEnter, isTeleportExit, isFinalTarget, inRingWorld);
+            Time.fixedTime, isTeleportEnter, isTeleportExit, isFinalTarget, sectors);
     }
 
     private void UpdateErnestoVisibility(bool forceUpdate = false)
@@ -716,7 +733,8 @@ public class ErnestoMovement : MonoBehaviour
             lastPosition = transform.localPosition;
             lastRotation = transform.rotation;
             lastTime = Time.fixedTime;
-
+            
+            UpdateSectors();
             sendTarget = true;
         }
         else
@@ -743,12 +761,6 @@ public class ErnestoMovement : MonoBehaviour
             transform.rotation = Quaternion.Slerp(lastRotation, targetRotation, timeLerp);
         }
 
-        if (state.RemoteID > 0 && targetData.isInRingWorld != wasInRingWorld)
-        {
-            wasInRingWorld = targetData.isInRingWorld;
-            ErnestoChase.SpectateManager.UpdateRingWorldState(state.RemoteID, state.LocalID, targetData.isInRingWorld);
-        }
-
         if (!ProcessStoredTeleportLogic(targetData) && hasSkippedTeleport)
         {
             ProcessStoredTeleportLogic(skippedTeleport);
@@ -771,9 +783,14 @@ public class ErnestoMovement : MonoBehaviour
         }
         else if (targetData.isTeleportExit)
         {
+            var refSector = Locator.GetRingWorldController()?
+                .transform.Find("Sector_RingInterior").GetComponent<Sector>();
+            bool inRingWorld = refSector != null && targetData.sectors != null
+                && targetData.sectors.ToList().Contains(ErnestoChase.QSBInteraction.SectorToID(refSector));
+            
             TriggerFakeWarpExit?.Invoke();
-            ErnestoChase.SpectateManager.RefreshDreamWorld(state.RemoteID);
-            ErnestoChase.SpectateManager.RefreshRingWorld(state.RemoteID, state.LocalID, targetData.isInRingWorld, false);
+            //ErnestoChase.SpectateManager.RefreshDreamWorld(state.RemoteID);
+            //ErnestoChase.SpectateManager.RefreshRingWorld(state.RemoteID, state.LocalID, inRingWorld, false);
         }
         else if (targetData.isFinalTarget)
         {
@@ -911,6 +928,116 @@ public class ErnestoMovement : MonoBehaviour
                 currentSpeed /= state.DreamWorldSpeedMultiplier;
             }
             dreamWorldSpeedMarkers.Remove(targetPos);
+        }
+    }
+
+    public void UpdateSectors()
+    {
+        if (!sectorDetector.gameObject.activeInHierarchy ||
+            !storedTargets.PeekCurrentTarget(out var data))
+        {
+            return;
+        }
+        
+        var newSectors = new List<Sector>();
+        foreach (var id in data.sectors)
+        {
+            var sector = ErnestoChase.QSBInteraction.IDToSector(id);
+            if (sector != null)
+            {
+                newSectors.Add(sector);
+            }
+        }
+        
+        bool disableRingWorld = false;
+        bool disableDreamWorld = false;
+
+        for (int i = sectorDetector._sectorList.Count - 1; i >= 0; i--)
+        {
+            if (!newSectors.Contains(sectorDetector._sectorList[i]))
+            {
+                if (!disableRingWorld && 
+                    sectorDetector._sectorList[i].GetComponentInParent<RingWorldController>())
+                {
+                    disableRingWorld = true;
+                }
+                if (!disableDreamWorld && 
+                    sectorDetector._sectorList[i].GetComponentInParent<DreamWorldController>())
+                {
+                    disableDreamWorld = true;
+                }
+                
+                sectorDetector.RemoveSector(sectorDetector._sectorList[i]);
+            }
+        }
+
+        bool loadRingWorld = false;
+        bool loadDreamWorld = false;
+        
+        foreach (var sector in newSectors)
+        {
+            if (!loadRingWorld && sector.GetComponentInParent<RingWorldController>())
+            {
+                loadRingWorld = true;
+            }
+            if (!loadDreamWorld && sector.GetComponentInParent<DreamWorldController>())
+            {
+                loadDreamWorld = true;
+            }
+            
+            if (!sectorDetector._sectorList.Contains(sector))
+            {
+                sectorDetector.AddSector(sector);
+            }
+        }
+
+        if (loadRingWorld)
+        {
+            ErnestoChase.SpectateManager.LoadRingWorld();
+        }
+        else if (disableRingWorld)
+        {
+            ErnestoChase.SpectateManager.UnloadRingWorld();
+        }
+        
+        if (loadDreamWorld)
+        {
+            ErnestoChase.SpectateManager.LoadDreamWorld();
+        }
+        else if (disableDreamWorld)
+        {
+            ErnestoChase.SpectateManager.UnloadDreamWorld();
+        }
+    }
+
+    public void ClearSectors()
+    {
+        bool disableRingWorld = false;
+        bool disableDreamWorld = false;
+        
+        for (int i = sectorDetector._sectorList.Count - 1; i >= 0; i--)
+        {
+            if (!disableRingWorld && 
+                sectorDetector._sectorList[i].GetComponentInParent<RingWorldController>())
+            {
+                disableRingWorld = true;
+            }
+            else if (!disableDreamWorld && 
+                sectorDetector._sectorList[i].GetComponentInParent<DreamWorldController>())
+            {
+                disableDreamWorld = true;
+            }
+            
+            sectorDetector.RemoveSector(sectorDetector._sectorList[i]);
+        }
+
+        if (disableRingWorld)
+        {
+            ErnestoChase.SpectateManager.UnloadRingWorld();
+        }
+        else if (disableDreamWorld)
+        {
+            ErnestoChase.SpectateManager.UnloadDreamWorld();
         }
     }
 

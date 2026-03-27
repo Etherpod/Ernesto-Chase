@@ -185,10 +185,8 @@ public class ErnestoManager : MonoBehaviour
         {
             return !ErnestoChase.QSBAPI.GetPlayerDead(state.RemoteID);
         }
-        else
-        {
-            return !state.CaughtPlayer;
-        }
+        
+        return !state.CaughtPlayer;
     }
 
     private void OnFinalWarp()

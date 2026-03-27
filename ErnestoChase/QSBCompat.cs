@@ -37,11 +37,11 @@ public static class QSBCompat
         public bool isTeleportEnter = targetData.isTeleportEnter;
         public bool isTeleportExit = targetData.isTeleportExit;
         public bool isFinalTarget = targetData.isFinalTarget;
-        public bool isInRingWorld = targetData.isInRingWorld;
+        public int[] sectors = targetData.sectors;
 
         public readonly TargetData TargetData => new(parent, localPosition.Vector, 
             worldPosition.Vector, worldUp.Vector, time, isTeleportEnter, isTeleportExit, 
-            isFinalTarget, isInRingWorld);
+            isFinalTarget, sectors);
     }
 
     public static void Init(IQSBAPI qsbapi)
@@ -54,7 +54,6 @@ public static class QSBCompat
         api.RegisterHandler<(uint, bool)>("visibility-state", ReceiveVisibilityState);
         api.RegisterHandler<(uint, bool)>("size-change", ReceiveErnestoSizeChange);
         api.RegisterHandler<uint>("final-warp", ReceiveErnestoFinalWarp);
-        api.RegisterHandler<bool>("ring-world-state", ReceiveRingWorldUpdate);
         api.RegisterHandler<bool>("refresh-ring-world", ReceiveRingWorldRefresh);
         api.RegisterHandler<bool>("refresh-dream-world", ReceiveDreamWorldRefresh);
         api.RegisterHandler<bool>("start-game", ReceiveStartGame);
@@ -72,7 +71,7 @@ public static class QSBCompat
         api.RegisterHandler<bool>("ernesto-morph", ReceiveErnestoMorph);
         api.RegisterHandler<bool>("morph-warp-event", ReceiveMorphWarpEvent);
         api.RegisterHandler<(bool, bool, bool)>("morph-effects-input", ReceiveMorphEffectsInput);
-        api.RegisterHandler<int[]>("sector-list", ReceiveSectorList);
+        api.RegisterHandler<int[]>("player-sectors", ReceivePlayerSectors);
     }
 
     #region ErnestoAI
@@ -232,16 +231,6 @@ public static class QSBCompat
     
     #region Spectating
 
-    public static void SendRingWorldUpdate(uint to, bool state)
-    {
-        api.SendMessage("ring-world-state", state, to);
-    }
-
-    private static void ReceiveRingWorldUpdate(uint from, bool state)
-    {
-        ErnestoChase.SpectateManager.UpdateRingWorldState(from, state);
-    }
-
     public static void SendRingWorldRefresh(uint to)
     {
         api.SendMessage("refresh-ring-world", false, to);
@@ -272,7 +261,7 @@ public static class QSBCompat
         }
     }
 
-    public static void SendSectorList(uint to, SectorDetector detector)
+    public static void SendPlayerSectors(uint to, SectorDetector detector)
     {
         List<int> ids = [];
         foreach (var sector in detector._sectorList)
@@ -280,10 +269,10 @@ public static class QSBCompat
             ids.Add(ErnestoChase.QSBInteraction.SectorToID(sector));
         }
         
-        api.SendMessage("sector-list", ids.ToArray(), to);
+        api.SendMessage("player-sectors", ids.ToArray(), to);
     }
 
-    private static void ReceiveSectorList(uint from, int[] sectorIDs)
+    private static void ReceivePlayerSectors(uint from, int[] sectorIDs)
     {
         List<Sector> sectors = [];
         foreach (var id in sectorIDs)
@@ -295,9 +284,14 @@ public static class QSBCompat
             }
         }
 
-        var refSector = Locator.GetRingWorldController()
-            .transform.Find("Sector_RingInterior").GetComponent<Sector>();
-        ErnestoChase.WriteDebugMessage("in ring world: " + sectors.Contains(refSector));
+        var body = api.GetPlayerBody(from);
+        if (body != null)
+        {
+            var tracker = body.GetComponentInChildren<PlayerSectorTrackerRemote>();
+            /*tracker.enabled = ErnestoChase.SpectateManager.IsSpectating &&
+                ErnestoChase.SpectateManager.SpectateTarget.Detector.gameObject == tracker.gameObject;*/
+            tracker.SaveSectors(sectors);
+        }
     }
     
     #endregion

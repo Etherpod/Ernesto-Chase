@@ -18,6 +18,7 @@ public class MorpherSpectatorCamera : SpectatorCamera
 		base.Awake();
 		_ernestoController = GetComponent<ControllableErnestoRemote>();
 		_ernestoController.OnMorph += OnMorph;
+		ErnestoChase.SpectateManager.ernestoSpectatorCams.Add(this);
 	}
 
 	public void SetPlayerCamera(uint id, OWCamera cam)

@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using CSharpFunctionalExtensions;
+using ErnestoChase.ErnestoAI;
 using OWML.Common;
 using OWML.ModHelper;
 using UnityEngine;
@@ -22,6 +23,8 @@ public class SpectateManager : MonoBehaviour
     
     public bool loadedRingWorld;
     public bool loadedDreamWorld;
+    private bool unloadRingWorldNextFrame = false;
+    private bool unloadDreamWorldNextFrame = false;
     private readonly Dictionary<uint, bool> playerRingWorldStates = [];
     private readonly Dictionary<uint, Dictionary<uint, bool>> ernestoRingWorldStates = [];
     private bool wasInsideRingWorld;
@@ -41,10 +44,6 @@ public class SpectateManager : MonoBehaviour
         _exitSpectateModePrompt = new(InputLibrary.map, "Exit Spectator Mode");
         
         GlobalMessenger<DeathType>.AddListener("PlayerDeath", OnPlayerDeath);
-        Locator.GetCloakFieldController()?.OnPlayerEnter += OnPlayerTriggerCloak;
-        Locator.GetCloakFieldController()?.OnPlayerExit += OnPlayerTriggerCloak;
-        GlobalMessenger.AddListener("EnterDreamWorld", OnPlayerTriggerDreamWorld);
-        GlobalMessenger.AddListener("ExitDreamWorld", OnPlayerTriggerDreamWorld);
     }
     
     private void Start()
@@ -53,7 +52,8 @@ public class SpectateManager : MonoBehaviour
         Locator.GetPromptManager().AddScreenPrompt(_changeSpectateTypePrompt, PromptPosition.UpperRight);
         Locator.GetPromptManager().AddScreenPrompt(_enterSpectateModePrompt, PromptPosition.BottomCenter);
         Locator.GetPromptManager().AddScreenPrompt(_exitSpectateModePrompt, PromptPosition.UpperRight);
-                    
+
+        Locator.GetPlayerDetector().gameObject.AddComponent<PlayerSectorTracker>();
         foreach (uint id in Players)
         {
             StartCoroutine(AddCamToRemotePlayer(id));
@@ -62,17 +62,16 @@ public class SpectateManager : MonoBehaviour
     
 	private void Update()
     {
-        if (EntitlementsManager.IsDlcOwned() != EntitlementsManager.AsyncOwnershipStatus.NotOwned)
+        if (unloadRingWorldNextFrame)
         {
-            bool insideRingWorld = Locator.GetRingWorldController()?._playerInsideRingWorld ?? false;
-            if (insideRingWorld != wasInsideRingWorld)
-            {
-                wasInsideRingWorld = insideRingWorld;
-                foreach (var id in Players)
-                {
-                    QSBCompat.SendRingWorldUpdate(id, wasInsideRingWorld);
-                }
-            }
+            UnloadRingWorld_Internal();
+            unloadRingWorldNextFrame = false;
+        }
+
+        if (unloadDreamWorldNextFrame)
+        {
+            UnloadDreamWorld_Internal();
+            unloadDreamWorldNextFrame = false;
         }
         
         if (Players.Length > 0 && QSBAPI.GetPlayerDead(QSBAPI.GetLocalPlayerID()))
@@ -82,13 +81,16 @@ public class SpectateManager : MonoBehaviour
 
             if (OWInput.IsNewlyPressed(InputLibrary.map))
             {
+                ErnestoChase.WriteDebugMessage("Press map");
                 if (!spectating)
                 {
+                    ErnestoChase.WriteDebugMessage("\nEnable spectating");
                     spectating = true;
                     
                     SpectatorCamera targetCam = GetCurrentSpectatorCamera();
                     if (!targetCam)
                     {
+                        ErnestoChase.WriteDebugMessage("No cameras to spectate!");
                         spectating = false;
                         return;
                     }
@@ -107,15 +109,10 @@ public class SpectateManager : MonoBehaviour
 
                     _changeSpectateTargetPrompt.SetVisibility(true);
                     _changeSpectateTypePrompt.SetVisibility(true);
-
-                    spectating = true;
                 }
                 else
                 {
-                    spectating = false;
-                    ReticleController.Show();
-                    Locator.GetPlayerCameraController()._audioListener.enabled = true;
-                    Locator.GetMapController().EnterMapView(SpectateTarget.transform);
+                    ExitSpectate();
                 }
             }
 
@@ -164,24 +161,70 @@ public class SpectateManager : MonoBehaviour
         }
     }
 
+    private void ExitSpectate(bool toPlayer = false)
+    {
+        spectating = false;
+        ReticleController.Show();
+                    
+        if (SpectateTarget != null)
+        {
+            SpectateTarget.Camera.enabled = false;
+            SpectateTarget.AudioListener.enabled = false;
+
+            if (SpectateTarget is ErnestoSpectatorCamera)
+            {
+                SpectateTarget.Detector.SetOccupantType(DynamicOccupant.Environment);
+                SpectateTarget.GetComponent<ErnestoMovement>().ClearSectors();
+                SpectateTarget.Detector.gameObject.SetActive(false);
+            }
+            else if (SpectateTarget is PlayerSpectatorCamera)
+            {
+                SpectateTarget.Detector.SetOccupantType(DynamicOccupant.Environment);
+                var tracker = SpectateTarget.Detector.GetComponent<PlayerSectorTrackerRemote>();
+                tracker.ClearSectors();
+                tracker.enabled = false;
+                //SpectateTarget.Detector.gameObject.SetActive(false);
+            }
+            else
+            {
+                SpectateTarget.Detector.gameObject.SetActive(false);
+            }
+        }
+                    
+        Locator.GetPlayerCameraController()._audioListener.enabled = true;
+        
+        if (toPlayer)
+        {
+            Locator.GetPlayerCamera().enabled = true;
+            Locator.GetPlayerCamera().gameObject.tag = "MainCamera";
+            GlobalMessenger<OWCamera>.FireEvent("SwitchActiveCamera", Locator.GetPlayerCamera());
+        }
+        else
+        {
+            Locator.GetMapController().EnterMapView(SpectateTarget.transform);
+        }
+                    
+        SpectateTarget = null;
+    }
+
     private Maybe<int> GetSpectatorCamIndex(List<SpectatorCamera> cams, int currentIndex, bool cycleLeft)
     {
-        ErnestoChase.WriteDebugMessage("Cycle left: " + cycleLeft);
-        ErnestoChase.WriteDebugMessage("Start index: " + currentIndex);
+        //ErnestoChase.WriteDebugMessage("Cycle left: " + cycleLeft);
+        //ErnestoChase.WriteDebugMessage("Start index: " + currentIndex);
         int delta = cycleLeft ? -1 : 1;
 
         for (int i = 0; i <= cams.Count; i++)
         {
             currentIndex = (currentIndex + delta + cams.Count) % cams.Count;
-            ErnestoChase.WriteDebugMessage("Check index " + currentIndex);
+            //ErnestoChase.WriteDebugMessage("Check index " + currentIndex);
             if (cams[currentIndex].CanSpectate())
             {
-                ErnestoChase.WriteDebugMessage(currentIndex + " can spectate!");
+                //ErnestoChase.WriteDebugMessage(currentIndex + " can spectate!");
                 return currentIndex;
             }
         }
 
-        ErnestoChase.WriteDebugMessage("No Ernestos found");
+        //ErnestoChase.WriteDebugMessage("No Ernestos found");
         return Maybe.None;
     }
 
@@ -190,15 +233,15 @@ public class SpectateManager : MonoBehaviour
         for (int i = 0; i <= cams.Count; i++)
         {
             currentIndex = (currentIndex - 1 + cams.Count) % cams.Count;
-            ErnestoChase.WriteDebugMessage("Check index " + currentIndex);
+            //ErnestoChase.WriteDebugMessage("Check index " + currentIndex);
             if (cams[currentIndex].CanSpectate())
             {
-                ErnestoChase.WriteDebugMessage(currentIndex + " can spectate!");
+                //ErnestoChase.WriteDebugMessage(currentIndex + " can spectate!");
                 return currentIndex;
             }
         }
 
-        ErnestoChase.WriteDebugMessage("No Ernestos found");
+        //ErnestoChase.WriteDebugMessage("No Ernestos found");
         return Maybe.None;
     }
 
@@ -240,21 +283,43 @@ public class SpectateManager : MonoBehaviour
     
     public void SwitchToSpectatorCam(SpectatorCamera camera)
     {
+        //ErnestoChase.WriteDebugMessage("switch to " + camera);
+        
         if (!camera.CanSpectate())
         {
             Instance.ModHelper.Console.WriteLine("Tried to switch to a target that can't be spectated!", MessageType.Error);
             return;
         }
         
-        ErnestoChase.WriteDebugMessage("Switching spectator camera");
+        //ErnestoChase.WriteDebugMessage("Switching spectator camera");
         Locator.GetPlayerCamera().enabled = false;
+        Locator.GetPlayerCamera().gameObject.tag = "Untagged";
         Locator.GetPlayerCameraController()._audioListener.enabled = false;
 
         if (SpectateTarget != null)
         {
             SpectateTarget.Camera.enabled = false;
+            SpectateTarget.Camera.gameObject.tag = "Untagged";
             SpectateTarget.AudioListener.enabled = false;
-            SpectateTarget.Detector.gameObject.SetActive(false);
+
+            if (SpectateTarget is ErnestoSpectatorCamera)
+            {
+                SpectateTarget.Detector.SetOccupantType(DynamicOccupant.Environment);
+                SpectateTarget.GetComponent<ErnestoMovement>().ClearSectors();
+                SpectateTarget.Detector.gameObject.SetActive(false);
+            }
+            else if (SpectateTarget is PlayerSpectatorCamera)
+            {
+                SpectateTarget.Detector.SetOccupantType(DynamicOccupant.Environment);
+                var tracker = SpectateTarget.Detector.GetComponent<PlayerSectorTrackerRemote>();
+                tracker.ClearSectors();
+                tracker.enabled = false;
+                //SpectateTarget.Detector.gameObject.SetActive(false);
+            }
+            else
+            {
+                SpectateTarget.Detector.gameObject.SetActive(false);
+            }
         }
         
         GlobalMessenger<OWCamera>.FireEvent("SwitchActiveCamera", camera.Camera);
@@ -262,159 +327,68 @@ public class SpectateManager : MonoBehaviour
         SpectateTarget = camera;
         lastSpectateTargetState = true;
         camera.Camera.enabled = true;
+        camera.Camera.gameObject.tag = "MainCamera";
         camera.AudioListener.enabled = true;
-        camera.Detector.gameObject.SetActive(true);
 
         if (camera is ErnestoSpectatorCamera)
         {
-            var remoteID = camera.GetComponent<ErnestoAI.ErnestoState>().RemoteID;
-            var localID = camera.GetComponent<ErnestoAI.ErnestoState>().LocalID;
-
-            ernestoRingWorldStates.TryAdd(remoteID, []);
-            ernestoRingWorldStates[remoteID].TryAdd(localID, false);
-            
-            RefreshDreamWorld(remoteID);
-            RefreshRingWorld(remoteID, localID, ernestoRingWorldStates[remoteID][localID], false);
+            camera.Detector.SetOccupantType(DynamicOccupant.Player);
+            camera.Detector.gameObject.SetActive(true);
+            camera.GetComponent<ErnestoMovement>().UpdateSectors();
         }
-        else if (camera is PlayerSpectatorCamera playerCam)
+        else if (camera is PlayerSpectatorCamera)
         {
-            playerRingWorldStates.TryAdd(playerCam.PlayerID, false);
-            
-            RefreshDreamWorld(playerCam.PlayerID);
-            RefreshRingWorld(playerCam.PlayerID, playerRingWorldStates[playerCam.PlayerID]);
+            camera.Detector.SetOccupantType(DynamicOccupant.Player);
+            var tracker = camera.Detector.GetComponent<PlayerSectorTrackerRemote>();
+            tracker.enabled = true;
+            tracker.UpdateSectors();
+        }
+        else
+        {
+            camera.Detector.gameObject.SetActive(true);
         }
     }
-    
-    public void RefreshRingWorld(uint remoteID, bool inside)
+
+    public void LoadRingWorld()
     {
-        RefreshRingWorld(remoteID, 0, inside, true);
-    }
-
-    public void RefreshRingWorld(uint remoteID, uint localID, bool inside, bool isPlayer)
-    {
-        if (!spectating || isPlayer != SpectateTarget is PlayerSpectatorCamera || 
-            EntitlementsManager.IsDlcOwned() == EntitlementsManager.AsyncOwnershipStatus.NotOwned) return;
-
-        if (SpectateTarget is ErnestoSpectatorCamera)
-        {
-            var state = SpectateTarget.GetComponent<ErnestoAI.ErnestoState>();
-            if (state.RemoteID != remoteID || state.LocalID != localID)
-            {
-                return;
-            }
-        }
-        else if (SpectateTarget is PlayerSpectatorCamera playerCam)
-        {
-            if (playerCam.PlayerID != remoteID) return;
-        }
-        
-        bool unload = false;
-        if (SpectateTarget is ErnestoSpectatorCamera &&
-            SpectateTarget.transform.parent.gameObject != Locator.GetRingWorldController().gameObject)
-        {
-            unload = true;
-        }
-        else if (SpectateTarget is not ErnestoSpectatorCamera && remoteID > 0 && 
-            !QSBInteraction.GetPlayerInCloak(remoteID))
-        {
-            unload = true;
-        }
-
-        if (unload)
-        {
-            ErnestoChase.WriteDebugMessage("unload ring world");
-            if (loadedRingWorld)
-            {
-                foreach (var proxy in FindObjectsOfType<CloakingFieldProxy>())
-                {
-                    proxy.OnPlayerExitCloakingField();
-                }
-                
-                Locator.GetRingWorldController().transform
-                    .Find("Sector_RingInterior").GetComponent<Sector>().RemoveOccupant(SpectateTarget.Detector);
-
-                loadedRingWorld = false;
-            }
-
-            return;
-        }
-        
-        ErnestoChase.WriteDebugMessage("load ring world");
-        
         if (!loadedRingWorld)
         {
+            ErnestoChase.WriteDebugMessage("loading ring world");
             foreach (var proxy in FindObjectsOfType<CloakingFieldProxy>())
             {
                 proxy.OnPlayerEnterCloakingField();
             }
 
             loadedRingWorld = true;
-        }
-        
-        if (inside)
-        {
-            ErnestoChase.WriteDebugMessage("UPDATE INTERIOR");
-            Locator.GetRingWorldController().transform
-                .Find("Sector_RingInterior").GetComponent<Sector>().AddOccupant(SpectateTarget.Detector);
-        }
-        else
-        {
-            Locator.GetRingWorldController().transform
-                .Find("Sector_RingInterior").GetComponent<Sector>().RemoveOccupant(SpectateTarget.Detector);
+            unloadRingWorldNextFrame = false;
         }
     }
 
-    public void UpdateRingWorldState(uint remoteID, bool state)
+    public void UnloadRingWorld()
     {
-        playerRingWorldStates[remoteID] = state;
-        RefreshRingWorld(remoteID, state);
-    }
-
-    public void UpdateRingWorldState(uint remoteID, uint localID, bool state)
-    {
-        ErnestoChase.WriteDebugMessage("\nupdating state: " + state);
-        ernestoRingWorldStates[remoteID][localID] = state;
-        RefreshRingWorld(remoteID, localID, state, false);
-    }
-    
-    public void RefreshDreamWorld(uint remoteID)
-    {
-        if (!spectating || EntitlementsManager.IsDlcOwned() == EntitlementsManager.AsyncOwnershipStatus.NotOwned) return;
-        
-        bool unload = false;
-        if (SpectateTarget is ErnestoSpectatorCamera &&
-            SpectateTarget.transform.parent.gameObject != Locator.GetDreamWorldController().gameObject)
+        if (loadedRingWorld)
         {
-            unload = true;
-        }
-        else if (SpectateTarget is PlayerSpectatorCamera && 
-            remoteID > 0 && !QSBInteraction.GetPlayerInDream(remoteID))
-        {
-            unload = true;
-        }
-        
-        if (unload)
-        {
-            ErnestoChase.WriteDebugMessage("Unload DW");
-            if (loadedDreamWorld)
-            {
-                UnloadDreamWorld();
-            }
-
-            return;
-        }
-
-        ErnestoChase.WriteDebugMessage("LOAD DW HAHHA");
-        
-        if (!loadedDreamWorld)
-        {
-            LoadDreamWorld();
+            loadedRingWorld = false;
+            unloadRingWorldNextFrame = true;
         }
     }
 
-    private void LoadDreamWorld()
+    private void UnloadRingWorld_Internal()
     {
-        ErnestoChase.WriteDebugMessage("gabagool");
+        ErnestoChase.WriteDebugMessage("unloading ring world");
+        foreach (var proxy in FindObjectsOfType<CloakingFieldProxy>())
+        {
+            proxy.OnPlayerExitCloakingField();
+        }
+
+        loadedRingWorld = false;
+    }
+
+    public void LoadDreamWorld()
+    {
+        if (loadedDreamWorld) return;
+        
+        ErnestoChase.WriteDebugMessage("loading dream world");
         
         var dw = Locator.GetDreamWorldController();
         
@@ -446,10 +420,20 @@ public class SpectateManager : MonoBehaviour
         }
         
         loadedDreamWorld = true;
+        unloadDreamWorldNextFrame = false;
     }
 
-    private void UnloadDreamWorld()
+    public void UnloadDreamWorld()
     {
+        if (!loadedDreamWorld) return;
+        
+        loadedDreamWorld = false;
+        unloadDreamWorldNextFrame = true;
+    }
+
+    private void UnloadDreamWorld_Internal()
+    {
+        ErnestoChase.WriteDebugMessage("unloading dream world");
         var dw = Locator.GetDreamWorldController();
         
         SunLightController.UnregisterSunOverrider(dw);
@@ -497,37 +481,24 @@ public class SpectateManager : MonoBehaviour
 
         ErnestoChase.WriteDebugMessage("add cam to " + playerID);
         GameObject body = QSBAPI.GetPlayerBody(playerID);
-        GameObject remoteCam = LoadPrefab("Assets/ErnestoChase/PlayerSpectatorCam.prefab");
+        GameObject remoteCam = LoadPrefab("Assets/ErnestoChase/PlayerRemoteSpectatorCam.prefab");
         GameObject remoteCamObj = Instantiate(remoteCam, body.transform.Find("REMOTE_PlayerCamera"));
         var cam = remoteCamObj.GetComponent<PlayerSpectatorCamera>();
-        cam.AssignPlayerID(playerID);
+
+        var detector = QSBInteraction.GetRemoteFluidDetector(playerID).GetAddComponent<SectorDetector>();
+        detector.SetOccupantType(DynamicOccupant.Environment);
+        
+        cam.AssignPlayer(playerID, detector);
         playerSpectatorCams.Add(cam);
+
+        detector.gameObject.AddComponent<PlayerSectorTrackerRemote>().enabled = false;
     }
     
     private void OnPlayerDeath(DeathType deathType)
     {
         if (spectating)
         {
-            spectating = false;
-            SpectateTarget?.Camera.enabled = false;
-            Locator.GetPlayerCamera().enabled = true;
-            GlobalMessenger<OWCamera>.FireEvent("SwitchActiveCamera", Locator.GetPlayerCamera());
-        }
-    }
-    
-    private void OnPlayerTriggerCloak()
-    {
-        foreach (var id in Players)
-        {
-            QSBCompat.SendRingWorldRefresh(id);
-        }
-    }
-
-    private void OnPlayerTriggerDreamWorld()
-    {
-        foreach (var id in Players)
-        {
-            QSBCompat.SendDreamWorldRefresh(id);
+            ExitSpectate(true);
         }
     }
     
@@ -539,9 +510,5 @@ public class SpectateManager : MonoBehaviour
         Locator.GetPromptManager().RemoveScreenPrompt(_exitSpectateModePrompt);
         
         GlobalMessenger<DeathType>.RemoveListener("PlayerDeath", OnPlayerDeath);
-        Locator.GetCloakFieldController()?.OnPlayerEnter -= OnPlayerTriggerCloak;
-        Locator.GetCloakFieldController()?.OnPlayerExit -= OnPlayerTriggerCloak;
-        GlobalMessenger.RemoveListener("EnterDreamWorld", OnPlayerTriggerDreamWorld);
-        GlobalMessenger.RemoveListener("ExitDreamWorld", OnPlayerTriggerDreamWorld);
     }
 }

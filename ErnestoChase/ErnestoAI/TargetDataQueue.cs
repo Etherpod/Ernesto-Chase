@@ -9,7 +9,7 @@ public class TargetDataQueue
     [Serializable]
     public struct TargetData(string parent, Vector3 localPosition, Vector3 worldPosition, Vector3 worldUp,
         float time, bool isTeleportEnter = false, bool isTeleportExit = false, bool isFinalTarget = false,
-        bool isInRingWorld = false)
+        int[] sectors = null)
     {
         public string parent = parent;
         public Vector3 localPosition = localPosition;
@@ -19,10 +19,10 @@ public class TargetDataQueue
         public bool isTeleportEnter = isTeleportEnter;
         public bool isTeleportExit = isTeleportExit;
         public bool isFinalTarget = isFinalTarget;
-        public bool isInRingWorld = isInRingWorld;
+        public int[] sectors = sectors;
     }
 
-    private TargetData[] targetDataHistory = new TargetData[150000];
+    private readonly TargetData[] targetDataHistory = new TargetData[150000];
     private int nextTarget = 0;
     private int nextOpenSlot = 0;
 
