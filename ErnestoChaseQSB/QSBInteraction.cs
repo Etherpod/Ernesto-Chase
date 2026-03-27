@@ -8,6 +8,8 @@ using QSB.Player;
 using System.Linq;
 using QSB.Player.TransformSync;
 using ErnestoChase.Interaction;
+using QSB.SectorSync.WorldObjects;
+using QSB.WorldSync;
 
 namespace ErnestoChaseQSB;
 
@@ -40,5 +42,15 @@ public class QSBInteraction : MonoBehaviour, IQSBInteraction
     public bool GetLocalPlayerReady()
     {
         return PlayerTransformSync.LocalInstance != null;
+    }
+
+    public int SectorToID(Sector sector)
+    {
+        return sector.GetWorldObject<QSBSector>().ObjectId;
+    }
+
+    public Sector IDToSector(int id)
+    {
+        return id.GetWorldObject<QSBSector>()?.AttachedObject;
     }
 }

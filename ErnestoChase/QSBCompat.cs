@@ -7,6 +7,7 @@ using ErnestoChase.Minigames;
 using ErnestoChase.PlayerErnesto;
 using ErnestoChase.ErnestoAI;
 using ErnestoChase.Interaction;
+using ErnestoChase.Spectating;
 using static ErnestoChase.ErnestoAI.TargetDataQueue;
 
 namespace ErnestoChase;
@@ -71,6 +72,7 @@ public static class QSBCompat
         api.RegisterHandler<bool>("ernesto-morph", ReceiveErnestoMorph);
         api.RegisterHandler<bool>("morph-warp-event", ReceiveMorphWarpEvent);
         api.RegisterHandler<(bool, bool, bool)>("morph-effects-input", ReceiveMorphEffectsInput);
+        api.RegisterHandler<int[]>("sector-list", ReceiveSectorList);
     }
 
     #region ErnestoAI
@@ -248,8 +250,8 @@ public static class QSBCompat
     private static void ReceiveRingWorldRefresh(uint from, bool b)
     {
         if (ErnestoChase.SpectateManager.IsSpectating && 
-            !ErnestoChase.SpectateManager.SpectateTarget.IsErnestoCam &&
-            ErnestoChase.SpectateManager.SpectateTarget.PlayerID == from)
+            ErnestoChase.SpectateManager.SpectateTarget is PlayerSpectatorCamera playerCam &&
+            playerCam.PlayerID == from)
         {
             ErnestoChase.SpectateManager.SwitchToSpectatorCam(ErnestoChase.SpectateManager.SpectateTarget);
         }
@@ -263,11 +265,39 @@ public static class QSBCompat
     private static void ReceiveDreamWorldRefresh(uint from, bool b)
     {
         if (ErnestoChase.SpectateManager.IsSpectating && 
-            !ErnestoChase.SpectateManager.SpectateTarget.IsErnestoCam &&
-            ErnestoChase.SpectateManager.SpectateTarget.PlayerID == from)
+            ErnestoChase.SpectateManager.SpectateTarget is PlayerSpectatorCamera playerCam &&
+            playerCam.PlayerID == from)
         {
             ErnestoChase.SpectateManager.SwitchToSpectatorCam(ErnestoChase.SpectateManager.SpectateTarget);
         }
+    }
+
+    public static void SendSectorList(uint to, SectorDetector detector)
+    {
+        List<int> ids = [];
+        foreach (var sector in detector._sectorList)
+        {
+            ids.Add(ErnestoChase.QSBInteraction.SectorToID(sector));
+        }
+        
+        api.SendMessage("sector-list", ids.ToArray(), to);
+    }
+
+    private static void ReceiveSectorList(uint from, int[] sectorIDs)
+    {
+        List<Sector> sectors = [];
+        foreach (var id in sectorIDs)
+        {
+            var s = ErnestoChase.QSBInteraction.IDToSector(id);
+            if (s != null)
+            {
+                sectors.Add(s);
+            }
+        }
+
+        var refSector = Locator.GetRingWorldController()
+            .transform.Find("Sector_RingInterior").GetComponent<Sector>();
+        ErnestoChase.WriteDebugMessage("in ring world: " + sectors.Contains(refSector));
     }
     
     #endregion

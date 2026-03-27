@@ -265,7 +265,7 @@ public class SpectateManager : MonoBehaviour
         camera.AudioListener.enabled = true;
         camera.Detector.gameObject.SetActive(true);
 
-        if (camera.IsErnestoCam)
+        if (camera is ErnestoSpectatorCamera)
         {
             var remoteID = camera.GetComponent<ErnestoAI.ErnestoState>().RemoteID;
             var localID = camera.GetComponent<ErnestoAI.ErnestoState>().LocalID;
@@ -276,12 +276,12 @@ public class SpectateManager : MonoBehaviour
             RefreshDreamWorld(remoteID);
             RefreshRingWorld(remoteID, localID, ernestoRingWorldStates[remoteID][localID], false);
         }
-        else
+        else if (camera is PlayerSpectatorCamera playerCam)
         {
-            playerRingWorldStates.TryAdd(camera.PlayerID, false);
+            playerRingWorldStates.TryAdd(playerCam.PlayerID, false);
             
-            RefreshDreamWorld(camera.PlayerID);
-            RefreshRingWorld(camera.PlayerID, playerRingWorldStates[camera.PlayerID]);
+            RefreshDreamWorld(playerCam.PlayerID);
+            RefreshRingWorld(playerCam.PlayerID, playerRingWorldStates[playerCam.PlayerID]);
         }
     }
     
@@ -292,10 +292,10 @@ public class SpectateManager : MonoBehaviour
 
     public void RefreshRingWorld(uint remoteID, uint localID, bool inside, bool isPlayer)
     {
-        if (!spectating || isPlayer == SpectateTarget.IsErnestoCam || 
+        if (!spectating || isPlayer != SpectateTarget is PlayerSpectatorCamera || 
             EntitlementsManager.IsDlcOwned() == EntitlementsManager.AsyncOwnershipStatus.NotOwned) return;
 
-        if (SpectateTarget.IsErnestoCam)
+        if (SpectateTarget is ErnestoSpectatorCamera)
         {
             var state = SpectateTarget.GetComponent<ErnestoAI.ErnestoState>();
             if (state.RemoteID != remoteID || state.LocalID != localID)
@@ -303,18 +303,19 @@ public class SpectateManager : MonoBehaviour
                 return;
             }
         }
-        else
+        else if (SpectateTarget is PlayerSpectatorCamera playerCam)
         {
-            if (SpectateTarget.PlayerID != remoteID) return;
+            if (playerCam.PlayerID != remoteID) return;
         }
         
         bool unload = false;
-        if (SpectateTarget.IsErnestoCam &&
+        if (SpectateTarget is ErnestoSpectatorCamera &&
             SpectateTarget.transform.parent.gameObject != Locator.GetRingWorldController().gameObject)
         {
             unload = true;
         }
-        else if (!SpectateTarget.IsErnestoCam && remoteID > 0 && !QSBInteraction.GetPlayerInCloak(remoteID))
+        else if (SpectateTarget is not ErnestoSpectatorCamera && remoteID > 0 && 
+            !QSBInteraction.GetPlayerInCloak(remoteID))
         {
             unload = true;
         }
@@ -381,12 +382,13 @@ public class SpectateManager : MonoBehaviour
         if (!spectating || EntitlementsManager.IsDlcOwned() == EntitlementsManager.AsyncOwnershipStatus.NotOwned) return;
         
         bool unload = false;
-        if (SpectateTarget.IsErnestoCam &&
+        if (SpectateTarget is ErnestoSpectatorCamera &&
             SpectateTarget.transform.parent.gameObject != Locator.GetDreamWorldController().gameObject)
         {
             unload = true;
         }
-        else if (!SpectateTarget.IsErnestoCam && remoteID > 0 && !QSBInteraction.GetPlayerInDream(remoteID))
+        else if (SpectateTarget is PlayerSpectatorCamera && 
+            remoteID > 0 && !QSBInteraction.GetPlayerInDream(remoteID))
         {
             unload = true;
         }
@@ -495,11 +497,10 @@ public class SpectateManager : MonoBehaviour
 
         ErnestoChase.WriteDebugMessage("add cam to " + playerID);
         GameObject body = QSBAPI.GetPlayerBody(playerID);
-        ErnestoChase.WriteDebugMessage("body: " + body);
-        GameObject remoteCam = LoadPrefab("Assets/ErnestoChase/PlayerRemoteSpectatorCam.prefab");
+        GameObject remoteCam = LoadPrefab("Assets/ErnestoChase/PlayerSpectatorCam.prefab");
         GameObject remoteCamObj = Instantiate(remoteCam, body.transform.Find("REMOTE_PlayerCamera"));
-        var cam = remoteCamObj.GetComponent<SpectatorCamera>();
-        cam.SetPlayerID(playerID);
+        var cam = remoteCamObj.GetComponent<PlayerSpectatorCamera>();
+        cam.AssignPlayerID(playerID);
         playerSpectatorCams.Add(cam);
     }
     

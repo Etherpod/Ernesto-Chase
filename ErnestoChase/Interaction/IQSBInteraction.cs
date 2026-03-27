@@ -11,4 +11,8 @@ public interface IQSBInteraction
     public bool GetPlayerInDream(uint id);
 
     public bool GetLocalPlayerReady();
+
+    public int SectorToID(Sector sector);
+
+    public Sector IDToSector(int id);
 }

@@ -5,6 +5,9 @@ namespace ErnestoChase.PlayerErnesto;
 
 public class ControllableErnestoRemote : MonoBehaviour
 {
+    public delegate void ErnestoMorphEvent(bool morphed);
+    public event ErnestoMorphEvent OnMorph;
+    
     public bool KillVolumeEnabled { get; private set; }
     
     private Transform _ernesto;
@@ -70,6 +73,8 @@ public class ControllableErnestoRemote : MonoBehaviour
         {
             renderer.forceRenderingOff = false;
         }
+
+        OnMorph?.Invoke(false);
     }
 
     private void ErnestoMorph()
@@ -80,6 +85,8 @@ public class ControllableErnestoRemote : MonoBehaviour
         {
             renderer.forceRenderingOff = true;
         }
+        
+        OnMorph?.Invoke(true);
     }
 
     private void UpdateSize()
@@ -145,9 +152,14 @@ public class ControllableErnestoRemote : MonoBehaviour
         }
     }
 
-    public bool CanSpectate(bool ernesto)
+    /*public bool CanSpectate(bool ernesto)
     {
         return ernesto == _morphed;
+    }*/
+
+    public bool CanSpectate()
+    {
+        return true;
     }
 
     public ControllableErnestoEffectsRemote GetEffects() => _effects;
