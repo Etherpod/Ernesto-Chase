@@ -10,7 +10,18 @@ public class PlayerSectorTrackerRemote : MonoBehaviour
 
 	private void Awake()
 	{
-		_sectorDetector = this.GetRequiredComponent<SectorDetector>();
+		_sectorDetector = GetComponent<SectorDetector>();
+	}
+
+	public void SetSectorDetector(SectorDetector detector)
+	{
+		if (_sectorDetector)
+		{
+			ClearSectors();
+		}
+		
+		_sectorDetector = detector;
+		UpdateSectors();
 	}
 
 	public void SaveSectors(List<Sector> sectors)
@@ -27,6 +38,8 @@ public class PlayerSectorTrackerRemote : MonoBehaviour
 
 		for (int i = _sectorDetector._sectorList.Count - 1; i >= 0; i--)
 		{
+			if (i > _sectorDetector._sectorList.Count - 1) continue;
+			
 			if (!_cachedSectors.Contains(_sectorDetector._sectorList[i]))
 			{
 				if (enabled)
@@ -96,6 +109,8 @@ public class PlayerSectorTrackerRemote : MonoBehaviour
         
 		for (int i = _sectorDetector._sectorList.Count - 1; i >= 0; i--)
 		{
+			if (i > _sectorDetector._sectorList.Count - 1) continue;
+			
 			if (enabled)
 			{
 				if (!disableRingWorld && 

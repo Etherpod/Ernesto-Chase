@@ -46,7 +46,7 @@ public class QSBInteraction : MonoBehaviour, IQSBInteraction
 
     public int SectorToID(Sector sector)
     {
-        return sector.GetWorldObject<QSBSector>().ObjectId;
+        return sector.TryGetWorldObject(out QSBSector obj) ? obj.ObjectId : 0;
     }
 
     public Sector IDToSector(int id)

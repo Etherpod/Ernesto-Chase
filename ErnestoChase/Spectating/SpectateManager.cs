@@ -20,14 +20,12 @@ public class SpectateManager : MonoBehaviour
     public SpectatorCamera SpectateTarget { get; private set; }
     public bool IsSpectating { get => spectating; }
     private bool lastSpectateTargetState;
+    private List<MorpherSpectatorCamera> morpherSpectatorCameras = [];
     
     public bool loadedRingWorld;
     public bool loadedDreamWorld;
     private bool unloadRingWorldNextFrame = false;
     private bool unloadDreamWorldNextFrame = false;
-    private readonly Dictionary<uint, bool> playerRingWorldStates = [];
-    private readonly Dictionary<uint, Dictionary<uint, bool>> ernestoRingWorldStates = [];
-    private bool wasInsideRingWorld;
     
     private ScreenPrompt _changeSpectateTargetPrompt;
     private ScreenPrompt _changeSpectateTypePrompt;
@@ -185,9 +183,13 @@ public class SpectateManager : MonoBehaviour
                 tracker.enabled = false;
                 //SpectateTarget.Detector.gameObject.SetActive(false);
             }
-            else
+            else if (SpectateTarget is MorpherSpectatorCamera morpherCam)
             {
-                SpectateTarget.Detector.gameObject.SetActive(false);
+                morpherCam.Detector.SetOccupantType(DynamicOccupant.Environment);
+                morpherCam.SetDetectorActive(false);
+                var tracker = morpherCam.Detector.GetComponent<PlayerSectorTrackerRemote>();
+                tracker.ClearSectors();
+                tracker.enabled = false;
             }
         }
                     
@@ -316,9 +318,13 @@ public class SpectateManager : MonoBehaviour
                 tracker.enabled = false;
                 //SpectateTarget.Detector.gameObject.SetActive(false);
             }
-            else
+            else if (SpectateTarget is MorpherSpectatorCamera morpherCam)
             {
-                SpectateTarget.Detector.gameObject.SetActive(false);
+                morpherCam.Detector.SetOccupantType(DynamicOccupant.Environment);
+                morpherCam.SetDetectorActive(false);
+                var tracker = morpherCam.Detector.GetComponentInParent<PlayerSectorTrackerRemote>();
+                tracker.ClearSectors();
+                tracker.enabled = false;
             }
         }
         
@@ -343,9 +349,13 @@ public class SpectateManager : MonoBehaviour
             tracker.enabled = true;
             tracker.UpdateSectors();
         }
-        else
+        else if (camera is MorpherSpectatorCamera morpherCam)
         {
-            camera.Detector.gameObject.SetActive(true);
+            morpherCam.Detector.SetOccupantType(DynamicOccupant.Player);
+            morpherCam.SetDetectorActive(true);
+            var tracker = morpherCam.Detector.GetComponentInParent<PlayerSectorTrackerRemote>();
+            tracker.enabled = true;
+            tracker.UpdateSectors();
         }
     }
 
@@ -492,6 +502,63 @@ public class SpectateManager : MonoBehaviour
         playerSpectatorCams.Add(cam);
 
         detector.gameObject.AddComponent<PlayerSectorTrackerRemote>().enabled = false;
+    }
+
+    public void SetUpMorpherCam(MorpherSpectatorCamera cam, GameObject ernestoParent, uint playerID)
+    {
+        if (playerID == QSBAPI.GetLocalPlayerID()) return;
+        
+        ErnestoChase.WriteDebugMessage("add morpher cam to " + playerID);
+        GameObject body = QSBAPI.GetPlayerBody(playerID);
+        GameObject remoteCam = LoadPrefab("Assets/ErnestoChase/PlayerSpectatorCam.prefab");
+        
+        remoteCam.GetComponent<PlanetaryFogImageEffect>().fogShader = Shader.Find("Hidden/PlanetaryFogImageEffect");
+        remoteCam.GetComponent<FlashbackScreenGrabImageEffect>()._downsampleShader = Shader.Find("Hidden/DownsampleImageEffect");
+        remoteCam.GetComponent<HeightmapAmbientLightRenderer>()._lightShader = Shader.Find("Hidden/HeightmapAmbientLight");
+        remoteCam.GetComponent<OWCamera>().enabled = false;
+        GameObject remoteCamObj = Instantiate(remoteCam, body.transform.Find("REMOTE_PlayerCamera"));
+
+        var detector = QSBInteraction.GetRemoteFluidDetector(playerID).GetAddComponent<SectorDetector>();
+        detector.SetOccupantType(DynamicOccupant.Environment);
+        
+        cam.SetPlayerCamera(playerID, remoteCamObj.GetComponent<OWCamera>(), detector);
+        cam.SetErnestoCamera(ernestoParent.transform.Find("ScaleRoot/SpectatorCam").GetComponent<OWCamera>(),
+            ernestoParent.transform.Find("ScaleRoot/ErnestoSectorDetector").GetComponent<SectorDetector>());
+        //playerSpectatorCams.Add(cam);
+        cam.OnSwitchCamera += OnSwitchCamera;
+
+        var tracker = body.gameObject.AddComponent<PlayerSectorTrackerRemote>();
+        tracker.SetSectorDetector(detector);
+        tracker.enabled = false;
+    }
+
+    private void OnSwitchCamera(MorpherSpectatorCamera spectatorCam, OWCamera prevCamera)
+    {
+        ErnestoChase.WriteDebugMessage("Switch cam to " + spectatorCam);
+        
+        if (spectatorCam != SpectateTarget) return;
+        
+        if (!spectatorCam.CanSpectate())
+        {
+            Instance.ModHelper.Console.WriteLine("Tried to switch to a target that can't be spectated!", MessageType.Warning);
+            RefreshSpectateTarget();
+            return;
+        }
+        
+        //ErnestoChase.WriteDebugMessage("Switching spectator camera");
+        Locator.GetPlayerCamera().enabled = false;
+        Locator.GetPlayerCamera().gameObject.tag = "Untagged";
+        Locator.GetPlayerCameraController()._audioListener.enabled = false;
+
+        prevCamera.enabled = false;
+        prevCamera.gameObject.tag = "Untagged";
+        
+        GlobalMessenger<OWCamera>.FireEvent("SwitchActiveCamera", spectatorCam.Camera);
+        
+        lastSpectateTargetState = true;
+        spectatorCam.Camera.enabled = true;
+        spectatorCam.Camera.gameObject.tag = "MainCamera";
+        spectatorCam.AudioListener.enabled = true;
     }
     
     private void OnPlayerDeath(DeathType deathType)

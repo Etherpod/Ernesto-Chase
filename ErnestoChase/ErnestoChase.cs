@@ -14,6 +14,7 @@ using ErnestoChase.ErnestoAI;
 using ErnestoChase.Files;
 using ErnestoChase.Interaction;
 using ErnestoChase.PlayerErnesto;
+using ErnestoChase.Spectating;
 
 namespace ErnestoChase;
 
@@ -561,6 +562,10 @@ public class ErnestoChase : ModBehaviour
         obj.SetActive(false);
         GameObject ernestoObj = Instantiate(obj, Vector3.zero, Quaternion.identity, remoteParent);
         
+        remoteParent.gameObject.AddComponent<ControllableErnestoRemote>();
+        var cam = remoteParent.gameObject.AddComponent<MorpherSpectatorCamera>();
+        SpectateManager.SetUpMorpherCam(cam, ernestoObj, data.id);
+        
         ernestoObj.SetActive(true);
         ernestos.Add(ernestoObj);
         
@@ -572,8 +577,6 @@ public class ErnestoChase : ModBehaviour
             remoteErnestos.Add(data.id, []);
         }
         remoteErnestos[data.id].Add(data.localid, ernestoObj);
-
-        remoteParent.gameObject.AddComponent<PlayerErnesto.ControllableErnestoRemote>();
     }
 
     public void AddTargetDataRemote(uint from, uint localID, TargetDataQueue.TargetData targetData)

@@ -8,9 +8,9 @@ public class ErnestoSpectatorCamera : SpectatorCamera
 	[SerializeField]
 	private ErnestoManager _ernestoManager;
 
-	protected override void Awake()
+	protected override void Start()
 	{
-		base.Awake();
+		base.Start();
 		ErnestoChase.SpectateManager.ernestoSpectatorCams.Add(this);
 	}
 

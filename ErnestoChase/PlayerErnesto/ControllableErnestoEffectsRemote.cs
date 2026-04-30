@@ -48,7 +48,9 @@ public class ControllableErnestoEffectsRemote : MonoBehaviour
 		_baseLightRange = _anglerLight.range;
 		_baseLightIntensity = _anglerLight.intensity;
 		_bulbTexture = _ernestoRenderer.material.GetTexture("_EmissionMap");
-		
+
+		_whiteHole.transform.parent = transform.parent;
+		_blackHole.transform.parent = transform.parent;
 		_whiteHole.gameObject.SetActive(true);
 		_blackHole.gameObject.SetActive(true);
 

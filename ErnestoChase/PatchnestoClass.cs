@@ -687,4 +687,265 @@ public static class PatchnestoClass
 	{
 		return !(ECLocator.GetMorphController()?.IsMorphed() ?? false);
 	}
+
+	[HarmonyPrefix]
+	[HarmonyPatch(typeof(NomaiWarpPlatform), nameof(NomaiWarpPlatform.TransmitWarpedBody))]
+	public static bool LogWarpTarget(OWRigidbody body)
+	{
+		//ErnestoChase.WriteDebugMessage("WARPING " + body.gameObject.name);
+		if ((ECLocator.GetMorphController()?.IsMorphed() ?? false) && body is PlayerBody)
+		{
+			return false;
+		}
+		return true;
+	}
+	
+	[HarmonyPrefix]
+	[HarmonyPatch(typeof(CenterOfTheUniverse), nameof(CenterOfTheUniverse.RecenterUniverseAroundPlayer))]
+	public static void LogCoU() 
+	{
+		/*ErnestoChase.WriteDebugMessage("Player pos: " + Locator.GetPlayerTransform().position);
+		ErnestoChase.WriteDebugMessage("Recentering universe");
+		ErnestoChase.Instance.ModHelper.Events.Unity.FireOnNextUpdate(() =>
+		{
+			ErnestoChase.WriteDebugMessage("\nPlayer pos: " + Locator.GetPlayerTransform().position);
+			ErnestoChase.WriteDebugMessage("Player velocity: " + Locator.GetPlayerBody().GetVelocity());
+			ErnestoChase.Instance.ModHelper.Events.Unity.FireOnNextUpdate(() =>
+			{
+				ErnestoChase.WriteDebugMessage("\nPlayer pos: " + Locator.GetPlayerTransform().position);
+				ErnestoChase.WriteDebugMessage("Player velocity: " + Locator.GetPlayerBody().GetVelocity());
+				ErnestoChase.Instance.ModHelper.Events.Unity.FireOnNextUpdate(() =>
+				{
+					ErnestoChase.WriteDebugMessage("\nPlayer pos: " + Locator.GetPlayerTransform().position);
+					ErnestoChase.WriteDebugMessage("Player velocity: " + Locator.GetPlayerBody().GetVelocity());
+				});
+			});
+		});*/
+	}
+
+	/*[HarmonyPrefix]
+	[HarmonyPatch(typeof(PlanetaryFogController), nameof(PlanetaryFogController.UpdateFogSettings))]
+	public static bool PrioritizeSpectatorCamera(OWCamera owCamera)
+	{
+		if (!ErnestoChase.InMultiplayer) return true;
+
+		PlanetaryFogController.s_fogImpostorMatPropBlock.SetFloat(PlanetaryFogController.s_propID_LODFade, 1f);
+		for (int i = 0; i < PlanetaryFogController.s_activeFogSpheres.Count; i++)
+		{
+			if (!(PlanetaryFogController.s_activeFogSpheres[i]._fogImpostor == null))
+			{
+				PlanetaryFogController.s_activeFogSpheres[i]._fogImpostor.SetPropertyBlock(PlanetaryFogController.s_fogImpostorMatPropBlock);
+			}
+		}
+		Vector3 position = owCamera.transform.position;
+		PlanetaryFogController planetaryFogController = null;
+		float num = float.PositiveInfinity;
+		for (int j = 0; j < PlanetaryFogController.s_activeFogSpheres.Count; j++)
+		{
+			PlanetaryFogController planetaryFogController2 = PlanetaryFogController.s_activeFogSpheres[j];
+			float num2 = Vector3.SqrMagnitude(position - planetaryFogController2.transform.position);
+			float num3 = planetaryFogController2._fogRadius + planetaryFogController2._lodFadeDistance;
+			if (num2 <= num3 * num3 && (planetaryFogController == null || planetaryFogController2._fogRadius < planetaryFogController._fogRadius))
+			{
+				planetaryFogController = planetaryFogController2;
+				num = num2;
+			}
+		}
+		if (planetaryFogController != null)
+		{
+			float num4 = Mathf.Clamp01((Mathf.Sqrt(num) - planetaryFogController._fogRadius) / planetaryFogController._lodFadeDistance);
+			if (planetaryFogController != PlanetaryFogController.s_lastFogSphere)
+			{
+				Shader.SetGlobalTexture(PlanetaryFogController.s_propID_FogLookupTex, planetaryFogController._fogLookupTexture);
+				Shader.SetGlobalTexture(PlanetaryFogController.s_propID_FogColorRampTex, (planetaryFogController._fogColorRampTexture != null) ? planetaryFogController._fogColorRampTexture : Texture2D.whiteTexture);
+				PlanetaryFogController.s_lastFogSphere = planetaryFogController;
+			}
+			Vector3 position2 = planetaryFogController.transform.position;
+			Shader.SetGlobalVector(PlanetaryFogController.s_propID_FogPosition, new Vector4(position2.x, position2.y, position2.z, planetaryFogController._fogRadius));
+			Shader.SetGlobalVector(PlanetaryFogController.s_propID_FogDirRight, planetaryFogController.transform.right);
+			Shader.SetGlobalVector(PlanetaryFogController.s_propID_FogDirForward, planetaryFogController.transform.forward);
+			Shader.SetGlobalVector(PlanetaryFogController.s_propID_FogParams, new Vector4((planetaryFogController._fogLookupTexture != null) ? (planetaryFogController._fogDensity * (1f - num4)) : 0f, planetaryFogController._fogColorRampIntensity, planetaryFogController._fogExponent, planetaryFogController._skyboxFactor));
+			Shader.SetGlobalVector(PlanetaryFogController.s_propID_FogTint, planetaryFogController._fogTint.linear);
+			if (planetaryFogController._fogImpostor != null)
+			{
+				PlanetaryFogController.s_fogImpostorMatPropBlock.SetFloat(PlanetaryFogController.s_propID_LODFade, num4);
+				planetaryFogController._fogImpostor.SetPropertyBlock(PlanetaryFogController.s_fogImpostorMatPropBlock);
+			}
+		}
+
+		if (owCamera == ErnestoChase.SpectateManager?.SpectateTarget?.Camera)
+		{
+			PlanetaryFogController.s_playerFogSphere = planetaryFogController;
+		}
+		else if (owCamera.CompareTag("MainCamera") && !(ErnestoChase.SpectateManager?.IsSpectating ?? false))
+		{
+			PlanetaryFogController.s_playerFogSphere = planetaryFogController;
+		}
+
+		return false;
+	}*/
+
+	[HarmonyPrefix]
+	[HarmonyPatch(typeof(ShipLODTrigger), nameof(ShipLODTrigger.FixedUpdate))]
+	public static void FixShipLOD(ShipLODTrigger __instance)
+	{
+		if (ErnestoChase.SpectateManager && ErnestoChase.SpectateManager.IsSpectating &&
+			ErnestoChase.SpectateManager.SpectateTarget)
+		{
+			__instance._playerTransform = ErnestoChase.SpectateManager.SpectateTarget.Detector.transform;
+		}
+		else
+		{
+			__instance._playerTransform = Locator.GetPlayerTransform();
+		}
+	}
+	
+	[HarmonyPrefix]
+	[HarmonyPatch(typeof(SectorStreaming), nameof(SectorStreaming.FixedUpdate))]
+	public static bool FixSectorStreaming(SectorStreaming __instance)
+	{
+		if (!ErnestoChase.SpectateManager || !ErnestoChase.SpectateManager.IsSpectating ||
+			!ErnestoChase.SpectateManager.SpectateTarget)
+		{
+			return true;
+		}
+		
+		bool playerInRadius = (__instance._playerTransform.position - __instance._sector.transform.position).sqrMagnitude < 
+			__instance._softLoadRadius * __instance._softLoadRadius;
+        
+		bool probeInRadius = __instance._probe != null && __instance._probe.IsLaunched() && 
+			(__instance._probe.transform.position - __instance._sector.transform.position).sqrMagnitude < 
+			__instance._softLoadRadius * __instance._softLoadRadius;
+
+		if (!playerInRadius)
+		{
+			playerInRadius = (ErnestoChase.SpectateManager.SpectateTarget.transform.position - 
+					__instance._sector.transform.position).sqrMagnitude <
+				__instance._softLoadRadius * __instance._softLoadRadius;
+		}
+        
+		if (PlayerState.OnQuantumMoon() && Locator.GetQuantumMoon().IsPlayerInsideShrine() && 
+			__instance._sector.GetName() != Sector.Name.QuantumMoon)
+		{
+			playerInRadius = false;
+			probeInRadius = false;
+		}
+        
+		if (!__instance._playerInSoftLoadRadius && playerInRadius)
+		{
+			__instance._streamingGroup.RequestRequiredAssets(0);
+		}
+		else if (__instance._playerInSoftLoadRadius && !playerInRadius)
+		{
+			__instance._streamingGroup.ReleaseRequiredAssets();
+		}
+        
+		if (!__instance._probeInSoftLoadRadius && probeInRadius)
+		{
+			__instance._streamingGroup.RequestRequiredAssets(0);
+		}
+		else if (__instance._probeInSoftLoadRadius && !probeInRadius)
+		{
+			__instance._streamingGroup.ReleaseRequiredAssets();
+		}
+        
+		__instance._playerInSoftLoadRadius = playerInRadius;
+		__instance._probeInSoftLoadRadius = probeInRadius;
+
+		return false;
+	}
+
+	[HarmonyPrefix]
+	[HarmonyPatch(typeof(Sector), nameof(Sector.OnEntry))]
+	public static bool PreventSpectatorSectorAdd(GameObject hitObj)
+	{
+		if (!ErnestoChase.SpectateManager || !ErnestoChase.SpectateManager.IsSpectating ||
+			!ErnestoChase.SpectateManager.SpectateTarget)
+		{
+			return true;
+		}
+		
+		return hitObj != ErnestoChase.SpectateManager.SpectateTarget.Detector.gameObject;
+	}
+	
+	[HarmonyPrefix]
+	[HarmonyPatch(typeof(Sector), nameof(Sector.OnExit))]
+	public static bool PreventSpectatorSectorRemove(GameObject hitObj)
+	{
+		if (!ErnestoChase.SpectateManager || !ErnestoChase.SpectateManager.IsSpectating ||
+			!ErnestoChase.SpectateManager.SpectateTarget)
+		{
+			return true;
+		}
+		
+		return hitObj != ErnestoChase.SpectateManager.SpectateTarget.Detector.gameObject;
+	}
+	
+	[HarmonyPostfix]
+	[HarmonyPatch(typeof(TempFogEnabler), nameof(TempFogEnabler.Awake))]
+	public static void RingWorldFogAwake(TempFogEnabler __instance)
+	{
+		if (!ErnestoChase.InMultiplayer) return;
+
+		var interiorTrigger = GameObject.Find("RingWorld_Body")?.transform.Find("Sector_RingInterior")
+			.GetComponent<Sector>()._owTriggerVolume;
+		if (interiorTrigger != null)
+		{
+			interiorTrigger.OnEntry += __instance.OnEntry;
+			interiorTrigger.OnExit += __instance.OnExit;
+		}
+	}
+	
+	[HarmonyPostfix]
+	[HarmonyPatch(typeof(TempFogEnabler), nameof(TempFogEnabler.OnDestroy))]
+	public static void RingWorldFogOnDestroy(TempFogEnabler __instance)
+	{
+		if (!ErnestoChase.InMultiplayer) return;
+
+		var interiorTrigger = GameObject.Find("RingWorld_Body")?.transform.Find("Sector_RingInterior")
+			.GetComponent<Sector>()._owTriggerVolume;
+		if (interiorTrigger != null)
+		{
+			interiorTrigger.OnEntry -= __instance.OnEntry;
+			interiorTrigger.OnExit -= __instance.OnExit;
+		}
+	}
+	
+	[HarmonyPrefix]
+	[HarmonyPatch(typeof(TempFogEnabler), nameof(TempFogEnabler.OnEntry))]
+	public static bool EnableRingWorldFog(TempFogEnabler __instance, GameObject hitObj)
+	{
+		if (!ErnestoChase.SpectateManager || !ErnestoChase.SpectateManager.IsSpectating ||
+			!ErnestoChase.SpectateManager.SpectateTarget)
+		{
+			return true;
+		}
+
+		if (hitObj == ErnestoChase.SpectateManager.SpectateTarget.Detector.gameObject)
+		{
+			__instance._fogController.enabled = true;
+			return false;
+		}
+
+		return true;
+	}
+	
+	[HarmonyPrefix]
+	[HarmonyPatch(typeof(TempFogEnabler), nameof(TempFogEnabler.OnExit))]
+	public static bool DisableRingWorldFog(TempFogEnabler __instance, GameObject hitObj)
+	{
+		if (!ErnestoChase.SpectateManager || !ErnestoChase.SpectateManager.IsSpectating ||
+			!ErnestoChase.SpectateManager.SpectateTarget)
+		{
+			return true;
+		}
+
+		if (hitObj == ErnestoChase.SpectateManager.SpectateTarget.Detector.gameObject)
+		{
+			__instance._fogController.enabled = false;
+			return false;
+		}
+
+		return true;
+	}
 }

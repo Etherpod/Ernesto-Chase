@@ -9,15 +9,15 @@ public abstract class SpectatorCamera : MonoBehaviour
     [SerializeField]
     protected SectorDetector _sectorDetector;
     [SerializeField]
-    private OWCamera _owCamera;
+    protected OWCamera _owCamera;
     
     protected AudioListener _audioListener;
     
-    public OWCamera Camera => _owCamera;
-    public SectorDetector Detector => _sectorDetector;
-    public AudioListener AudioListener => _audioListener;
+    public virtual OWCamera Camera => _owCamera;
+    public virtual SectorDetector Detector => _sectorDetector;
+    public virtual AudioListener AudioListener => _audioListener;
 
-    protected virtual void Awake()
+    protected virtual void Start()
     {
         _audioListener = _owCamera.GetComponent<AudioListener>();
         _owCamera.GetComponent<PlanetaryFogImageEffect>().fogShader = Shader.Find("Hidden/PlanetaryFogImageEffect");

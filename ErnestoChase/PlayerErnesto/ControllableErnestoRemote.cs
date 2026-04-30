@@ -22,7 +22,7 @@ public class ControllableErnestoRemote : MonoBehaviour
 
     private void Awake()
     {
-        _effects = GetComponentInChildren<ControllableErnestoEffectsRemote>();
+        _effects = GetComponentInChildren<ControllableErnestoEffectsRemote>(true);
         _ernesto = _effects.transform;
     }
 
@@ -140,6 +140,8 @@ public class ControllableErnestoRemote : MonoBehaviour
         _shrinked = shrink;
     }
 
+    public bool IsMorphed() => _morphed;
+    
     public void OnWarpEvent(bool warpStart)
     {
         if (warpStart)
