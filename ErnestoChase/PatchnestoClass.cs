@@ -800,7 +800,9 @@ public static class PatchnestoClass
 		}
 	}
 	
-	[HarmonyPrefix]
+	// apparently this is done in QSBPatches.cs
+	
+	/*[HarmonyPrefix]
 	[HarmonyPatch(typeof(SectorStreaming), nameof(SectorStreaming.FixedUpdate))]
 	public static bool FixSectorStreaming(SectorStreaming __instance)
 	{
@@ -853,7 +855,7 @@ public static class PatchnestoClass
 		__instance._probeInSoftLoadRadius = probeInRadius;
 
 		return false;
-	}
+	}*/
 
 	[HarmonyPrefix]
 	[HarmonyPatch(typeof(Sector), nameof(Sector.OnEntry))]

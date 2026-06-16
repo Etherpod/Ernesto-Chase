@@ -3,7 +3,7 @@ using System.Linq;
 using HarmonyLib;
 using UnityEngine;
 
-namespace ErnestoChase.PlayerErnesto;
+namespace ErnestoChase.Abilities;
 
 public class PlayerTrackerGUI : MonoBehaviour
 {
@@ -22,6 +22,7 @@ public class PlayerTrackerGUI : MonoBehaviour
 
 	private OWCamera _activeCam;
 	private bool _showVisuals;
+	private bool _activated;
 	private readonly List<TrackedPlayerData> _trackedPlayers = [];
 
 	private class TrackedPlayerData
@@ -57,7 +58,8 @@ public class PlayerTrackerGUI : MonoBehaviour
 		GlobalMessenger.AddListener("ChangeGUIMode", OnChangeGUIMode);
 		_playerTrackerPrefab.SetActive(false);
 		_offScreenIndicatorPrefab.SetActive(false);
-		SetVisibility(false);
+		_activated = false;
+		UpdateVisibility();
 	}
 	
 	private void Update()
@@ -158,6 +160,12 @@ public class PlayerTrackerGUI : MonoBehaviour
 			}
 		}
 	}
+
+	public void SetActivated(bool active)
+	{
+		_activated = active;
+		UpdateVisibility();
+	}
 	
 	private void SetVisibility(bool visible)
 	{
@@ -174,10 +182,11 @@ public class PlayerTrackerGUI : MonoBehaviour
 
 	private void UpdateVisibility()
 	{
-		bool flag = ECLocator.GetMorphController()?.IsMorphed() ?? false;
-		if (_showVisuals != flag)
+		bool visible = _activated && ECLocator.GetMorphController() != null && 
+			ECLocator.GetMorphController().IsMorphed();
+		if (_showVisuals != visible)
 		{
-			SetVisibility(flag);
+			SetVisibility(visible);
 		}
 	}
 

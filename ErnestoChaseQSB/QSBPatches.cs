@@ -10,6 +10,7 @@ using QSB.Localization;
 using ErnestoChase;
 using OWML.Common;
 using QSB;
+using QSB.DeathSync.Patches;
 using QSB.Messaging;
 using QSB.Player.Messages;
 using QSB.Utility;
@@ -144,5 +145,12 @@ public class QSBPatches
         }
 
         return true;
+    }
+
+    [HarmonyPostfix]
+    [HarmonyPatch(typeof(MapPatches), nameof(MapPatches.MapController_EnterMapView))]
+    public static void AdjustRevealTime(MapController __0)
+    {
+        __0._revealLength = 5f;
     }
 }

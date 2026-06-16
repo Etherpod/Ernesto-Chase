@@ -9,6 +9,7 @@ using System;
 using System.Collections.Generic;
 using System.Reflection;
 using System.Linq;
+using ErnestoChase.Abilities;
 using Newtonsoft.Json;
 using ErnestoChase.ErnestoAI;
 using ErnestoChase.Files;
@@ -160,7 +161,7 @@ public class ErnestoChase : ModBehaviour
             if (InMultiplayer && GameStateManager.GameStarted)
             {
                 var spectate = new GameObject("EC_SpecatateManager");
-                SpectateManager = spectate.AddComponent<Spectating.SpectateManager>();
+                SpectateManager = spectate.AddComponent<SpectateManager>();
             }
             
             var prefab = LoadPrefab("Assets/ErnestoChase/EC_SetupDialogue.prefab");
@@ -435,6 +436,8 @@ public class ErnestoChase : ModBehaviour
 
         MinigameManager.SetUpMinigames();
         
+        var abilities = Locator.GetPlayerBody().gameObject.AddComponent<AbilitiesManager>();
+        
         ModHelper.Events.Unity.FireInNUpdates(() =>
         {
             if (ErnestoMorph)
@@ -452,10 +455,12 @@ public class ErnestoChase : ModBehaviour
                         QSBCompat.SendControlledErnestoData(id, fakeData);
                     }
                 }
+                
+                var gui = GameObject.Find("PlayerTrackerGUI/TrackerGUI").GetComponent<PlayerTrackerGUI>();
+                abilities.SetPrimaryAbility(new PlayerTrackerAbility(gui));
             }
             
             SpawnErnestos();
-            
             ECLocator.Initialize();
         }, 50);
     }

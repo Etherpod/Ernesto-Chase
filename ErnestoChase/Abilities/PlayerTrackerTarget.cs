@@ -1,7 +1,7 @@
 ﻿using System;
 using UnityEngine;
 
-namespace ErnestoChase.PlayerErnesto;
+namespace ErnestoChase.Abilities;
 
 public class PlayerTrackerTarget : MonoBehaviour
 {
