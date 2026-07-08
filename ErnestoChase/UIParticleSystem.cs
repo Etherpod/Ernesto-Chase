@@ -160,10 +160,10 @@ public class UIParticleSystem : MonoBehaviour
 		_lastParentScale = parentScale;
 	}
 	
-	private void OnDrawGizmosSelected()
+	/*private void OnDrawGizmosSelected()
 	{
 		Handles.color = Color.yellow;
 		var scale = _canvas.transform.localScale.x / _canvas.scaleFactor;
 		Handles.DrawWireDisc(transform.position, transform.forward, _spawnRadius * scale);
-	}
+	}*/
 }

@@ -149,7 +149,7 @@ public class PlayerSectorTrackerRemote : MonoBehaviour
 		
 		if (sector._excludedOccupants.Contains(_sectorDetector) && !sector._dynamicOccupants.Contains(_sectorDetector))
 		{
-			Debug.LogError("ERROR: " + _sectorDetector.gameObject.name + " was excluded despite not being a dynamic occupant.");
+			//Debug.LogError("ERROR: " + _sectorDetector.gameObject.name + " was excluded despite not being a dynamic occupant.");
 		}
 		if (sector._occupantsTracked.Contains(_sectorDetector))
 		{
