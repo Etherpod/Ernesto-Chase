@@ -172,7 +172,7 @@ public class SpectateManager : MonoBehaviour
             if (SpectateTarget is ErnestoSpectatorCamera)
             {
                 SpectateTarget.Detector.SetOccupantType(DynamicOccupant.Environment);
-                SpectateTarget.GetComponent<ErnestoMovement>().ClearSectors();
+                //SpectateTarget.GetComponent<ErnestoMovement>().ClearSectors();
                 SpectateTarget.Detector.gameObject.SetActive(false);
             }
             else if (SpectateTarget is PlayerSpectatorCamera)
@@ -307,7 +307,7 @@ public class SpectateManager : MonoBehaviour
             if (SpectateTarget is ErnestoSpectatorCamera)
             {
                 SpectateTarget.Detector.SetOccupantType(DynamicOccupant.Environment);
-                SpectateTarget.GetComponent<ErnestoMovement>().ClearSectors();
+                //SpectateTarget.GetComponent<ErnestoMovement>().ClearSectors();
                 SpectateTarget.Detector.gameObject.SetActive(false);
             }
             else if (SpectateTarget is PlayerSpectatorCamera)
@@ -340,7 +340,7 @@ public class SpectateManager : MonoBehaviour
         {
             camera.Detector.SetOccupantType(DynamicOccupant.Player);
             camera.Detector.gameObject.SetActive(true);
-            camera.GetComponent<ErnestoMovement>().UpdateSectors();
+            //camera.GetComponent<ErnestoMovement>().UpdateSectors();
         }
         else if (camera is PlayerSpectatorCamera)
         {

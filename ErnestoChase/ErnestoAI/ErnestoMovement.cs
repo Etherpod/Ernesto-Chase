@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿/*
+using System.Collections.Generic;
 using System.Linq;
 using UnityEngine;
 using static ErnestoChase.ErnestoAI.TargetDataQueue;
@@ -198,6 +199,11 @@ public class ErnestoMovement : MonoBehaviour
 
     public void UpdateMovement(bool playerOnPlanet)
     {
+        foreach (var action in _actions)
+        {
+            
+        }
+        
         if (usingStoredTargets)
         {
             FollowStoredTargets();
@@ -1148,3 +1154,4 @@ public class ErnestoMovement : MonoBehaviour
         state.OnDataChanged -= OnDataChanged;
     }
 }
+*/

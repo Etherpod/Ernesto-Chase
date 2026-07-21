@@ -37,6 +37,9 @@ public static class PatchnestoClass
 			ErnestoChase.Instance.playerDetectorReady = true;
 		});
 	}
+	
+	public delegate void PlayerWarpEvent();
+	public static event PlayerWarpEvent OnPlayerWarped;
 
 	[HarmonyPrefix]
 	[HarmonyPatch(typeof(OWRigidbody), nameof(OWRigidbody.SetPosition))]
@@ -55,7 +58,7 @@ public static class PatchnestoClass
 		if ((worldPosition - Locator.GetPlayerTransform().position).sqrMagnitude > 50f * 50f)
 		{
 			ErnestoChase.WriteDebugMessage("Player warped");
-			ErnestoChase.Instance.OnPlayerWarpedEvent();
+			OnPlayerWarped?.Invoke();
 		}
 	}
 
@@ -950,4 +953,66 @@ public static class PatchnestoClass
 
 		return true;
 	}
+
+	public delegate void PlayerForceDetectorEvent(ForceVolume volume);
+
+	public static event PlayerForceDetectorEvent OnPlayerForceVolumeActivated;
+	public static event PlayerForceDetectorEvent OnPlayerForceVolumeDeactivated;
+
+	/*[HarmonyPostfix]
+	[HarmonyPatch(typeof(DynamicForceDetector), nameof(DynamicForceDetector.OnVolumeActivated))]
+	public static void PlayerForceVolumeActivatedEvent(DynamicForceDetector __instance, PriorityVolume pVol)
+	{
+		if (__instance != Locator.GetPlayerForceDetector()) return;
+		
+		OnPlayerForceVolumeActivated?.Invoke(pVol as ForceVolume);
+	}
+	
+	[HarmonyPostfix]
+	[HarmonyPatch(typeof(DynamicForceDetector), nameof(DynamicForceDetector.OnVolumeDeactivated))]
+	public static void PlayerForceVolumeDeactivatedEvent(DynamicForceDetector __instance, PriorityVolume pVol)
+	{
+		if (__instance != Locator.GetPlayerForceDetector()) return;
+		
+		OnPlayerForceVolumeDeactivated?.Invoke(pVol as ForceVolume);
+	}
+	
+	[HarmonyPrefix]
+	[HarmonyPatch(typeof(AlignmentForceDetector), nameof(AlignmentForceDetector.AccumulateAcceleration))]
+	public static void PlayerAlignmentCache(AlignmentForceDetector __instance, ref Vector3 __state)
+	{
+		if (__instance != Locator.GetPlayerForceDetector()) return;
+
+		__state = __instance.GetAlignmentAcceleration();
+	}
+	
+	[HarmonyPostfix]
+	[HarmonyPatch(typeof(AlignmentForceDetector), nameof(AlignmentForceDetector.AccumulateAcceleration))]
+	public static void PlayerCheckAlignment(AlignmentForceDetector __instance, Vector3 __state)
+	{
+		if (__instance != Locator.GetPlayerForceDetector()) return;
+
+		if (__state != Vector3.zero && __instance.GetAlignmentAcceleration() == Vector3.zero)
+		{
+			foreach (var vol in __instance._activeVolumes)
+			{
+				if (vol is not ForceVolume forceVol) continue;
+				
+				OnPlayerForceVolumeDeactivated?.Invoke(forceVol);
+			}
+		}
+		else if (__state == Vector3.zero && __instance.GetAlignmentAcceleration() != Vector3.zero)
+		{
+			foreach (var vol in __instance._activeVolumes)
+			{
+				if (vol is not ForceVolume forceVol ||
+					!forceVol.GetAffectsAlignment(__instance._attachedBody))
+				{
+					continue;
+				}
+				
+				OnPlayerForceVolumeActivated?.Invoke(forceVol);
+			}
+		}
+	}*/
 }

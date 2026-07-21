@@ -21,9 +21,6 @@ namespace ErnestoChase;
 
 public class ErnestoChase : ModBehaviour
 {
-    public delegate void PlayerWarpEvent();
-    public event PlayerWarpEvent OnPlayerWarped;
-
     public static ErnestoChase Instance;
     public static Minigames.MinigameManager MinigameManager;
     public static Spectating.SpectateManager SpectateManager;
@@ -588,13 +585,8 @@ public class ErnestoChase : ModBehaviour
     {
         if (TryGetRemoteErnesto(from, localID, out GameObject remoteErnesto))
         {
-            remoteErnesto?.GetComponent<ErnestoMovement>()?.AddTargetData(targetData);
+            //remoteErnesto?.GetComponent<ErnestoMovement>()?.AddTargetData(targetData);
         }
-    }
-
-    public void OnPlayerWarpedEvent()
-    {
-        OnPlayerWarped?.Invoke();
     }
 
     private void OnEndSetupConversation()
@@ -699,6 +691,24 @@ public class ErnestoChase : ModBehaviour
         {
             message ??= "null";
             Instance.ModHelper.Console.WriteLine(message.ToString());
+        }
+    }
+    
+    public static void WriteWarningMessage(object message)
+    {
+        if (EnableDebugMode)
+        {
+            message ??= "null";
+            Instance.ModHelper.Console.WriteLine(message.ToString(), MessageType.Warning);
+        }
+    }
+    
+    public static void WriteErrorMessage(object message)
+    {
+        if (EnableDebugMode)
+        {
+            message ??= "null";
+            Instance.ModHelper.Console.WriteLine(message.ToString(), MessageType.Error);
         }
     }
 

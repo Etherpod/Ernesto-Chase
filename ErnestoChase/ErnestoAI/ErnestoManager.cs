@@ -10,13 +10,14 @@ public class ErnestoManager : MonoBehaviour
 {
     public delegate void CaughtPlayerEvent(ErnestoManager ernesto);
     public event CaughtPlayerEvent OnCaughtPlayer;
-
+    
     [SerializeField]
     private OWTriggerVolume killVolume;
+    [SerializeField]
+    private ErnestoAction.Name[] _actions;
 
     private ErnestoState state;
     private PlanetManager planetManager;
-    private ErnestoMovement ernestoMovement;
     private ErnestoEffects ernestoEffects;
 
     private float releaseDelay = 15f;
@@ -28,12 +29,15 @@ public class ErnestoManager : MonoBehaviour
     private readonly float switchTimeMin = 8f;
     private readonly float switchTimeMax = 30f;
     private float switchDelay;
+    
+    private List<ErnestoAction> _actionLibrary = [];
+    private ErnestoAction _currentAction;
 
     private void Awake()
     {
         state = GetComponent<ErnestoState>();
         planetManager = GetComponent<PlanetManager>();
-        ernestoMovement = GetComponent<ErnestoMovement>();
+        //ernestoMovement = GetComponent<ErnestoMovement>();
         ernestoEffects = GetComponent<ErnestoEffects>();
 
         killVolume.OnEntry += OnEntry;
@@ -42,22 +46,21 @@ public class ErnestoManager : MonoBehaviour
 
         planetManager.OnUpdateTravelMode += OnUpdateTravelMode;
         planetManager.OnTeleportStarted += OnTeleportStarted;
-        planetManager.OnPlayerWarpStarted += ernestoMovement.OnPlayerWarpStarted;
-        planetManager.OnPlayerWarpComplete += ernestoMovement.OnPlayerWarpComplete;
+        //planetManager.OnPlayerWarpStarted += ernestoMovement.OnPlayerWarpStarted;
+        //planetManager.OnPlayerWarpComplete += ernestoMovement.OnPlayerWarpComplete;
 
-        ernestoMovement.OnTeleportRequired += planetManager.OnTeleportRequired;
+        /*ernestoMovement.OnTeleportRequired += planetManager.OnTeleportRequired;
         ernestoMovement.OnProximityRoar += ernestoEffects.OnProximityRoar;
         ernestoMovement.OnSpaceWarp += OnSpaceWarp;
         ernestoMovement.OnTakeShortcut += ernestoEffects.OnTakeShortcut;
         ernestoMovement.OnUpdateVisibility += ernestoEffects.OnUpdateVisibility;
         ernestoMovement.OnFinalWarp += OnFinalWarp;
         ernestoMovement.TriggerFakeWarpEntry += ernestoEffects.OnFakeWarpEntry;
-        ernestoMovement.TriggerFakeWarpExit += ernestoEffects.OnFakeWarpExit;
+        ernestoMovement.TriggerFakeWarpExit += ernestoEffects.OnFakeWarpExit;*/
 
         ernestoEffects.OnExitWhiteHole += OnExitWhiteHole;
         ernestoEffects.OnEnterBlackHole += OnEnterBlackHole;
-
-        ErnestoChase.Instance.OnPlayerWarped += planetManager.OnPlayerWarped;
+        
         GlobalMessenger<DeathType>.AddListener("PlayerDeath", OnPlayerDeath);
         GlobalMessenger.AddListener("EC_GameStopped", OnGameStopped);
 
@@ -73,6 +76,14 @@ public class ErnestoManager : MonoBehaviour
         {
             GetComponentInChildren<Spectating.ErnestoCamera>().gameObject.SetActive(false);
         }
+
+        var controller = GetComponent<ErnestoController>();
+        foreach (var actionName in _actions)
+        {
+            var action = ErnestoAction.CreateAction(actionName);
+            action.Initialize(state, controller, ernestoEffects);
+            _actionLibrary.Add(action);
+        }
     }
 
     private void OnDataChanged(uint lastData)
@@ -82,6 +93,25 @@ public class ErnestoManager : MonoBehaviour
 
     private void Update()
     {
+        if (state.ErnestoReleased)
+        {
+            bool continueAction = false;
+            if (_currentAction != null)
+            {
+                continueAction = _currentAction.Update_Action();
+            }
+
+            if (!continueAction && _currentAction != null)
+            {
+                _currentAction.ExitAction();
+                state.previousAction = _currentAction.GetName();
+                ErnestoChase.WriteDebugMessage("set prev action to " + state.previousAction);
+                _currentAction = null;
+            }
+            
+            EvaluateActions();
+        }
+        
         if (!state.ErnestoReleased || state.DataStates.Keys.Count <= 1 || state.RemoteID != 0) return;
 
         if (switchDelay <= 0f)
@@ -106,6 +136,56 @@ public class ErnestoManager : MonoBehaviour
         }
     }
 
+    private void EvaluateActions()
+    {
+        if (_currentAction != null && !_currentAction.IsInterruptible()) return;
+
+        float maxUtility = float.NegativeInfinity;
+        ErnestoAction nextAction = null;
+
+        for (int i = 0; i < _actionLibrary.Count; i++)
+        {
+            float utility = _actionLibrary[i].CalculateUtility();
+            //ErnestoChase.WriteDebugMessage($"{_actionLibrary[i].GetName()}: {utility}");
+            if (utility > maxUtility)
+            {
+                maxUtility = utility;
+                nextAction = _actionLibrary[i];
+            }
+        }
+
+        if (nextAction == null != (_currentAction == null) || 
+            nextAction?.GetName() != _currentAction?.GetName())
+        {
+            ChangeAction(nextAction);
+        }
+    }
+
+    private void ChangeAction(ErnestoAction action)
+    {
+        if (_currentAction != null)
+        {
+            _currentAction.ExitAction();
+            state.previousAction = _currentAction.GetName();
+            ErnestoChase.WriteDebugMessage("set prev action to " + state.previousAction);
+        }
+        
+        _currentAction = action;
+        ErnestoChase.WriteDebugMessage("current action: " + _currentAction);
+        if (_currentAction != null)
+        {
+            _currentAction.EnterAction();
+        }
+    }
+
+    public void OnArriveAtTarget()
+    {
+        if (_currentAction != null)
+        {
+            _currentAction.OnArriveAtTarget();
+        }
+    }
+
     private void FixedUpdate()
     {
         if (LoadManager.GetCurrentScene() != OWScene.SolarSystem || !ErnestoChase.Instance.playerDetectorReady || !TimeLoop.IsTimeFlowing()) return;
@@ -113,7 +193,7 @@ public class ErnestoManager : MonoBehaviour
         if (!initialized)
         {
             planetManager.Initialize();
-            ernestoMovement.Initialize();
+            //ernestoMovement.Initialize();
             StartCoroutine(ErnestoReleaseDelay());
             initialized = true;
         }
@@ -153,9 +233,9 @@ public class ErnestoManager : MonoBehaviour
             state.LastPlayerPos = planetManager.GetPlayerParent().InverseTransformPoint(state.LastPlayerPos);
         }
 
-        if (state.ErnestoReleased)
+        if (state.ErnestoReleased && _currentAction != null)
         {
-            ernestoMovement.UpdateMovement(planetManager.IsOnPlanet());
+            _currentAction.FixedUpdate_Action();
         }
 
         state.LastPlayerPos = planetManager.GetPlayerParent().InverseTransformPoint(Locator.GetPlayerTransform().position);
@@ -169,12 +249,13 @@ public class ErnestoManager : MonoBehaviour
 
     public void SetStoredTargets(TargetDataQueue queue)
     {
-        ernestoMovement.SetStoredTargets(queue);
+        //ernestoMovement.SetStoredTargets(queue);
     }
 
     public TargetDataQueue GetStoredTargets()
     {
-        return ernestoMovement.GetStoredTargets();
+        return null;
+        //return ernestoMovement.GetStoredTargets();
     }
 
     public bool CanSpectate()
@@ -203,7 +284,7 @@ public class ErnestoManager : MonoBehaviour
         if (state.RemoteID == 0)
         {
             StopCoroutine(ErnestoReleaseDelay());
-            ernestoMovement.OnPlayerDeath();
+            //ernestoMovement.OnPlayerDeath();
         }
     }
 
@@ -222,13 +303,13 @@ public class ErnestoManager : MonoBehaviour
 
     public void OnUpdateTravelMode(bool isSpace)
     {
-        ernestoMovement.SetTravelMode(isSpace);
+        //ernestoMovement.SetTravelMode(isSpace);
         ernestoEffects.SetTravelMode(isSpace);
     }
 
     public void OnTeleportStarted(bool fromSpace, bool toSpace)
     {
-        ernestoMovement.SetMovementEnabled(false);
+        //ernestoMovement.SetMovementEnabled(false);
         ernestoEffects.OnTeleportStarted(fromSpace, toSpace);
     }
 
@@ -236,14 +317,14 @@ public class ErnestoManager : MonoBehaviour
     {
         // Order is important
         planetManager.OnEnterBlackHole(fromSpace, toSpace);
-        ernestoMovement.OnEnterBlackHole(fromSpace, toSpace);
+        //ernestoMovement.OnEnterBlackHole(fromSpace, toSpace);
     }
 
     public void OnPlayerDeathRemote()
     {
         if (missionComplete) return;
         StopCoroutine(ErnestoReleaseDelay());
-        ernestoMovement.OnPlayerDeathRemote();
+        //ernestoMovement.OnPlayerDeathRemote();
     }
 
     private void OnSpaceWarp()
@@ -259,7 +340,7 @@ public class ErnestoManager : MonoBehaviour
         yield return new WaitForSeconds(releaseDelay);
         if (planetManager.IsOnPlanet())
         {
-            ernestoMovement.OnErnestoRelease();
+            //ernestoMovement.OnErnestoRelease();
         }
         ernestoEffects.CreateWhiteHole();
     }
@@ -277,7 +358,7 @@ public class ErnestoManager : MonoBehaviour
         }
         else if (!state.UsingStoredTargets)
         {
-            ernestoMovement.SetMovementEnabled(true);
+            //ernestoMovement.SetMovementEnabled(true);
         }
     }
 
@@ -306,22 +387,21 @@ public class ErnestoManager : MonoBehaviour
 
         planetManager.OnUpdateTravelMode -= OnUpdateTravelMode;
         planetManager.OnTeleportStarted -= OnTeleportStarted;
-        planetManager.OnPlayerWarpStarted -= ernestoMovement.OnPlayerWarpStarted;
-        planetManager.OnPlayerWarpComplete -= ernestoMovement.OnPlayerWarpComplete;
+        //planetManager.OnPlayerWarpStarted -= ernestoMovement.OnPlayerWarpStarted;
+        //planetManager.OnPlayerWarpComplete -= ernestoMovement.OnPlayerWarpComplete;
 
-        ernestoMovement.OnTeleportRequired -= planetManager.OnTeleportRequired;
+        /*ernestoMovement.OnTeleportRequired -= planetManager.OnTeleportRequired;
         ernestoMovement.OnProximityRoar -= ernestoEffects.OnProximityRoar;
         ernestoMovement.OnSpaceWarp -= OnSpaceWarp;
         ernestoMovement.OnTakeShortcut -= ernestoEffects.OnTakeShortcut;
         ernestoMovement.OnUpdateVisibility -= ernestoEffects.OnUpdateVisibility;
         ernestoMovement.OnFinalWarp -= OnFinalWarp;
         ernestoMovement.TriggerFakeWarpEntry -= ernestoEffects.OnFakeWarpEntry;
-        ernestoMovement.TriggerFakeWarpExit -= ernestoEffects.OnFakeWarpExit;
+        ernestoMovement.TriggerFakeWarpExit -= ernestoEffects.OnFakeWarpExit;*/
 
         ernestoEffects.OnExitWhiteHole -= OnExitWhiteHole;
         ernestoEffects.OnEnterBlackHole -= OnEnterBlackHole;
-
-        ErnestoChase.Instance.OnPlayerWarped -= planetManager.OnPlayerWarped;
+        
         GlobalMessenger<DeathType>.RemoveListener("PlayerDeath", OnPlayerDeath);
         GlobalMessenger.RemoveListener("EC_GameStopped", OnGameStopped);
         

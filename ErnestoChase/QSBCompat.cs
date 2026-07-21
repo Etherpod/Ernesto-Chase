@@ -26,7 +26,7 @@ public static class QSBCompat
         public readonly Vector3 Vector => new(x, y, z);
     }
 
-    [Serializable]
+    /*[Serializable]
     private struct SerializedTargetData(TargetData targetData)
     {
         public string parent = targetData.parent;
@@ -42,7 +42,7 @@ public static class QSBCompat
         public readonly TargetData TargetData => new(parent, localPosition.Vector, 
             worldPosition.Vector, worldUp.Vector, time, isTeleportEnter, isTeleportExit, 
             isFinalTarget, sectors);
-    }
+    }*/
 
     public static void Init(IQSBAPI qsbapi)
     {
@@ -50,7 +50,7 @@ public static class QSBCompat
         
         api.RegisterHandler<string>("ernesto-data", ReceiveErnestoData);
         api.RegisterHandler<string>("controlled-ernesto-data", ReceiveControlledErnestoData);
-        api.RegisterHandler<(uint, SerializedTargetData)>("target-data", ReceiveTargetData);
+        //api.RegisterHandler<(uint, SerializedTargetData)>("target-data", ReceiveTargetData);
         api.RegisterHandler<(uint, bool)>("visibility-state", ReceiveVisibilityState);
         api.RegisterHandler<(uint, bool)>("size-change", ReceiveErnestoSizeChange);
         api.RegisterHandler<uint>("final-warp", ReceiveErnestoFinalWarp);
@@ -107,7 +107,7 @@ public static class QSBCompat
         }
     }
 
-    public static void SendTargetData(uint to, uint localID, TargetData targetData)
+    /*public static void SendTargetData(uint to, uint localID, TargetData targetData)
     {
         api.SendMessage("target-data", (localID, new SerializedTargetData(targetData)), to, false);
     }
@@ -115,7 +115,7 @@ public static class QSBCompat
     private static void ReceiveTargetData(uint from, (uint localID, SerializedTargetData targetData) data)
     {
         ErnestoChase.Instance.AddTargetDataRemote(from, data.localID, data.targetData.TargetData);
-    }
+    }*/
 
     public static void SendErnestoFinalWarp(uint to, uint localID)
     {
@@ -139,7 +139,7 @@ public static class QSBCompat
     {
         if (ErnestoChase.TryGetRemoteErnesto(0, data.localID, out GameObject remoteErnesto))
         {
-            remoteErnesto.GetComponent<ErnestoMovement>().UpdateVisibilityRemote(from, data.visible);
+            //remoteErnesto.GetComponent<ErnestoMovement>().UpdateVisibilityRemote(from, data.visible);
         }
     }
     

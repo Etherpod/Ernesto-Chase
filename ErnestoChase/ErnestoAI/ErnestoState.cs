@@ -43,6 +43,7 @@ public class ErnestoState : MonoBehaviour
     public bool FollowedPlayerToPlanet { get; set; } = true;
     public bool KillVolumeEnabled { get; set; } = false;
     public bool CaughtPlayer { get; set; } = false;
+    public ErnestoAction.Name previousAction = ErnestoAction.Name.None;
 
     public void InitializeStats(uint stateID, Dictionary<string, (object value, object property)> settings)
     {

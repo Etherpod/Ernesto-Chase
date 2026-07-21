@@ -57,6 +57,7 @@ public class PlanetManager : MonoBehaviour
 
     public bool UpdatePlayerPlanetState(bool forceUpdate = false)
     {
+        return false;
         bool onPlanet = IsOnPlanet();
         bool lastState = lastPlayerPlanetState;
         if (lastPlayerPlanetState != onPlanet || forceUpdate)
@@ -120,6 +121,7 @@ public class PlanetManager : MonoBehaviour
 
     public void OnPlayerWarped()
     {
+        return;
         ErnestoChase.WriteDebugMessage("\nReceive warp event");
         playerRecentlyWarped = true;
         OnPlayerWarpStarted?.Invoke(!lastPlayerPlanetState);

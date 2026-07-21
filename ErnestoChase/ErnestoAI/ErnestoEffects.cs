@@ -11,6 +11,10 @@ namespace ErnestoChase.ErnestoAI;
 
 public class ErnestoEffects : MonoBehaviour
 {
+    public delegate void SingularityEvent();
+    public event SingularityEvent BlackHoleCollapsed;
+    public event SingularityEvent WhiteHoleCreated;
+    
     public delegate void WhiteHoleEvent();
     public event WhiteHoleEvent OnExitWhiteHole;
     public delegate void BlackHoleEvent(bool fromSpace, bool toSpace);
@@ -96,6 +100,8 @@ public class ErnestoEffects : MonoBehaviour
 
     private void OnDataChanged(uint lastData)
     {
+        return;
+        
         if (state.DisableLight)
         {
             anglerLight.intensity = 0f;
@@ -231,6 +237,7 @@ public class ErnestoEffects : MonoBehaviour
         
         musicAudio.clip = file.clip;
         musicAudio.time = file.lastTime;
+        musicAudio.Pause();
     }
 
     public void CreateWhiteHole()
@@ -247,12 +254,12 @@ public class ErnestoEffects : MonoBehaviour
         if (!state.ErnestoReleased)
         {
             animator.SetTrigger("Impulse");
-            oneShotAudio.PlayOneShot(AudioType.DBAnglerfishDetectTarget, 0.8f);
+            //oneShotAudio.PlayOneShot(AudioType.DBAnglerfishDetectTarget, 0.8f);
             loopingAudio.AssignAudioLibraryClip(AudioType.DBAnglerfishChasing_LP);
             if (!state.QuantumMode && !state.StealthMode)
             {
-                loopingAudio.FadeIn(1f);
-                musicAudio.Play();
+                //loopingAudio.FadeIn(1f);
+                //musicAudio.Play();
             }
             UpdateMuffle(true);
         }
@@ -378,8 +385,8 @@ public class ErnestoEffects : MonoBehaviour
             whiteHole.singularityController.OnCreation += OnWhiteHoleCreated;
             if (!state.StealthMode)
             {
-                loopingAudio.FadeIn(1f);
-                musicAudio.FadeIn(1f);
+                //loopingAudio.FadeIn(1f);
+                //musicAudio.FadeIn(1f);
             }
             
             UpdateMuffle(true);
@@ -439,8 +446,8 @@ public class ErnestoEffects : MonoBehaviour
 
         if (!state.StealthMode && !isFrozen)
         {
-            loopingAudio.FadeIn(1f);
-            musicAudio.FadeIn(1f);
+            //loopingAudio.FadeIn(1f);
+            //musicAudio.FadeIn(1f);
         }
 
         audioTransition = null;
@@ -470,6 +477,81 @@ public class ErnestoEffects : MonoBehaviour
             
         UpdateMuffle(true);
     }
+    
+    #region GoodCode
+
+    public void PlayRoar()
+    {
+        oneShotAudio.PlayOneShot(AudioType.DBAnglerfishDetectTarget, 0.8f);
+    }
+
+    public void SetLoopsEnabled(bool enabled)
+    {
+        if (enabled)
+        {
+            loopingAudio.FadeIn(1f);
+        }
+        else
+        {
+            loopingAudio.FadeOut(3f);
+        }
+    }
+    
+    public void SetMusicEnabled(bool enabled)
+    {
+        if (enabled)
+        {
+            musicAudio.FadeIn(0.1f);
+        }
+        else
+        {
+            musicAudio.FadeOut(3f, OWAudioSource.FadeOutCompleteAction.PAUSE);
+        }
+    }
+
+    public void SetLightEnabled(bool enabled)
+    {
+        if (enabled)
+        {
+            anglerLight.intensity = baseLightIntensity;
+            ernestoRenderer.material.SetTexture("_EmissionMap", bulbTex);
+        }
+        else
+        {
+            anglerLight.intensity = 0f;
+            ernestoRenderer.material.SetTexture("_EmissionMap", noBulbTex);
+        }
+    }
+
+    public void MakeBlackHole()
+    {
+        blackHole.transform.parent = transform.parent;
+        blackHole.transform.localPosition = transform.localPosition;
+        blackHole.WarpObjectOut(2f);
+        blackHole.singularityController.OnCollapse += OnBlackHoleCollapse;
+    }
+
+    private void OnBlackHoleCollapse()
+    {
+        blackHole.singularityController.OnCollapse -= OnBlackHoleCollapse;
+        BlackHoleCollapsed?.Invoke();
+    }
+    
+    public void MakeWhiteHole()
+    {
+        whiteHole.transform.parent = transform.parent;
+        whiteHole.transform.localPosition = transform.localPosition;
+        whiteHole.WarpObjectIn(2f);
+        whiteHole.singularityController.OnCreation += OnWhiteHoleCreation;
+    }
+
+    private void OnWhiteHoleCreation()
+    {
+        whiteHole.singularityController.OnCreation -= OnWhiteHoleCreation;
+        WhiteHoleCreated?.Invoke();
+    }
+    
+    #endregion
 
     private void OnDestroy()
     {
