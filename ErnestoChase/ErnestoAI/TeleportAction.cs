@@ -15,8 +15,7 @@ public class TeleportAction : ErnestoAction
 
 	public override float CalculateUtility()
 	{
-		if (_controller.GetRelativePlayerBody() != null &&
-			_controller.GetCurrentTarget().isTeleport &&
+		if (_controller.GetCurrentTarget().isTeleport &&
 			_controller.GetNextTarget().isTeleport)
 		{
 			return 100f;

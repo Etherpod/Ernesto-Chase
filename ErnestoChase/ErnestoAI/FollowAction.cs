@@ -8,7 +8,7 @@ public class FollowAction : ErnestoAction
 
 	public override float CalculateUtility()
 	{
-		if (_controller.GetRemainingTargetCount() > 0 &&
+		if (_controller.GetRemainingTargetCount() > 1 &&
 			!_controller.GetCurrentTarget().isTeleport)
 		{
 			return 30f;
@@ -40,7 +40,7 @@ public class FollowAction : ErnestoAction
 	{
 		var targetProgress = _controller.GetRemainingTargetProgress();
 		float cutoff = 20f;
-		float scalar = 25f;
+		float scalar = 100f;
 		float speedMult = 3f;
 		var speedLerp = Mathf.LerpUnclamped(1f, speedMult, 
 			Mathf.Max(0f, (targetProgress - cutoff) / (scalar - cutoff)));

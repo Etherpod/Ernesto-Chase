@@ -21,6 +21,7 @@ public abstract class ErnestoAction
 		SpaceTimed,
 		SpaceCumulative,
 		Teleport,
+		Shortcut,
 		None
 	}
 
@@ -52,6 +53,9 @@ public abstract class ErnestoAction
 				break;
 			case Name.Teleport:
 				action = new TeleportAction();
+				break;
+			case Name.Shortcut:
+				action = new ShortcutAction();
 				break;
 			default:
 				action = null;

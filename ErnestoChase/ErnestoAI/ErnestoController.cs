@@ -186,6 +186,8 @@ public class ErnestoController : MonoBehaviour
 		_lastPosition = transform.localPosition;
 		_lastRotation = transform.rotation;
 		_lastTargetAdvanceTime = Time.time;
+
+		_adjustedTargetCount = _targets.Count - 1 - _targetIndex;
 		
 		GetComponent<ErnestoManager>().OnArriveAtTarget();
 	}

@@ -10,9 +10,9 @@ public class BerserkerAction : ErnestoAction
 
 	public override float CalculateUtility()
 	{
-		if (_controller.GetRemainingTargetCount() > 0 &&
+		if (_controller.GetRemainingTargetCount() > 1 &&
 			!_controller.GetCurrentTarget().isTeleport &&
-			(_beserkerMode || _state.previousAction == Name.FollowStupid))
+			(_beserkerMode || _state.previousAction == Name.Shortcut))
 		{
 			return 80f;
 		}

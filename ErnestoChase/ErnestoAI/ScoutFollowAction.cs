@@ -4,7 +4,6 @@ namespace ErnestoChase.ErnestoAI;
 
 public class ScoutFollowAction : ErnestoAction
 {
-	private float _actionEnterTime;
 	private float _utilityDelay;
 	
 	public override Name GetName() => Name.FollowStupid;
@@ -12,7 +11,7 @@ public class ScoutFollowAction : ErnestoAction
 	public override float CalculateUtility()
 	{
 		if (_controller.GetRelativePlayerBody() != null &&
-			(IsVisibleToPlayer() || Time.time < _actionEnterTime + _utilityDelay))
+			(IsVisibleToPlayer() || Time.time < _enterTime + _utilityDelay))
 		{
 			return 50f;
 		}
@@ -33,7 +32,6 @@ public class ScoutFollowAction : ErnestoAction
 
 	protected override void OnEnterAction()
 	{
-		_actionEnterTime = Time.time;
 		_utilityDelay = Random.Range(60f, 90f);
 		
 		_controller.CurrentSpeed = _controller.BaseSpeed * 5f;
@@ -46,7 +44,7 @@ public class ScoutFollowAction : ErnestoAction
 	
 	public override bool Update_Action()
 	{
-		if (IsVisibleToPlayer() || Time.time < _actionEnterTime + _utilityDelay)
+		if (IsVisibleToPlayer() || Time.time < _enterTime + _utilityDelay)
 		{
 			return true;
 		}
